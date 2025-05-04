@@ -12,7 +12,7 @@ const Sidebar = () => {
         </div>
         <nav className="space-y-2">
           <Link
-            href="/dashboard"
+            href="/"
             className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-100 transition text-sm font-medium text-gray-700"
           >
             <LayoutDashboard className="w-4 h-4" />
