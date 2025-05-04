@@ -1,4 +1,3 @@
-// schema.ts
 import {
   pgTable,
   serial,
@@ -12,6 +11,8 @@ import {
   uuid,
   pgEnum,
 } from 'drizzle-orm/pg-core';
+
+// Note: add indexes in the future when data retrieval is slow to optimize query performance.
 
 // Enums
 export const ROLE_ENUM = pgEnum('role', ['Admin', 'Pharmacist']);
