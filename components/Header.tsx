@@ -1,25 +1,13 @@
 import { Avatar, AvatarFallback } from '@radix-ui/react-avatar';
-import { Bell, Search } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import React from 'react';
 import { Button } from './ui/button';
 import { signOut } from '@/auth';
 import { Session } from 'next-auth';
 
 const Header = ({ session }: { session: Session }) => {
-  console.log(session?.user?.name);
-  console.log(session?.user?.email);
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-3 bg-white/90 backdrop-blur border-b shadow-sm">
-      {/* Search Bar */}
-      <div className="flex items-center space-x-2 w-full max-w-sm bg-gray-100 px-3 py-2 rounded-md shadow-inner focus-within:ring-2 ring-foreground transition">
-        <Search className="w-4 h-4 text-gray-500" />
-        <input
-          type="search"
-          placeholder="Search..."
-          className="w-full bg-transparent outline-none text-sm placeholder:text-gray-400"
-        />
-      </div>
-
+    <header className="sticky top-0 z-50 flex justify-end px-6 py-3 bg-white/90 backdrop-blur border-b shadow-sm">
       <div className="flex items-center space-x-4">
         {/* Notification Bell */}
         <button className="relative p-2 rounded-full hover:bg-gray-100 transition">

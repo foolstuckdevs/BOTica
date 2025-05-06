@@ -4,14 +4,9 @@
 import { signIn } from '@/auth';
 import { db } from '@/database/drizzle';
 import { users } from '@/database/schema';
+import { AuthCredentials } from '@/types';
 import { hash } from 'bcryptjs';
 import { eq } from 'drizzle-orm';
-
-interface AuthCredentials {
-  fullName: string;
-  email: string;
-  password: string;
-}
 
 export const signInWithCredentials = async (
   params: Pick<AuthCredentials, 'email' | 'password'>,
