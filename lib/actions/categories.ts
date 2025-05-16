@@ -1,17 +1,18 @@
 'use server'; //for the server actions to be executed on the server
 
+// Next.js automatically caches server-rendered pages and fetch results to improve performance.
+// To ensure your data stays fresh after creating or deleting a category, you should add revalidatePath() inside your createCategory and deleteCategory server actions. This will clear the cache for the affected route (e.g., /categories), prompting a re-fetch on the next render.
+
 import { db } from '@/database/drizzle';
 import { categories } from '@/database/schema';
 import { Categories } from '@/types';
 import { eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 
 export async function getCategories() {
   try {
     const result = await db.select().from(categories);
-    return result.map((c) => ({
-      ...c,
-      id: c.id.toString(),
-    }));
+    return result;
   } catch (error) {
     console.log(error);
     return []; // datatable expects only array for its data prop
@@ -36,6 +37,7 @@ export async function createCategory(
     }
 
     const newCategory = await db.insert(categories).values(params).returning();
+    revalidatePath('/categories'); // Clears cache refresh the page
 
     return {
       success: true,
@@ -45,19 +47,18 @@ export async function createCategory(
     console.log(error);
     return {
       success: false,
-      message: 'An error occurred while creating the category',
+      message: 'An error occurred while creating new category',
     };
   }
 }
 
-// temporary
 export const deleteCategory = async (categoryId: number) => {
   try {
     await db.delete(categories).where(eq(categories.id, categoryId));
-
+    revalidatePath('/categories');
     return {
       success: true,
-      message: 'Category deleted successfully',
+      message: 'Category deleted',
     };
   } catch (error) {
     console.log(error);

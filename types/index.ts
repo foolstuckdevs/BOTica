@@ -5,7 +5,7 @@ export interface AuthCredentials {
 }
 
 export interface Categories {
-  id: string;
+  id: number;
   name: string;
   description: string | null;
 }
