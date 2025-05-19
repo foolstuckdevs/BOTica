@@ -4,8 +4,6 @@ import { db } from './database/drizzle';
 import { users } from './database/schema';
 import { eq } from 'drizzle-orm';
 import { compare } from 'bcryptjs';
-import { ROLE_ENUM } from '@/database/schema';
-import { Role } from './types/auth';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
@@ -64,13 +62,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.name = token.name as string;
-
-        // ✅ Safely assert token.role is a valid Role
-        if (ROLE_ENUM.enumValues.includes(token.role as Role)) {
-          session.user.role = token.role as Role;
-        } else {
-          throw new Error('Invalid role in token');
-        }
+        session.user.role = token.role;
       }
       return session;
     },
