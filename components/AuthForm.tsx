@@ -16,7 +16,6 @@ import {
   Path,
   SubmitHandler,
   useForm,
-  UseFormReturn,
 } from 'react-hook-form';
 import { ZodType } from 'zod';
 import { FIELD_NAMES, FIELD_TYPES } from '@/constants';
@@ -43,7 +42,7 @@ const AuthForm = <T extends FieldValues>({
   const router = useRouter();
   const isSignIn = type === 'SIGN_IN';
 
-  const form: UseFormReturn<T> = useForm({
+  const form = useForm({
     resolver: zodResolver(schema),
     defaultValues: defaultValues as DefaultValues<T>,
   });

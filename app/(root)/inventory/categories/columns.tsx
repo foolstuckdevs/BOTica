@@ -1,12 +1,11 @@
 'use client';
 
-import { Categories } from '@/types';
 import { ColumnDef } from '@tanstack/react-table';
-
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import { CategoryActions } from '@/components/CategoryActions';
+import { Category } from '@/types';
 
-export const columns: ColumnDef<Categories>[] = [
+export const columns: ColumnDef<Category>[] = [
   {
     accessorKey: 'id',
     header: ({ column }) => (

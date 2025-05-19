@@ -5,7 +5,7 @@
 
 import { db } from '@/database/drizzle';
 import { categories } from '@/database/schema';
-import { Categories } from '@/types';
+import { Category, CategoryFormValues } from '@/types';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -20,7 +20,7 @@ export async function getCategories() {
 }
 
 export async function createCategory(
-  params: Pick<Categories, 'name' | 'description'>,
+  params: Pick<Category, 'name' | 'description'>,
 ) {
   try {
     // check if category exists
@@ -65,6 +65,28 @@ export const deleteCategory = async (categoryId: number) => {
     return {
       success: false,
       message: 'An error occurred while deleting category',
+    };
+  }
+};
+
+export const updateCategory = async (
+  data: { id: number } & CategoryFormValues,
+) => {
+  try {
+    await db
+      .update(categories)
+      .set({
+        name: data.name,
+        description: data.description,
+      })
+      .where(eq(categories.id, data.id));
+
+    return { success: true };
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      error: 'Failed to update category',
     };
   }
 };

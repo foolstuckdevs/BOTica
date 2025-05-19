@@ -4,6 +4,8 @@ import { db } from './database/drizzle';
 import { users } from './database/schema';
 import { eq } from 'drizzle-orm';
 import { compare } from 'bcryptjs';
+import { ROLE_ENUM } from '@/database/schema';
+import { Role } from './types/auth';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
@@ -11,7 +13,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   providers: [
     CredentialsProvider({
-      // Custom authorize function for validating user credentials
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
@@ -29,10 +30,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           .where(eq(users.email, credentials.email.toString()))
           .limit(1);
 
-        // If no matching user is found deny access
         if (user.length === 0) return null;
 
-        // Validate the entered password against the stored password
         const isPasswordValid = await compare(
           credentials.password.toString(),
           user[0].passwordHash,
@@ -49,16 +48,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-
-  // Define custom routes for authentication pages
   pages: {
     signIn: 'signIn',
   },
   callbacks: {
     async jwt({ token, user }) {
-      // if user exist attach user info to token
       if (user) {
-        token.id = user.id;
+        token.id = user.id as string;
         token.name = user.name;
         token.role = user.role;
       }
@@ -68,7 +64,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.name = token.name as string;
-        session.user.role = token.role as string;
+
+        // ✅ Safely assert token.role is a valid Role
+        if (ROLE_ENUM.enumValues.includes(token.role as Role)) {
+          session.user.role = token.role as Role;
+        } else {
+          throw new Error('Invalid role in token');
+        }
       }
       return session;
     },
