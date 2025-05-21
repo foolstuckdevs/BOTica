@@ -15,14 +15,12 @@ export const columns: ColumnDef<Category>[] = [
   {
     accessorKey: 'name',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
+      <DataTableColumnHeader column={column} title="Category Name" />
     ),
   },
   {
     accessorKey: 'description',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Description" />
-    ),
+    header: 'Description',
   },
   {
     header: 'Actions',

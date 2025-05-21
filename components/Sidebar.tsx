@@ -14,7 +14,7 @@ const Sidebar = () => {
   const [inventoryOpen, setInventoryOpen] = useState(false);
 
   return (
-    <aside className="sticky top-0 left-0 flex h-dvh w-64 flex-col justify-between bg-white border-r px-5 py-6 shadow-sm">
+    <aside className="fixed left-0 top-0 h-screen w-56 bg-white text-gray-800 p-4 border-r border-gray-200 z-40">
       <div>
         <div className="mb-10 flex justify-center">
           <Image src="/logo.svg" alt="logo" height={120} width={120} />

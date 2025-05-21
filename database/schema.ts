@@ -66,7 +66,7 @@ export const products = pgTable('products', {
   barcode: varchar('barcode', { length: 50 }).unique(),
   batchNumber: varchar('batch_number', { length: 50 }).notNull(),
   expiryDate: date('expiry_date').notNull(),
-  quantity: integer('quantity').notNull().default(0),
+  quantity: integer('quantity').notNull(),
   costPrice: decimal('cost_price', { precision: 10, scale: 2 }).notNull(),
   sellingPrice: decimal('selling_price', { precision: 10, scale: 2 }).notNull(),
   minStockLevel: integer('min_stock_level').default(5),

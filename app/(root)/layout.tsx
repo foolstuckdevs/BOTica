@@ -9,13 +9,15 @@ const layout = async ({ children }: { children: ReactNode }) => {
 
   if (!session) redirect('/sign-in');
   return (
-    <main className="flex flex-row min-h-screen w-full">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex flex-1 flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Header session={session} />
-        {children}
+        <main className="flex-1 overflow-y-auto pt-16 pl-56 bg-gray-50">
+          <div className="p-6">{children}</div>
+        </main>
       </div>
-    </main>
+    </div>
   );
 };
 

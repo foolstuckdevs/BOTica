@@ -15,8 +15,14 @@
 const config = {
   env: {
     apiEndpoint: process.env.NEXT_PUBLIC_API_ENDPOINT,
-    databaseURL: process.env.DATABASE_URL,
+    databaseUrl: process.env.DATABASE_URL, // Consistent naming
+    authSecret: process.env.AUTH_SECRET,
   },
 };
+
+// Validate required environment variables
+if (!config.env.databaseUrl) {
+  throw new Error('DATABASE_URL is missing in environment variables');
+}
 
 export default config;

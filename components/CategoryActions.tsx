@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { deleteCategory, updateCategory } from '@/lib/actions/categories';
 import { toast } from 'sonner';
 import EditDialog from './EditDialog';
-import { categoryFormSchema } from '@/lib/validation';
+import { categorySchema } from '@/lib/validation';
 import { Category } from '@/types';
 import { useState } from 'react';
 
@@ -51,7 +51,7 @@ export function CategoryActions({ category }: { category: Category }) {
           });
           return result;
         }}
-        schema={categoryFormSchema}
+        schema={categorySchema}
       />
       <Button variant="destructive" size="xs" onClick={handleDelete}>
         <Trash2 className="h-3 w-3" />
