@@ -57,6 +57,18 @@ export const categories = pgTable('categories', {
   description: text('description'),
 });
 
+// Suppliers
+// export const suppliers = pgTable('suppliers', {
+//   id: serial('id').primaryKey(),
+//   name: varchar('name', { length: 100 }).notNull().unique(),
+//   contactPerson: varchar('contact_person', { length: 100 }).notNull(),
+//   phone: varchar('phone', { length: 20 }),
+//   email: varchar('email', { length: 100 }),
+//   address: text('address'),
+//   createdAt: timestamp('created_at').defaultNow(),
+//   updatedAt: timestamp('updated_at').defaultNow(),
+// });
+
 // Products
 export const products = pgTable('products', {
   id: serial('id').primaryKey(),

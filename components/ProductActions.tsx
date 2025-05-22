@@ -63,11 +63,7 @@ const ProductActions = ({ product }: { product: Product }) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={handleView}>
-            {' '}
-            {/* Updated this line */}
-            View
-          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleView}>View</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href={`/inventory/products/${product.id}/edit`}>Edit</Link>
