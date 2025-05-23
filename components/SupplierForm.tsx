@@ -1,10 +1,14 @@
 'use client';
 
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { supplierSchema } from '@/lib/validation';
 import { createSupplier } from '@/lib/actions/suppliers';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
 import {
   Dialog,
   DialogContent,
@@ -12,37 +16,46 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import { SupplierParams } from '@/types';
-import { useState } from 'react';
 
-export function SupplierForm() {
+const SupplierForm = () => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<SupplierParams>();
+  const form = useForm<z.infer<typeof supplierSchema>>({
+    resolver: zodResolver(supplierSchema),
+    defaultValues: {
+      name: '',
+      contactPerson: '',
+      phone: '',
+      email: '',
+      address: '',
+    },
+  });
 
-  const onSubmit = async (data: SupplierParams) => {
+  const onSubmit = async (data: z.infer<typeof supplierSchema>) => {
     setIsLoading(true);
-
     const result = await createSupplier(data);
 
     if (result.success) {
       toast.success('Supplier created successfully');
-      reset();
+      form.reset();
       setOpen(false);
       router.refresh();
     } else {
       toast.error(result.message || 'Failed to create supplier');
     }
-
     setIsLoading(false);
   };
 
@@ -55,95 +68,96 @@ export function SupplierForm() {
         <DialogHeader>
           <DialogTitle>Create New Supplier</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium mb-1">
-              Company Name *
-            </label>
-            <Input
-              id="name"
-              {...register('name', { required: 'Company name is required' })}
-              className={errors.name ? 'border-red-500' : ''}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company Name *</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.name && (
-              <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-            )}
-          </div>
 
-          <div>
-            <label
-              htmlFor="contactPerson"
-              className="block text-sm font-medium mb-1"
-            >
-              Contact Person *
-            </label>
-            <Input
-              id="contactPerson"
-              {...register('contactPerson', {
-                required: 'Contact person is required',
-              })}
-              className={errors.contactPerson ? 'border-red-500' : ''}
+            <FormField
+              control={form.control}
+              name="contactPerson"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contact Person *</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.contactPerson && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.contactPerson.message}
-              </p>
-            )}
-          </div>
 
-          <div>
-            <label htmlFor="phone" className="block text-sm font-medium mb-1">
-              Phone
-            </label>
-            <Input id="phone" type="tel" {...register('phone')} />
-          </div>
-
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">
-              Email
-            </label>
-            <Input
-              id="email"
-              type="email"
-              {...register('email', {
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Invalid email address',
-                },
-              })}
-              className={errors.email ? 'border-red-500' : ''}
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone</FormLabel>
+                  <FormControl>
+                    <Input type="tel" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">
-                {errors.email.message}
-              </p>
-            )}
-          </div>
 
-          <div>
-            <label htmlFor="address" className="block text-sm font-medium mb-1">
-              Address
-            </label>
-            <Textarea id="address" {...register('address')} rows={3} />
-          </div>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creating...' : 'Create Supplier'}
-            </Button>
-          </div>
-        </form>
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Address</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Creating...' : 'Create Supplier'}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
-}
+};
 
 export default SupplierForm;

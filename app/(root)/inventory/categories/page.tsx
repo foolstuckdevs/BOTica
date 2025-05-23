@@ -2,7 +2,7 @@ import React from 'react';
 import { columns } from './columns';
 import { DataTable } from '@/components/DataTable';
 import { getCategories } from '@/lib/actions/categories';
-import { CategoryForm } from '@/components/CategoryForm';
+import CategoryForm from '@/components/CategoryForm';
 
 const Page = async () => {
   const result = await getCategories();

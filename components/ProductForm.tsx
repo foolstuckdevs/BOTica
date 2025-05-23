@@ -72,7 +72,7 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
           toast.warning('No categories found', {
             action: {
               label: 'Create',
-              onClick: () => (window.location.href = '/categories/new'),
+              onClick: () => (window.location.href = '/inventory/categories'),
             },
           });
         }
@@ -81,7 +81,7 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
           toast.warning('No suppliers found', {
             action: {
               label: 'Create',
-              onClick: () => (window.location.href = '/suppliers/new'),
+              onClick: () => (window.location.href = '/inventory/suppliers'),
             },
           });
         }
