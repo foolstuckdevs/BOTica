@@ -1,33 +1,27 @@
 'use client';
 
-import { MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Product } from '@/types';
 import { deleteProduct, getProductById } from '@/lib/actions/products';
 import { toast } from 'sonner';
 import ProductViewDialog from './ProductViewDialog';
+import { DeleteDialog } from './DeleteDialog';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 
 const ProductActions = ({ product }: { product: Product }) => {
   const router = useRouter();
   const [viewOpen, setViewOpen] = useState(false);
-  const [fullProduct, setFullProduct] = useState<Product | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productDetails, setProductDetails] = useState<Product | null>(null);
 
   const handleView = async () => {
     try {
-      const productWithCategory = await getProductById(product.id);
-      if (productWithCategory) {
-        setFullProduct(productWithCategory);
+      const productDetails = await getProductById(product.id);
+      if (productDetails) {
+        setProductDetails(productDetails);
         setViewOpen(true);
       }
     } catch (error) {
@@ -37,51 +31,70 @@ const ProductActions = ({ product }: { product: Product }) => {
   };
 
   const handleDelete = async () => {
-    const confirmDelete = confirm(
-      'Are you sure you want to delete this product?',
-    );
-    if (!confirmDelete) return;
-
     const result = await deleteProduct(product.id);
     if (!result.success) {
       toast.message('Failed to delete product');
       return;
     }
-
-    toast.success('Product deleted successfully');
+    toast.success('Product deleted');
+    setDeleteDialogOpen(false);
     router.refresh();
   };
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={handleView}>View</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href={`/inventory/products/${product.id}/edit`}>Edit</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDelete} className="text-red-600">
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <div className="flex space-x-2">
+      {/* View Button */}
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={handleView}
+        className="h-8 w-8"
+        aria-label="View product"
+      >
+        <Eye className="h-4 w-4" />
+      </Button>
 
-      {fullProduct && (
+      {/* Edit Button */}
+      <Button
+        variant="outline"
+        size="icon"
+        asChild
+        className="h-8 w-8"
+        aria-label="Edit product"
+      >
+        <Link href={`/inventory/products/${product.id}/edit`}>
+          <Pencil className="h-4 w-4" />
+        </Link>
+      </Button>
+
+      {/* Delete Button */}
+      <Button
+        variant="destructive"
+        size="icon"
+        onClick={() => setDeleteDialogOpen(true)}
+        className="h-8 w-8"
+        aria-label="Delete product"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+
+      {/* View Dialog */}
+      {productDetails && (
         <ProductViewDialog
-          product={fullProduct}
+          product={productDetails}
           open={viewOpen}
           onOpenChange={setViewOpen}
         />
       )}
-    </>
+
+      {/* Delete Dialog */}
+      <DeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDelete}
+        entityName="Product"
+      />
+    </div>
   );
 };
 

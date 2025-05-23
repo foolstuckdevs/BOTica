@@ -23,8 +23,8 @@ export const columns: ColumnDef<Category>[] = [
     header: 'Description',
   },
   {
-    header: 'Actions',
     id: 'actions',
+    header: 'Actions',
     cell: ({ row }) => <CategoryActions category={row.original} />,
   },
 ];

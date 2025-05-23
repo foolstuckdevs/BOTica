@@ -10,13 +10,30 @@ export interface Category {
   description: string | null;
 }
 
-// For form values (excludes id, makes description non-null)
-export type CategoryFormValues = {
+export type CategoryParams = {
   name: string;
   description: string;
 };
 
-// types.ts
+export interface Supplier {
+  id: number;
+  name: string;
+  contactPerson: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  createdAt: Date | string | null;
+  updatedAt: Date | string | null;
+}
+
+export interface SupplierParams {
+  name: string;
+  contactPerson: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+}
+
 export type UnitType = 'TABLET' | 'CAPSULE' | 'ML' | 'GM' | 'UNIT' | 'VIAL';
 
 export interface Product {
@@ -33,7 +50,8 @@ export interface Product {
   sellingPrice: string;
   minStockLevel: number | null;
   unit: UnitType;
-  supplier: string | null;
+  supplierId: number | null;
+  supplierName?: string | null;
   createdAt: Date | string | null;
   updatedAt: Date | string | null;
 }
@@ -44,11 +62,11 @@ export interface ProductParams {
   categoryId?: number;
   barcode?: string;
   batchNumber: string;
-  expiryDate: string; // should be ISO string or Date
+  expiryDate: string;
   quantity: number;
   costPrice: string; // Drizzle expects decimal values as string
   sellingPrice: string;
   minStockLevel?: number;
   unit: UnitType;
-  supplier?: string;
+  supplierId?: number;
 }

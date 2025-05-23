@@ -58,16 +58,16 @@ export const categories = pgTable('categories', {
 });
 
 // Suppliers
-// export const suppliers = pgTable('suppliers', {
-//   id: serial('id').primaryKey(),
-//   name: varchar('name', { length: 100 }).notNull().unique(),
-//   contactPerson: varchar('contact_person', { length: 100 }).notNull(),
-//   phone: varchar('phone', { length: 20 }),
-//   email: varchar('email', { length: 100 }),
-//   address: text('address'),
-//   createdAt: timestamp('created_at').defaultNow(),
-//   updatedAt: timestamp('updated_at').defaultNow(),
-// });
+export const suppliers = pgTable('suppliers', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull().unique(),
+  contactPerson: varchar('contact_person', { length: 100 }).notNull(),
+  phone: varchar('phone', { length: 20 }),
+  email: varchar('email', { length: 100 }),
+  address: text('address'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
 
 // Products
 export const products = pgTable('products', {
@@ -83,7 +83,7 @@ export const products = pgTable('products', {
   sellingPrice: decimal('selling_price', { precision: 10, scale: 2 }).notNull(),
   minStockLevel: integer('min_stock_level').default(5),
   unit: UNIT_ENUM('unit').notNull(),
-  supplier: varchar('supplier', { length: 100 }),
+  supplierId: integer('supplier_id').references(() => suppliers.id),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

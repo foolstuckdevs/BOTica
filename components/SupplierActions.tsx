@@ -1,28 +1,30 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Pencil, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { deleteCategory, updateCategory } from '@/lib/actions/categories';
-import { toast } from 'sonner';
-import EditDialog from './EditDialog';
-import { categorySchema } from '@/lib/validation';
-import { Category } from '@/types';
 import { useState } from 'react';
-import { DeleteDialog } from './DeleteDialog';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Pencil, Trash2 } from 'lucide-react';
 
-export function CategoryActions({ category }: { category: Category }) {
+import { Button } from './ui/button';
+import { DeleteDialog } from './DeleteDialog';
+import EditDialog from './EditDialog';
+
+import { Supplier } from '@/types';
+import { updateSupplier, deleteSupplier } from '@/lib/actions/suppliers';
+import { supplierSchema } from '@/lib/validation';
+
+const SupplierActions = ({ supplier }: { supplier: Supplier }) => {
   const router = useRouter();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const handleDelete = async () => {
-    const result = await deleteCategory(category.id);
+    const result = await deleteSupplier(supplier.id); // Now passing number, not string
     if (!result.success) {
-      toast.error('Failed to delete category');
+      toast.error('Failed to delete supplier');
       return;
     }
-    toast.success('Category deleted');
+    toast.success('Supplier deleted successfully');
     setDeleteDialogOpen(false);
     router.refresh();
   };
@@ -42,23 +44,29 @@ export function CategoryActions({ category }: { category: Category }) {
       <EditDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        title="Edit Category"
+        title="Edit Supplier"
         fields={[
-          { name: 'name', label: 'Category Name' },
-          { name: 'description', label: 'Description' },
+          { name: 'name', label: 'Supplier Name' },
+          { name: 'contactPerson', label: 'Contact Person' }, // Fixed field name
+          { name: 'phone', label: 'Phone' },
+          { name: 'email', label: 'Email' },
+          { name: 'address', label: 'Address' },
         ]}
         defaultValues={{
-          name: category.name,
-          description: category.description || '',
+          name: supplier.name,
+          contactPerson: supplier.contactPerson, // Fixed field name
+          phone: supplier.phone || '',
+          email: supplier.email || '',
+          address: supplier.address || '',
         }}
         onSubmit={async (formData) => {
-          const result = await updateCategory({
+          const result = await updateSupplier({
             ...formData,
-            id: category.id,
+            id: supplier.id,
           });
           return result;
         }}
-        schema={categorySchema}
+        schema={supplierSchema}
       />
 
       {/* Delete Button */}
@@ -75,8 +83,10 @@ export function CategoryActions({ category }: { category: Category }) {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDelete}
-        entityName="Category"
+        entityName="Supplier"
       />
     </div>
   );
-}
+};
+
+export default SupplierActions;

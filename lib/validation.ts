@@ -1,4 +1,4 @@
-import { CategoryFormValues } from '@/types';
+import { CategoryParams } from '@/types';
 import { z } from 'zod';
 
 export const signUpSchema = z.object({
@@ -27,7 +27,7 @@ export const categorySchema = z.object({
     .string()
     .min(10, 'Description too short')
     .max(255, 'Description too long'),
-}) satisfies z.ZodType<CategoryFormValues>;
+}) satisfies z.ZodType<CategoryParams>;
 
 export const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
@@ -49,5 +49,13 @@ export const productSchema = z.object({
   sellingPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid selling price'),
   minStockLevel: z.number().min(0).optional(),
   unit: z.enum(['TABLET', 'CAPSULE', 'ML', 'GM', 'UNIT', 'VIAL']),
-  supplier: z.string().optional(),
+  supplierId: z.number().min(1, 'Supplier is required').optional(),
+});
+
+export const supplierSchema = z.object({
+  name: z.string().min(1, 'Supplier name is required'),
+  contactPerson: z.string().min(1, 'Contact person is required'),
+  phone: z.string().optional(),
+  email: z.string().email().optional().or(z.literal('')),
+  address: z.string().optional(),
 });

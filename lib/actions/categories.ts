@@ -1,11 +1,8 @@
-'use server'; //for the server actions to be executed on the server
-
-// Next.js automatically caches server-rendered pages and fetch results to improve performance.
-// To ensure your data stays fresh after creating or deleting a category, you should add revalidatePath() inside your createCategory and deleteCategory server actions. This will clear the cache for the affected route (e.g., /categories), prompting a re-fetch on the next render.
+'use server';
 
 import { db } from '@/database/drizzle';
 import { categories } from '@/database/schema';
-import { Category, CategoryFormValues } from '@/types';
+import { Category, CategoryParams } from '@/types';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -14,8 +11,8 @@ export async function getCategories() {
     const result = await db.select().from(categories);
     return result;
   } catch (error) {
-    console.log(error);
-    return []; // datatable expects only array for its data prop
+    console.error('Error fetching categories:', error);
+    return [];
   }
 }
 
@@ -23,7 +20,6 @@ export async function createCategory(
   params: Pick<Category, 'name' | 'description'>,
 ) {
   try {
-    // check if category exists
     const existingCategory = await db
       .select()
       .from(categories)
@@ -37,14 +33,14 @@ export async function createCategory(
     }
 
     const newCategory = await db.insert(categories).values(params).returning();
-    revalidatePath('/categories'); // Clears cache refresh the page
+    revalidatePath('/categories');
 
     return {
       success: true,
-      data: JSON.parse(JSON.stringify(newCategory)),
+      data: JSON.parse(JSON.stringify(newCategory[0])),
     };
   } catch (error) {
-    console.log(error);
+    console.error('Error creating category:', error);
     return {
       success: false,
       message: 'An error occurred while creating new category',
@@ -52,27 +48,27 @@ export async function createCategory(
   }
 }
 
-export const deleteCategory = async (categoryId: number) => {
+export const updateCategory = async (data: { id: number } & CategoryParams) => {
   try {
-    await db.delete(categories).where(eq(categories.id, categoryId));
-    revalidatePath('/categories');
-    return {
-      success: true,
-      message: 'Category deleted',
-    };
-  } catch (error) {
-    console.log(error);
-    return {
-      success: false,
-      message: 'An error occurred while deleting category',
-    };
-  }
-};
+    const existingCategory = await db
+      .select()
+      .from(categories)
+      .where(eq(categories.id, data.id));
 
-export const updateCategory = async (
-  data: { id: number } & CategoryFormValues,
-) => {
-  try {
+    if (existingCategory.length === 0) {
+      return { success: false, message: 'Category not found' };
+    }
+
+    // Check if new name already exists (excluding current category)
+    const nameCheck = await db
+      .select()
+      .from(categories)
+      .where(eq(categories.name, data.name));
+
+    if (nameCheck.length > 0 && nameCheck[0].id !== data.id) {
+      return { success: false, message: 'Category name already exists' };
+    }
+
     await db
       .update(categories)
       .set({
@@ -81,12 +77,41 @@ export const updateCategory = async (
       })
       .where(eq(categories.id, data.id));
 
+    revalidatePath('/categories');
+
     return { success: true };
   } catch (error) {
-    console.error(error);
+    console.error('Error updating category:', error);
     return {
       success: false,
-      error: 'Failed to update category',
+      message: 'Failed to update category',
+    };
+  }
+};
+
+export const deleteCategory = async (categoryId: number) => {
+  try {
+    const existingCategory = await db
+      .select()
+      .from(categories)
+      .where(eq(categories.id, categoryId));
+
+    if (existingCategory.length === 0) {
+      return { success: false, message: 'Category not found' };
+    }
+
+    await db.delete(categories).where(eq(categories.id, categoryId));
+    revalidatePath('/categories');
+
+    return {
+      success: true,
+      message: 'Category deleted successfully',
+    };
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    return {
+      success: false,
+      message: 'An error occurred while deleting category',
     };
   }
 };

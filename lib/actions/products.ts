@@ -2,10 +2,10 @@
 
 import { db } from '@/database/drizzle';
 import { eq } from 'drizzle-orm';
-import { categories, products } from '@/database/schema';
+import { categories, products, suppliers } from '@/database/schema';
 import { ProductParams } from '@/types';
+import { revalidatePath } from 'next/cache';
 
-// lib/actions/products.ts
 export const getProducts = async () => {
   try {
     return await db
@@ -23,12 +23,14 @@ export const getProducts = async () => {
         sellingPrice: products.sellingPrice,
         minStockLevel: products.minStockLevel,
         unit: products.unit,
-        supplier: products.supplier,
+        supplierId: products.supplierId,
+        supplierName: suppliers.name,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
       })
       .from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id));
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .leftJoin(suppliers, eq(products.supplierId, suppliers.id));
   } catch (error) {
     console.error('Error fetching products:', error);
     return [];
@@ -52,12 +54,14 @@ export const getProductById = async (id: number) => {
         costPrice: products.costPrice,
         sellingPrice: products.sellingPrice,
         minStockLevel: products.minStockLevel,
-        supplier: products.supplier,
+        supplierId: products.supplierId,
+        supplierName: suppliers.name,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
       })
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
+      .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
       .where(eq(products.id, id));
 
     return result.length > 0 ? result[0] : null;
@@ -78,13 +82,9 @@ export const createProduct = async (params: ProductParams) => {
       return { success: false, message: 'Product already exists' };
     }
 
-    const newProduct = await db
-      .insert(products)
-      .values({
-        ...params,
-        quantity: params.quantity,
-      })
-      .returning();
+    const newProduct = await db.insert(products).values(params).returning();
+
+    revalidatePath('/products'); // ADDED: cache revalidation
 
     return {
       success: true,
@@ -113,7 +113,7 @@ export const updateProduct = async (
       return { success: false, message: 'Product not found' };
     }
 
-    //check if new name already exists (but ignore if it's the same product)
+    // Check if new name already exists but ignore if it's the same product
     if (params.name) {
       const nameCheck = await db
         .select()
@@ -125,12 +125,13 @@ export const updateProduct = async (
       }
     }
 
-    // Update product
     const updatedProduct = await db
       .update(products)
       .set(params)
       .where(eq(products.id, id))
       .returning();
+
+    revalidatePath('/products'); // ADDED: cache revalidation
 
     return {
       success: true,
@@ -157,6 +158,8 @@ export const deleteProduct = async (id: number) => {
     }
 
     await db.delete(products).where(eq(products.id, id));
+
+    revalidatePath('/products'); // ADDED: cache revalidation
 
     return {
       success: true,

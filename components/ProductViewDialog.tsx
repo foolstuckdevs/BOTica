@@ -131,10 +131,10 @@ const ProductViewDialog = ({
                   <p className="font-medium">{product.minStockLevel}</p>
                 </div>
               )}
-              {product.supplier && (
+              {product.supplierName && (
                 <div>
                   <p className="text-gray-500">Supplier</p>
-                  <p className="font-medium">{product.supplier}</p>
+                  <p className="font-medium">{product.supplierName}</p>
                 </div>
               )}
             </div>

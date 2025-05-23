@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
-import { Category, Product } from '@/types';
+import { Category, Product, Supplier } from '@/types';
 import { productSchema } from '@/lib/validation';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -38,6 +38,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
+import { getSuppliers } from '@/lib/actions/suppliers';
 
 interface Props extends Partial<Product> {
   type?: 'create' | 'update';
@@ -45,37 +46,59 @@ interface Props extends Partial<Product> {
 
 const ProductForm = ({ type = 'create', ...product }: Props) => {
   const router = useRouter();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]); // ([]) It initializes the state with an empty array.
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Toast notification for empty categories
+  // Fetch both categories and suppliers
   useEffect(() => {
-    const fetchCategories = async () => {
+    let isMounted = true;
+
+    const fetchData = async () => {
       try {
-        const categoriesData = await getCategories();
+        setIsLoading(true);
+
+        const [categoriesData, suppliersData] = await Promise.all([
+          getCategories(),
+          getSuppliers(),
+        ]);
+
+        if (!isMounted) return;
+
         setCategories(categoriesData);
+        setSuppliers(suppliersData);
+
         if (categoriesData.length === 0) {
-          toast.warning(
-            'No categories found. Consider adding categories first.',
-            {
-              duration: 5000,
-              action: {
-                label: 'Add Categories',
-                onClick: () => router.push('/categories/new'),
-              },
+          toast.warning('No categories found', {
+            action: {
+              label: 'Create',
+              onClick: () => (window.location.href = '/categories/new'),
             },
-          );
+          });
+        }
+
+        if (suppliersData.length === 0) {
+          toast.warning('No suppliers found', {
+            action: {
+              label: 'Create',
+              onClick: () => (window.location.href = '/suppliers/new'),
+            },
+          });
         }
       } catch (error) {
-        console.error('Failed to fetch categories:', error);
-        toast.error('Failed to load categories');
+        console.error('Failed to fetch data:', error);
+        toast.error('Failed to load required data');
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
-    fetchCategories();
-  }, [router]);
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
@@ -93,7 +116,7 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
       sellingPrice: product.sellingPrice || '',
       minStockLevel: product.minStockLevel || undefined,
       unit: product.unit || 'TABLET',
-      supplier: product.supplier || '',
+      supplierId: product.supplierId || undefined,
     },
   });
 
@@ -464,15 +487,45 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
 
               <FormField
                 control={form.control}
-                name="supplier"
+                name="supplierId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
                       Supplier
                     </FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter supplier name" {...field} />
-                    </FormControl>
+                    <Select
+                      onValueChange={(value) =>
+                        field.onChange(Number(value) || undefined)
+                      }
+                      value={field.value?.toString() || undefined}
+                      disabled={isLoading || suppliers.length === 0}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="w-full border-gray-300 focus:ring-2 focus:ring-blue-500">
+                          <SelectValue placeholder="Select a supplier" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {isLoading ? (
+                          <div className="p-2 text-sm text-gray-500">
+                            Loading suppliers...
+                          </div>
+                        ) : suppliers.length === 0 ? (
+                          <div className="p-2 text-sm text-gray-500">
+                            No suppliers available
+                          </div>
+                        ) : (
+                          suppliers.map((supplier) => (
+                            <SelectItem
+                              key={supplier.id}
+                              value={supplier.id.toString()}
+                            >
+                              {supplier.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
                     <FormMessage className="text-xs text-red-600" />
                   </FormItem>
                 )}
