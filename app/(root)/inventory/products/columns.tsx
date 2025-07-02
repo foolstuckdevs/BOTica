@@ -7,6 +7,10 @@ import ProductActions from '@/components/ProductActions';
 
 export const columns: ColumnDef<Product>[] = [
   {
+    accessorKey: 'image',
+    header: 'Image',
+  },
+  {
     accessorKey: 'name',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Product Name" />

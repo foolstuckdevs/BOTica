@@ -117,15 +117,15 @@ export function SalesChart() {
 
   // Format currency helper
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PH', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'PHP',
     }).format(amount);
   };
 
   // Format date for XAxis
   const formatXAxis = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return new Date(date).toLocaleDateString('en-PH', {
       month: 'short',
       day: 'numeric',
     });
@@ -214,7 +214,7 @@ export function SalesChart() {
                 tickMargin={10}
               />
               <YAxis
-                tickFormatter={(value) => `$${value / 1000}k`}
+                tickFormatter={(value) => `₱${value / 1000}k`}
                 tick={{ fontSize: 12 }}
                 width={40}
               />

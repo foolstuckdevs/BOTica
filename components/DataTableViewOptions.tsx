@@ -28,7 +28,7 @@ export function DataTableViewOptions<TData>({
           size="sm"
           className="ml-auto hidden h-8 sm:flex"
         >
-          Columns
+          Filter Columns
           <ChevronDown />
         </Button>
       </DropdownMenuTrigger>

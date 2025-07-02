@@ -1,4 +1,4 @@
-import { CategoryParams } from '@/types';
+import { CategoryParams, SupplierParams } from '@/types';
 import { z } from 'zod';
 
 export const signUpSchema = z.object({
@@ -27,7 +27,7 @@ export const categorySchema = z.object({
     .string()
     .min(10, 'Description too short')
     .max(255, 'Description too long'),
-}) satisfies z.ZodType<CategoryParams>;
+}) satisfies z.ZodType<CategoryParams>; // ensures zod validation matches the interface (CategoryParams)
 
 export const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
@@ -58,4 +58,26 @@ export const supplierSchema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   address: z.string().optional(),
+}) satisfies z.ZodType<SupplierParams>;
+
+export const adjustmentSchema = z.object({
+  productId: z
+    .number({
+      required_error: 'Product is required',
+    })
+    .int()
+    .positive(),
+  quantityChange: z
+    .number({
+      required_error: 'Quantity change is required',
+      invalid_type_error: 'Quantity must be a number',
+    })
+    .int()
+    .refine((value) => value !== 0, {
+      message: 'Quantity change cannot be zero',
+    }),
+  reason: z.enum(['DAMAGED', 'EXPIRED', 'LOST', 'THEFT', 'CORRECTION'], {
+    required_error: 'Reason is required',
+    invalid_type_error: 'Invalid adjustment reason',
+  }),
 });

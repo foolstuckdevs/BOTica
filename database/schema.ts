@@ -36,7 +36,8 @@ export const ADJUSTMENT_REASON_ENUM = pgEnum('adjustment_reason', [
   'EXPIRED',
   'LOST',
   'THEFT',
-  'MANUAL_ADJUSTMENT',
+  'CORRECTION',
+  'RESTOCK',
 ]);
 
 // Users
