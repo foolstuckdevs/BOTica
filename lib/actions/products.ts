@@ -25,6 +25,7 @@ export const getProducts = async () => {
         unit: products.unit,
         supplierId: products.supplierId,
         supplierName: suppliers.name,
+        imageUrl: products.imageUrl,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
       })
@@ -56,6 +57,7 @@ export const getProductById = async (id: number) => {
         minStockLevel: products.minStockLevel,
         supplierId: products.supplierId,
         supplierName: suppliers.name,
+        imageUrl: products.imageUrl,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
       })
@@ -123,6 +125,13 @@ export const updateProduct = async (
       if (nameCheck.length > 0 && nameCheck[0].id !== id) {
         return { success: false, message: 'Product name already exists' };
       }
+    }
+
+    // If imageUrl is being cleared (empty string), we should delete the old image
+    if (params.imageUrl === '' && existingProduct[0].imageUrl) {
+      // Import the delete function here to avoid circular dependencies
+      const { deleteImageFromSupabase } = await import('@/lib/utils');
+      await deleteImageFromSupabase(existingProduct[0].imageUrl!);
     }
 
     const updatedProduct = await db

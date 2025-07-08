@@ -39,6 +39,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { getSuppliers } from '@/lib/actions/suppliers';
+import { ImageUpload } from './ImageUpload';
 
 interface Props extends Partial<Product> {
   type?: 'create' | 'update';
@@ -49,6 +50,7 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
   const [categories, setCategories] = useState<Category[]>([]); // ([]) It initializes the state with an empty array.
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
 
   // Fetch both categories and suppliers
   useEffect(() => {
@@ -117,26 +119,55 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
       minStockLevel: product.minStockLevel || undefined,
       unit: product.unit || 'TABLET',
       supplierId: product.supplierId || undefined,
+      imageUrl: product.imageUrl || '',
     },
   });
 
   const onSubmit = async (values: z.infer<typeof productSchema>) => {
-    const apiData = {
-      ...values,
-      expiryDate: values.expiryDate.toISOString(),
-    };
+    try {
+      let imageUrl = values.imageUrl || '';
 
-    const result =
-      type === 'create'
-        ? await createProduct(apiData)
-        : await updateProduct(product.id!, apiData); // Pass id and params separately
+      // Upload image if a new file is selected
+      if (selectedImageFile) {
+        const formData = new FormData();
+        formData.append('file', selectedImageFile);
 
-    if (result?.success) {
-      toast.success(`Product ${type === 'create' ? 'added' : 'updated'}`);
-      form.reset();
-      router.push('/inventory/products');
-    } else {
-      toast.error(result?.message || 'Operation failed');
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Image upload failed');
+        }
+
+        imageUrl = data.url;
+      }
+
+      const apiData = {
+        ...values,
+        expiryDate: values.expiryDate.toISOString(),
+        imageUrl,
+      };
+
+      const result =
+        type === 'create'
+          ? await createProduct(apiData)
+          : await updateProduct(product.id!, apiData); // Pass id and params separately
+
+      if (result?.success) {
+        toast.success(`Product ${type === 'create' ? 'added' : 'updated'}`);
+        form.reset();
+        setSelectedImageFile(null);
+        router.push('/inventory/products');
+      } else {
+        toast.error(result?.message || 'Operation failed');
+      }
+    } catch (error) {
+      console.error('Form submission error:', error);
+      toast.error(error instanceof Error ? error.message : 'Operation failed');
     }
   };
 
@@ -268,6 +299,30 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                         <SelectItem value="VIAL">Vial</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage className="text-xs text-red-600" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="imageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <ImageUpload
+                        value={field.value}
+                        onChange={(file, previewUrl) => {
+                          setSelectedImageFile(file);
+                          if (previewUrl) {
+                            field.onChange(previewUrl);
+                          } else {
+                            field.onChange('');
+                          }
+                        }}
+                        disabled={false}
+                      />
+                    </FormControl>
                     <FormMessage className="text-xs text-red-600" />
                   </FormItem>
                 )}

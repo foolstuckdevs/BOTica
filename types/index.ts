@@ -52,6 +52,7 @@ export interface Product {
   unit: UnitType;
   supplierId: number | null;
   supplierName?: string | null;
+  imageUrl: string | null;
   createdAt: Date | string | null;
   updatedAt: Date | string | null;
 }
@@ -69,4 +70,5 @@ export interface ProductParams {
   minStockLevel?: number;
   unit: UnitType;
   supplierId?: number;
+  imageUrl?: string;
 }

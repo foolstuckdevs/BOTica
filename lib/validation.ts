@@ -50,6 +50,7 @@ export const productSchema = z.object({
   minStockLevel: z.number().min(0).optional(),
   unit: z.enum(['TABLET', 'CAPSULE', 'ML', 'GM', 'UNIT', 'VIAL']),
   supplierId: z.number().min(1, 'Supplier is required').optional(),
+  imageUrl: z.string().optional().or(z.literal('')),
 });
 
 export const supplierSchema = z.object({

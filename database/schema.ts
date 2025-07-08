@@ -85,6 +85,7 @@ export const products = pgTable('products', {
   minStockLevel: integer('min_stock_level').default(5),
   unit: UNIT_ENUM('unit').notNull(),
   supplierId: integer('supplier_id').references(() => suppliers.id),
+  imageUrl: text('image_url'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
