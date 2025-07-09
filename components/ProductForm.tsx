@@ -214,11 +214,12 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* First row - 2 columns */}
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem className="md:col-span-2">
+                      <FormItem>
                         <FormLabel className="flex items-center gap-1">
                           Product Name
                           <span className="text-red-500">*</span>
@@ -228,7 +229,7 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                             required
                             placeholder="e.g., Paracetamol 500mg"
                             {...field}
-                            className="focus:ring-2 focus:ring-blue-500"
+                            className="w-full"
                           />
                         </FormControl>
                         <FormMessage className="text-xs" />
@@ -236,6 +237,41 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                     )}
                   />
 
+                  <FormField
+                    control={form.control}
+                    name="unit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1">
+                          Unit
+                          <span className="text-red-500">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="TABLET">Tablet</SelectItem>
+                              <SelectItem value="CAPSULE">Capsule</SelectItem>
+                              <SelectItem value="ML">
+                                Milliliter (ML)
+                              </SelectItem>
+                              <SelectItem value="GM">Gram (GM)</SelectItem>
+                              <SelectItem value="UNIT">Unit</SelectItem>
+                              <SelectItem value="VIAL">Vial</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Second row - 2 columns */}
                   <FormField
                     control={form.control}
                     name="genericName"
@@ -253,7 +289,11 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                           </Tooltip>
                         </FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Acetaminophen" {...field} />
+                          <Input
+                            placeholder="e.g., Acetaminophen"
+                            {...field}
+                            className="w-full"
+                          />
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
@@ -266,71 +306,33 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <Select
-                          onValueChange={(value) =>
-                            field.onChange(Number(value) || undefined)
-                          }
-                          value={field.value?.toString() || undefined}
-                          disabled={isLoading || categories.length === 0}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
+                        <FormControl>
+                          <Select
+                            onValueChange={(value) =>
+                              field.onChange(Number(value) || undefined)
+                            }
+                            value={
+                              field.value !== undefined
+                                ? String(field.value)
+                                : undefined
+                            }
+                            disabled={isLoading || categories.length === 0}
+                          >
+                            <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {isLoading ? (
-                              <div className="p-2 text-sm text-gray-500">
-                                Loading categories...
-                              </div>
-                            ) : categories.length === 0 ? (
-                              <div className="p-2 text-sm text-gray-500">
-                                No categories available
-                              </div>
-                            ) : (
-                              categories.map((category) => (
+                            <SelectContent>
+                              {categories.map((category) => (
                                 <SelectItem
                                   key={category.id}
-                                  value={category.id.toString()}
+                                  value={String(category.id)}
                                 >
                                   {category.name}
                                 </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="unit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-1">
-                          Unit
-                          <span className="text-red-500">*</span>
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select unit" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="TABLET">Tablet</SelectItem>
-                            <SelectItem value="CAPSULE">Capsule</SelectItem>
-                            <SelectItem value="ML">Milliliter (ML)</SelectItem>
-                            <SelectItem value="GM">Gram (GM)</SelectItem>
-                            <SelectItem value="UNIT">Unit</SelectItem>
-                            <SelectItem value="VIAL">Vial</SelectItem>
-                          </SelectContent>
-                        </Select>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
                     )}
@@ -381,11 +383,14 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                           <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            required
-                            placeholder="e.g., BX2023-001"
-                            {...field}
-                          />
+                          <div className="w-full">
+                            <Input
+                              required
+                              placeholder="e.g., BX2023-001"
+                              {...field}
+                              className="w-full"
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
@@ -399,10 +404,13 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                       <FormItem>
                         <FormLabel>Barcode</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Scan or enter barcode"
-                            {...field}
-                          />
+                          <div className="w-full">
+                            <Input
+                              placeholder="Scan or enter barcode"
+                              {...field}
+                              className="w-full"
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
@@ -418,13 +426,17 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                           Expiry Date
                           <span className="text-red-500">*</span>
                         </FormLabel>
-                        <Calendar
-                          selected={field.value}
-                          onChange={field.onChange}
-                          minDate={new Date()}
-                          placeholderText="Pick a date"
-                          className="rounded-md border"
-                        />
+                        <FormControl>
+                          <div className="w-full">
+                            <Calendar
+                              selected={field.value}
+                              onChange={field.onChange}
+                              minDate={new Date()}
+                              placeholderText="Pick a date"
+                              className="rounded-md border w-full"
+                            />
+                          </div>
+                        </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
                     )}
@@ -436,39 +448,41 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Supplier</FormLabel>
-                        <Select
-                          onValueChange={(value) =>
-                            field.onChange(Number(value) || undefined)
-                          }
-                          value={field.value?.toString() || undefined}
-                          disabled={isLoading || suppliers.length === 0}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select supplier" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {isLoading ? (
-                              <div className="p-2 text-sm text-gray-500">
-                                Loading suppliers...
-                              </div>
-                            ) : suppliers.length === 0 ? (
-                              <div className="p-2 text-sm text-gray-500">
-                                No suppliers available
-                              </div>
-                            ) : (
-                              suppliers.map((supplier) => (
-                                <SelectItem
-                                  key={supplier.id}
-                                  value={supplier.id.toString()}
-                                >
-                                  {supplier.name}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <div className="w-full">
+                            <Select
+                              onValueChange={(value) =>
+                                field.onChange(Number(value) || undefined)
+                              }
+                              value={field.value?.toString() || undefined}
+                              disabled={isLoading || suppliers.length === 0}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select supplier" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {isLoading ? (
+                                  <div className="p-2 text-sm text-gray-500">
+                                    Loading suppliers...
+                                  </div>
+                                ) : suppliers.length === 0 ? (
+                                  <div className="p-2 text-sm text-gray-500">
+                                    No suppliers available
+                                  </div>
+                                ) : (
+                                  suppliers.map((supplier) => (
+                                    <SelectItem
+                                      key={supplier.id}
+                                      value={supplier.id.toString()}
+                                    >
+                                      {supplier.name}
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
                     )}
@@ -497,14 +511,14 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                           <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
-                          <div className="relative">
+                          <div className="relative w-full">
                             <span className="absolute left-3 top-2.5 text-gray-500">
                               $
                             </span>
                             <Input
                               placeholder="0.00"
                               {...field}
-                              className="pl-8"
+                              className="pl-8 w-full"
                               onChange={(e) => {
                                 const value = e.target.value;
                                 if (
@@ -532,14 +546,14 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                           <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
-                          <div className="relative">
+                          <div className="relative w-full">
                             <span className="absolute left-3 top-2.5 text-gray-500">
                               $
                             </span>
                             <Input
                               placeholder="0.00"
                               {...field}
-                              className="pl-8"
+                              className="pl-8 w-full"
                               onChange={(e) => {
                                 const value = e.target.value;
                                 if (
@@ -577,15 +591,18 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                           <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            min={1}
-                            placeholder="Enter quantity"
-                            {...field}
-                            onChange={(e) =>
-                              field.onChange(parseInt(e.target.value))
-                            }
-                          />
+                          <div className="w-full">
+                            <Input
+                              type="number"
+                              min={1}
+                              placeholder="Enter quantity"
+                              {...field}
+                              className="w-full"
+                              onChange={(e) =>
+                                field.onChange(parseInt(e.target.value))
+                              }
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
@@ -609,18 +626,21 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                           </Tooltip>
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            min={0}
-                            placeholder="Set alert threshold"
-                            {...field}
-                            value={field.value || ''}
-                            onChange={(e) =>
-                              field.onChange(
-                                parseInt(e.target.value) || undefined,
-                              )
-                            }
-                          />
+                          <div className="w-full">
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="Set alert threshold"
+                              {...field}
+                              className="w-full"
+                              value={field.value || ''}
+                              onChange={(e) =>
+                                field.onChange(
+                                  parseInt(e.target.value) || undefined,
+                                )
+                              }
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>

@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import NextImage from 'next/image';
@@ -67,8 +66,6 @@ export function ImageUpload({
 
   return (
     <div className="space-y-4">
-      <Label htmlFor="image-upload">Product Image</Label>
-
       <div className="flex items-center gap-4">
         {preview ? (
           <div className="relative">
@@ -119,7 +116,7 @@ export function ImageUpload({
               Select Image
             </>
           </Button>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 mt-1 text-center">
             JPEG, PNG, WebP up to 5MB. Image will be uploaded when you save the
             product.
           </p>

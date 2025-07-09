@@ -1,10 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Calendar as CalendarIcon } from 'lucide-react';
 
 interface CalendarProps {
   selected: Date | null;
@@ -29,9 +29,14 @@ export function Calendar({
   showTimeSelect = false,
   disabled = false,
 }: CalendarProps) {
+  const datePickerRef = useRef<DatePicker | null>(null);
+
   return (
     <div className={cn('relative w-full', className)}>
       <DatePicker
+        ref={(ref) => {
+          datePickerRef.current = ref;
+        }}
         selected={selected}
         onChange={onChange}
         minDate={minDate}
@@ -40,12 +45,24 @@ export function Calendar({
         dateFormat={dateFormat}
         showTimeSelect={showTimeSelect}
         disabled={disabled}
-        className="w-full h-12 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        autoComplete="off"
+        wrapperClassName="w-full"
+        className={cn(
+          'w-full h-10 px-3 pr-10 py-2 text-sm rounded-md border border-input bg-background',
+          'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          'disabled:cursor-not-allowed disabled:opacity-50',
+        )}
         calendarClassName="!bg-white dark:!bg-gray-800 !rounded-lg !shadow-lg !border !border-gray-200 dark:!border-gray-700"
         popperClassName="z-50"
-        autoComplete="off"
       />
-      <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+
+      <button
+        type="button"
+        onClick={() => datePickerRef.current?.setOpen(true)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600"
+      >
+        <CalendarDays className="w-5 h-5" />
+      </button>
     </div>
   );
 }
