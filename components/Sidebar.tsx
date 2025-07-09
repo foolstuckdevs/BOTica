@@ -73,7 +73,10 @@ const Sidebar = () => {
                 <User className="w-4 h-4" />
                 Suppliers
               </Link>
-              <Link href="/inventory/suppliers" className={submenuLinkClasses}>
+              <Link
+                href="/inventory/adjustments"
+                className={submenuLinkClasses}
+              >
                 <RefreshCw className="w-4 h-4" />
                 Adjusments
               </Link>

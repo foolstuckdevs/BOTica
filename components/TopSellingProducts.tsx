@@ -1,6 +1,5 @@
 'use client';
 
-import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import {
   Card,
   CardContent,
@@ -8,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from './ui/card';
+import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 
 export const TopSellingProducts = () => {
   const topSellingProducts = [

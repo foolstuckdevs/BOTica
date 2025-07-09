@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis,
   ResponsiveContainer,
+  Legend,
 } from 'recharts';
 import {
   Card,
@@ -16,15 +17,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import useIsMobile from '@/hooks/use-mobile';
+import { Tooltip as RechartsTooltip } from 'recharts';
+import { Download, Info } from 'lucide-react';
 
 // Define types for our chart data
 interface ChartData {
@@ -140,36 +135,13 @@ export function SalesChart() {
             Track daily sales revenue against purchase costs
           </CardDescription>
         </div>
-
-        {/* Time range selector */}
-        <div className="absolute right-4 top-4">
-          {isMobile ? (
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-28">
-                <SelectValue placeholder="Select range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="90d">Last 3 months</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <ToggleGroup
-              type="single"
-              value={timeRange}
-              onValueChange={setTimeRange}
-              variant="outline"
-              size="sm"
-            >
-              <ToggleGroupItem value="7d">7d</ToggleGroupItem>
-              <ToggleGroupItem value="30d">30d</ToggleGroupItem>
-              <ToggleGroupItem value="90d">3mo</ToggleGroupItem>
-            </ToggleGroup>
-          )}
+        {/* Download Report Button */}
+        <div className="absolute right-4 top-4 flex gap-2">
+          <button className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors">
+            <Download className="w-4 h-4" /> Download Report
+          </button>
         </div>
       </CardHeader>
-
       <CardContent>
         {/* Summary stats */}
         <div className="flex flex-wrap gap-4 mb-4">
@@ -189,7 +161,6 @@ export function SalesChart() {
             </span>
           </div>
         </div>
-
         {/* Chart */}
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -223,6 +194,16 @@ export function SalesChart() {
                 vertical={false}
                 stroke="#f3f4f6"
               />
+              <RechartsTooltip
+                contentStyle={{ borderRadius: 8, fontSize: 13 }}
+                formatter={(value: number, name: string) => [
+                  formatCurrency(value),
+                  name.charAt(0).toUpperCase() + name.slice(1),
+                ]}
+                labelFormatter={(label) =>
+                  `Date: ${formatXAxis(label as string)}`
+                }
+              />
               <Area
                 type="monotone"
                 dataKey="sales"
@@ -230,6 +211,7 @@ export function SalesChart() {
                 fillOpacity={1}
                 fill="url(#colorSales)"
                 strokeWidth={2}
+                name="Sales"
               />
               <Area
                 type="monotone"
@@ -238,9 +220,29 @@ export function SalesChart() {
                 fillOpacity={1}
                 fill="url(#colorPurchases)"
                 strokeWidth={2}
+                name="Purchases"
+              />
+              <Legend
+                verticalAlign="top"
+                height={36}
+                iconType="circle"
+                formatter={(value) => (
+                  <span className="text-xs text-gray-700 dark:text-gray-200">
+                    {value.charAt(0).toUpperCase() + value.slice(1)}
+                  </span>
+                )}
               />
             </AreaChart>
           </ResponsiveContainer>
+        </div>
+        {/* View Full Report Link */}
+        <div className="mt-4 text-right">
+          <a
+            href="#"
+            className="text-xs text-blue-600 hover:underline flex items-center gap-1 justify-end"
+          >
+            <Info className="w-3 h-3" /> View Full Report
+          </a>
         </div>
       </CardContent>
     </Card>

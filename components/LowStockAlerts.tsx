@@ -1,6 +1,5 @@
 'use client';
 
-import { AlertTriangle } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -8,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from './ui/card';
+import { AlertTriangle } from 'lucide-react';
 
 export const LowStockAlerts = () => {
   const lowStockAlerts = [
