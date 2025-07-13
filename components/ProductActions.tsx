@@ -16,10 +16,11 @@ const ProductActions = ({ product }: { product: Product }) => {
   const [viewOpen, setViewOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productDetails, setProductDetails] = useState<Product | null>(null);
+  const pharmacyId = 1; // hardcoded for now fetch from session later
 
   const handleView = async () => {
     try {
-      const productDetails = await getProductById(product.id);
+      const productDetails = await getProductById(product.id, pharmacyId);
       if (productDetails) {
         setProductDetails(productDetails);
         setViewOpen(true);
@@ -31,7 +32,7 @@ const ProductActions = ({ product }: { product: Product }) => {
   };
 
   const handleDelete = async () => {
-    const result = await deleteProduct(product.id);
+    const result = await deleteProduct(product.id, pharmacyId);
     if (!result.success) {
       toast.message('Failed to delete product');
       return;

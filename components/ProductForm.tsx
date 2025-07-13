@@ -16,9 +16,7 @@ import { useRouter } from 'next/navigation';
 import { Category, Product, Supplier } from '@/types';
 import { productSchema } from '@/lib/validation';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState } from 'react';
-import { getCategories } from '@/lib/actions/categories';
-import { getSuppliers } from '@/lib/actions/suppliers';
+import { useState } from 'react';
 import { ImageUpload } from './ImageUpload';
 import {
   Select,
@@ -47,65 +45,19 @@ import {
 
 interface Props extends Partial<Product> {
   type?: 'create' | 'update';
+  categories: Category[];
+  suppliers: Supplier[];
 }
 
-const ProductForm = ({ type = 'create', ...product }: Props) => {
+const ProductForm = ({
+  type = 'create',
+  categories,
+  suppliers,
+  ...product
+}: Props) => {
   const router = useRouter();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Fetch both categories and suppliers
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-
-        const [categoriesData, suppliersData] = await Promise.all([
-          getCategories(),
-          getSuppliers(),
-        ]);
-
-        if (!isMounted) return;
-
-        setCategories(categoriesData);
-        setSuppliers(suppliersData);
-
-        if (categoriesData.length === 0) {
-          toast.warning('No categories found', {
-            action: {
-              label: 'Create',
-              onClick: () => (window.location.href = '/inventory/categories'),
-            },
-          });
-        }
-
-        if (suppliersData.length === 0) {
-          toast.warning('No suppliers found', {
-            action: {
-              label: 'Create',
-              onClick: () => (window.location.href = '/inventory/suppliers'),
-            },
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-        toast.error('Failed to load required data');
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
@@ -131,9 +83,10 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
   const onSubmit = async (values: z.infer<typeof productSchema>) => {
     try {
       setIsSubmitting(true);
+
+      const pharmacyId = 1;
       let imageUrl = values.imageUrl || '';
 
-      // Upload image if a new file is selected
       if (selectedImageFile) {
         const formData = new FormData();
         formData.append('file', selectedImageFile);
@@ -160,8 +113,8 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
 
       const result =
         type === 'create'
-          ? await createProduct(apiData)
-          : await updateProduct(product.id!, apiData);
+          ? await createProduct({ ...apiData, pharmacyId })
+          : await updateProduct(product.id!, apiData, pharmacyId);
 
       if (result?.success) {
         toast.success(`Product ${type === 'create' ? 'added' : 'updated'}`);
@@ -316,7 +269,7 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                                 ? String(field.value)
                                 : undefined
                             }
-                            disabled={isLoading || categories.length === 0}
+                            disabled={categories.length === 0}
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select category" />
@@ -455,17 +408,13 @@ const ProductForm = ({ type = 'create', ...product }: Props) => {
                                 field.onChange(Number(value) || undefined)
                               }
                               value={field.value?.toString() || undefined}
-                              disabled={isLoading || suppliers.length === 0}
+                              disabled={suppliers.length === 0}
                             >
                               <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Select supplier" />
                               </SelectTrigger>
                               <SelectContent>
-                                {isLoading ? (
-                                  <div className="p-2 text-sm text-gray-500">
-                                    Loading suppliers...
-                                  </div>
-                                ) : suppliers.length === 0 ? (
+                                {suppliers.length === 0 ? (
                                   <div className="p-2 text-sm text-gray-500">
                                     No suppliers available
                                   </div>

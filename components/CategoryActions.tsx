@@ -15,9 +15,10 @@ export function CategoryActions({ category }: { category: Category }) {
   const router = useRouter();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const pharmacyId = 1; // hardcoded for now fetch from session later
 
   const handleDelete = async () => {
-    const result = await deleteCategory(category.id);
+    const result = await deleteCategory(category.id, pharmacyId);
     if (!result.success) {
       toast.error('Failed to delete category');
       return;
@@ -55,6 +56,7 @@ export function CategoryActions({ category }: { category: Category }) {
           const result = await updateCategory({
             ...formData,
             id: category.id,
+            pharmacyId,
           });
           return result;
         }}

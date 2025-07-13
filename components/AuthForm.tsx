@@ -17,7 +17,7 @@ import {
   SubmitHandler,
   useForm,
 } from 'react-hook-form';
-import { ZodType } from 'zod';
+import { ZodSchema } from 'zod';
 import { FIELD_NAMES, FIELD_TYPES } from '@/constants';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,7 @@ import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
 interface Props<T extends FieldValues> {
   type: 'SIGN_IN' | 'SIGN_UP';
-  schema: ZodType<T>;
+  schema: ZodSchema<T>; // ✅ use ZodSchema instead of ZodType
   defaultValues: T;
   onSubmit: (
     data: T,

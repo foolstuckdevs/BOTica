@@ -62,23 +62,21 @@ export const supplierSchema = z.object({
 }) satisfies z.ZodType<SupplierParams>;
 
 export const adjustmentSchema = z.object({
-  productId: z
-    .number({
-      required_error: 'Product is required',
-    })
-    .int()
-    .positive(),
+  productId: z.number(),
   quantityChange: z
-    .number({
-      required_error: 'Quantity change is required',
-      invalid_type_error: 'Quantity must be a number',
-    })
-    .int()
-    .refine((value) => value !== 0, {
-      message: 'Quantity change cannot be zero',
+    .number()
+    .min(-1000, 'Too low')
+    .max(1000, 'Too high')
+    .refine((val) => val !== 0, {
+      message: 'Quantity change cannot be 0',
     }),
-  reason: z.enum(['DAMAGED', 'EXPIRED', 'LOST', 'THEFT', 'CORRECTION'], {
-    required_error: 'Reason is required',
-    invalid_type_error: 'Invalid adjustment reason',
-  }),
+  reason: z.enum([
+    'DAMAGED',
+    'EXPIRED',
+    'LOST',
+    'THEFT',
+    'CORRECTION',
+    'RESTOCK',
+  ]),
+  notes: z.string().optional(),
 });

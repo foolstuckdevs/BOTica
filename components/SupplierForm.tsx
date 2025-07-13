@@ -46,7 +46,9 @@ const SupplierForm = () => {
 
   const onSubmit = async (data: z.infer<typeof supplierSchema>) => {
     setIsLoading(true);
-    const result = await createSupplier(data);
+
+    const pharmacyId = 1; // TODO: replace with session based later
+    const result = await createSupplier({ ...data, pharmacyId });
 
     if (result.success) {
       toast.success('Supplier created successfully');

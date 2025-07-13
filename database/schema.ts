@@ -12,8 +12,6 @@ import {
   pgEnum,
 } from 'drizzle-orm/pg-core';
 
-// Note: add indexes in the future when data retrieval is slow to optimize query performance.
-
 // Enums
 export const ROLE_ENUM = pgEnum('role', ['Admin', 'Pharmacist']);
 export const PAYMENT_METHOD_ENUM = pgEnum('payment_method', ['CASH', 'GCASH']);
@@ -30,7 +28,6 @@ export const NOTIFICATION_TYPE_ENUM = pgEnum('notification_type', [
   'EXPIRING',
   'EXPIRED',
 ]);
-
 export const ADJUSTMENT_REASON_ENUM = pgEnum('adjustment_reason', [
   'DAMAGED',
   'EXPIRED',
@@ -40,7 +37,15 @@ export const ADJUSTMENT_REASON_ENUM = pgEnum('adjustment_reason', [
   'RESTOCK',
 ]);
 
-// Users
+// ✅ Pharmacies (Tenants)
+export const pharmacies = pgTable('pharmacies', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull().unique(),
+  address: text('address'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ✅ Users
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   fullName: varchar('full_name', { length: 100 }).notNull(),
@@ -48,17 +53,24 @@ export const users = pgTable('users', {
   password: varchar('password', { length: 100 }).notNull(),
   role: ROLE_ENUM('role').notNull().default('Pharmacist'),
   isActive: boolean('is_active').default(true),
+  pharmacyId: integer('pharmacy_id')
+    .notNull()
+    .references(() => pharmacies.id),
+
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// Categories
+// ✅ Categories
 export const categories = pgTable('categories', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull().unique(),
   description: text('description'),
+  pharmacyId: integer('pharmacy_id')
+    .notNull()
+    .references(() => pharmacies.id),
 });
 
-// Suppliers
+// ✅ Suppliers
 export const suppliers = pgTable('suppliers', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull().unique(),
@@ -66,11 +78,15 @@ export const suppliers = pgTable('suppliers', {
   phone: varchar('phone', { length: 20 }),
   email: varchar('email', { length: 100 }),
   address: text('address'),
+  pharmacyId: integer('pharmacy_id')
+    .notNull()
+    .references(() => pharmacies.id),
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-// Products
+// ✅ Products
 export const products = pgTable('products', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
@@ -86,11 +102,15 @@ export const products = pgTable('products', {
   unit: UNIT_ENUM('unit').notNull(),
   supplierId: integer('supplier_id').references(() => suppliers.id),
   imageUrl: text('image_url'),
+  pharmacyId: integer('pharmacy_id')
+    .notNull()
+    .references(() => pharmacies.id),
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-// Sales
+// ✅ Sales
 export const sales = pgTable('sales', {
   id: serial('id').primaryKey(),
   invoiceNumber: varchar('invoice_number', { length: 20 }).notNull().unique(),
@@ -102,10 +122,14 @@ export const sales = pgTable('sales', {
   userId: uuid('user_id')
     .references(() => users.id)
     .notNull(),
+  pharmacyId: integer('pharmacy_id')
+    .notNull()
+    .references(() => pharmacies.id),
+
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// Sale Items
+// ✅ Sale Items
 export const saleItems = pgTable('sale_items', {
   id: serial('id').primaryKey(),
   saleId: integer('sale_id')
@@ -119,27 +143,36 @@ export const saleItems = pgTable('sale_items', {
   subtotal: decimal('subtotal', { precision: 10, scale: 2 }).notNull(),
 });
 
-// Notifications For stock alerts
+// ✅ Notifications
 export const notifications = pgTable('notifications', {
   id: serial('id').primaryKey(),
   type: NOTIFICATION_TYPE_ENUM('type').notNull(),
   productId: integer('product_id').references(() => products.id),
   message: text('message').notNull(),
   isRead: boolean('is_read').default(false),
+  pharmacyId: integer('pharmacy_id')
+    .notNull()
+    .references(() => pharmacies.id),
+
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// Activity Logs
+// ✅ Activity Logs
 export const activityLogs = pgTable('activity_logs', {
   id: serial('id').primaryKey(),
   userId: uuid('user_id')
     .references(() => users.id)
     .notNull(),
-  action: varchar('action', { length: 100 }).notNull(), // 'SALE', 'STOCK_UPDATE'
+  action: varchar('action', { length: 100 }).notNull(), // 'SALE', 'STOCK_UPDATE', etc.
   details: text('details'),
+  pharmacyId: integer('pharmacy_id')
+    .notNull()
+    .references(() => pharmacies.id),
+
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// ✅ Inventory Adjustments
 export const inventoryAdjustments = pgTable('inventory_adjustments', {
   id: serial('id').primaryKey(),
   productId: integer('product_id')
@@ -150,5 +183,10 @@ export const inventoryAdjustments = pgTable('inventory_adjustments', {
     .notNull(),
   quantityChange: integer('quantity_change').notNull(),
   reason: ADJUSTMENT_REASON_ENUM('reason').notNull(),
+  notes: text('notes'),
+  pharmacyId: integer('pharmacy_id')
+    .notNull()
+    .references(() => pharmacies.id),
+
   createdAt: timestamp('created_at').defaultNow(),
 });

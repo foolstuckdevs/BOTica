@@ -8,11 +8,13 @@ export interface Category {
   id: number;
   name: string;
   description: string | null;
+  pharmacyId?: number; // optional for now
 }
 
 export type CategoryParams = {
   name: string;
   description: string;
+  pharmacyId?: number;
 };
 
 export interface Supplier {
@@ -24,6 +26,7 @@ export interface Supplier {
   address: string | null;
   createdAt: Date | string | null;
   updatedAt: Date | string | null;
+  pharmacyId?: number;
 }
 
 export interface SupplierParams {
@@ -32,6 +35,7 @@ export interface SupplierParams {
   phone?: string;
   email?: string;
   address?: string;
+  pharmacyId?: number;
 }
 
 export type UnitType = 'TABLET' | 'CAPSULE' | 'ML' | 'GM' | 'UNIT' | 'VIAL';
@@ -55,6 +59,7 @@ export interface Product {
   imageUrl: string | null;
   createdAt: Date | string | null;
   updatedAt: Date | string | null;
+  pharmacyId?: number;
 }
 
 export interface ProductParams {
@@ -71,4 +76,16 @@ export interface ProductParams {
   unit: UnitType;
   supplierId?: number;
   imageUrl?: string;
+  pharmacyId?: number;
+}
+
+export interface Adjustment {
+  id: number;
+  productId: number;
+  productName: string;
+  quantityChange: number;
+  reason: 'DAMAGED' | 'EXPIRED' | 'LOST' | 'THEFT' | 'CORRECTION' | 'RESTOCK';
+  createdAt: string | Date;
+  currentStock?: number;
+  pharmacyId?: number;
 }

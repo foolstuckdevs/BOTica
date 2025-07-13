@@ -35,7 +35,7 @@ const Sidebar = () => {
   return (
     <aside className="fixed left-0 top-0 h-screen w-56 bg-white text-gray-800 p-4 border-r border-gray-200 z-40">
       <div className="mb-10 flex justify-center">
-        <Image src="/logo.svg" alt="logo" height={120} width={120} />
+        <Image src="/BOTica2.png" alt="BOTica" height={120} width={120} />
       </div>
 
       <nav className="space-y-2">

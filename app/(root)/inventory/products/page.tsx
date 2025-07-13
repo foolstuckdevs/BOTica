@@ -5,7 +5,9 @@ import { columns } from './columns';
 import { Button } from '@/components/ui/button';
 
 const Page = async () => {
-  const products = await getProducts();
+  const pharmacyId = 1; // hardcoded for now get from session later
+
+  const products = await getProducts(pharmacyId);
 
   return (
     <div className="px-6 py-6 space-y-6">

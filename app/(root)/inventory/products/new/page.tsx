@@ -1,12 +1,20 @@
 import ProductForm from '@/components/ProductForm';
-import React from 'react';
+import { getCategories } from '@/lib/actions/categories';
+import { getSuppliers } from '@/lib/actions/suppliers';
 
-const Page = () => {
+const Page = async () => {
+  const pharmacyId = 1;
+
+  const categories = await getCategories(pharmacyId);
+  const suppliers = await getSuppliers(pharmacyId);
+
   return (
-    <div>
-      <>
-        <ProductForm type="create" />
-      </>
+    <div className="p-4">
+      <ProductForm
+        type="create"
+        categories={categories}
+        suppliers={suppliers}
+      />
     </div>
   );
 };

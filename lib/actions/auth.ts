@@ -51,11 +51,14 @@ export const signUp = async (params: AuthCredentials) => {
 
   const hashedPassword = await hash(password, 10);
 
+  const pharmacyId = 1; // HARD CODED FOR NOW REPLACE THIS IN THE FUTURE REMEMBER
+
   try {
     await db.insert(users).values({
       fullName,
       email,
       password: hashedPassword,
+      pharmacyId,
     });
 
     await signInWithCredentials({ email, password });

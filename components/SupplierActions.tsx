@@ -17,9 +17,10 @@ const SupplierActions = ({ supplier }: { supplier: Supplier }) => {
   const router = useRouter();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const pharmacyId = 1; // TODO: replace with session based later
 
   const handleDelete = async () => {
-    const result = await deleteSupplier(supplier.id); // Now passing number, not string
+    const result = await deleteSupplier(supplier.id, pharmacyId);
     if (!result.success) {
       toast.error('Failed to delete supplier');
       return;
@@ -63,6 +64,7 @@ const SupplierActions = ({ supplier }: { supplier: Supplier }) => {
           const result = await updateSupplier({
             ...formData,
             id: supplier.id,
+            pharmacyId,
           });
           return result;
         }}

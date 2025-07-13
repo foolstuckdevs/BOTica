@@ -3,24 +3,40 @@
 import { db } from '@/database/drizzle';
 import { suppliers } from '@/database/schema';
 import { SupplierParams } from '@/types';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-export const getSuppliers = async () => {
+/**
+ * Get suppliers for a specific pharmacy
+ */
+export const getSuppliers = async (pharmacyId: number) => {
   try {
-    return await db.select().from(suppliers);
+    return await db
+      .select()
+      .from(suppliers)
+      .where(eq(suppliers.pharmacyId, pharmacyId));
   } catch (error) {
     console.error('Error fetching suppliers:', error);
     return [];
   }
 };
 
-export const createSupplier = async (params: SupplierParams) => {
+/**
+ * Create a new supplier for a pharmacy
+ */
+export const createSupplier = async (
+  params: SupplierParams & { pharmacyId: number },
+) => {
   try {
     const existingSupplier = await db
       .select()
       .from(suppliers)
-      .where(eq(suppliers.name, params.name));
+      .where(
+        and(
+          eq(suppliers.name, params.name),
+          eq(suppliers.pharmacyId, params.pharmacyId),
+        ),
+      );
 
     if (existingSupplier.length > 0) {
       return { success: false, message: 'Supplier already exists' };
@@ -40,22 +56,37 @@ export const createSupplier = async (params: SupplierParams) => {
   }
 };
 
-export const updateSupplier = async (data: { id: number } & SupplierParams) => {
+/**
+ * Update a supplier by pharmacy
+ */
+export const updateSupplier = async (
+  data: { id: number; pharmacyId: number } & SupplierParams,
+) => {
   try {
     const existingSupplier = await db
       .select()
       .from(suppliers)
-      .where(eq(suppliers.id, data.id));
+      .where(
+        and(
+          eq(suppliers.id, data.id),
+          eq(suppliers.pharmacyId, data.pharmacyId),
+        ),
+      );
 
     if (existingSupplier.length === 0) {
       return { success: false, message: 'Supplier not found' };
     }
 
-    // Check if new name already exists (excluding current supplier)
+    // Check for name conflict in same pharmacy
     const nameCheck = await db
       .select()
       .from(suppliers)
-      .where(eq(suppliers.name, data.name));
+      .where(
+        and(
+          eq(suppliers.name, data.name),
+          eq(suppliers.pharmacyId, data.pharmacyId),
+        ),
+      );
 
     if (nameCheck.length > 0 && nameCheck[0].id !== data.id) {
       return { success: false, message: 'Supplier name already exists' };
@@ -70,7 +101,12 @@ export const updateSupplier = async (data: { id: number } & SupplierParams) => {
         email: data.email,
         address: data.address,
       })
-      .where(eq(suppliers.id, data.id));
+      .where(
+        and(
+          eq(suppliers.id, data.id),
+          eq(suppliers.pharmacyId, data.pharmacyId),
+        ),
+      );
 
     revalidatePath('/suppliers');
 
@@ -81,19 +117,23 @@ export const updateSupplier = async (data: { id: number } & SupplierParams) => {
   }
 };
 
-export const deleteSupplier = async (id: number) => {
+/**
+ * Delete a supplier by pharmacy
+ */
+export const deleteSupplier = async (id: number, pharmacyId: number) => {
   try {
-    // Check if supplier exists
     const existingSupplier = await db
       .select()
       .from(suppliers)
-      .where(eq(suppliers.id, id));
+      .where(and(eq(suppliers.id, id), eq(suppliers.pharmacyId, pharmacyId)));
 
     if (existingSupplier.length === 0) {
       return { success: false, message: 'Supplier not found' };
     }
 
-    await db.delete(suppliers).where(eq(suppliers.id, id));
+    await db
+      .delete(suppliers)
+      .where(and(eq(suppliers.id, id), eq(suppliers.pharmacyId, pharmacyId)));
 
     revalidatePath('/suppliers');
 

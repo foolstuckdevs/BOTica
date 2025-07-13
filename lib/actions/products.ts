@@ -1,12 +1,12 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { categories, products, suppliers } from '@/database/schema';
 import { ProductParams } from '@/types';
 import { revalidatePath } from 'next/cache';
 
-export const getProducts = async () => {
+export const getProducts = async (pharmacyId: number) => {
   try {
     return await db
       .select({
@@ -31,14 +31,15 @@ export const getProducts = async () => {
       })
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
-      .leftJoin(suppliers, eq(products.supplierId, suppliers.id));
+      .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
+      .where(eq(products.pharmacyId, pharmacyId));
   } catch (error) {
     console.error('Error fetching products:', error);
     return [];
   }
 };
 
-export const getProductById = async (id: number) => {
+export const getProductById = async (id: number, pharmacyId: number) => {
   try {
     const result = await db
       .select({
@@ -64,7 +65,7 @@ export const getProductById = async (id: number) => {
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
       .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
-      .where(eq(products.id, id));
+      .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
 
     return result.length > 0 ? result[0] : null;
   } catch (error) {
@@ -73,12 +74,19 @@ export const getProductById = async (id: number) => {
   }
 };
 
-export const createProduct = async (params: ProductParams) => {
+export const createProduct = async (
+  params: ProductParams & { pharmacyId: number },
+) => {
   try {
     const existingProduct = await db
       .select()
       .from(products)
-      .where(eq(products.name, params.name));
+      .where(
+        and(
+          eq(products.name, params.name),
+          eq(products.pharmacyId, params.pharmacyId),
+        ),
+      );
 
     if (existingProduct.length > 0) {
       return { success: false, message: 'Product already exists' };
@@ -86,7 +94,7 @@ export const createProduct = async (params: ProductParams) => {
 
     const newProduct = await db.insert(products).values(params).returning();
 
-    revalidatePath('/products'); // ADDED: cache revalidation
+    revalidatePath('/products');
 
     return {
       success: true,
@@ -104,32 +112,35 @@ export const createProduct = async (params: ProductParams) => {
 export const updateProduct = async (
   id: number,
   params: Partial<ProductParams>,
+  pharmacyId: number,
 ) => {
   try {
     const existingProduct = await db
       .select()
       .from(products)
-      .where(eq(products.id, id));
+      .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
 
     if (existingProduct.length === 0) {
       return { success: false, message: 'Product not found' };
     }
 
-    // Check if new name already exists but ignore if it's the same product
     if (params.name) {
       const nameCheck = await db
         .select()
         .from(products)
-        .where(eq(products.name, params.name));
+        .where(
+          and(
+            eq(products.name, params.name),
+            eq(products.pharmacyId, pharmacyId),
+          ),
+        );
 
       if (nameCheck.length > 0 && nameCheck[0].id !== id) {
         return { success: false, message: 'Product name already exists' };
       }
     }
 
-    // If imageUrl is being cleared (empty string), we should delete the old image
     if (params.imageUrl === '' && existingProduct[0].imageUrl) {
-      // Import the delete function here to avoid circular dependencies
       const { deleteImageFromSupabase } = await import('@/lib/utils');
       await deleteImageFromSupabase(existingProduct[0].imageUrl!);
     }
@@ -137,10 +148,10 @@ export const updateProduct = async (
     const updatedProduct = await db
       .update(products)
       .set(params)
-      .where(eq(products.id, id))
+      .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)))
       .returning();
 
-    revalidatePath('/products'); // ADDED: cache revalidation
+    revalidatePath('/products');
 
     return {
       success: true,
@@ -155,20 +166,22 @@ export const updateProduct = async (
   }
 };
 
-export const deleteProduct = async (id: number) => {
+export const deleteProduct = async (id: number, pharmacyId: number) => {
   try {
     const existingProduct = await db
       .select()
       .from(products)
-      .where(eq(products.id, id));
+      .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
 
     if (existingProduct.length === 0) {
       return { success: false, message: 'Product not found' };
     }
 
-    await db.delete(products).where(eq(products.id, id));
+    await db
+      .delete(products)
+      .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
 
-    revalidatePath('/products'); // ADDED: cache revalidation
+    revalidatePath('/products');
 
     return {
       success: true,

@@ -4,7 +4,9 @@ import { columns } from './columns';
 import SupplierForm from '@/components/SupplierForm';
 
 const Page = async () => {
-  const suppliers = await getSuppliers();
+  const pharmacyId = 1;
+
+  const suppliers = await getSuppliers(pharmacyId);
   return (
     <div className="px-6 py-6 space-y-6">
       <div className="flex items-center justify-end">

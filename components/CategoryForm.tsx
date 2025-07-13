@@ -43,7 +43,13 @@ const CategoryForm = () => {
 
   const onSubmit = async (data: z.infer<typeof categorySchema>) => {
     setIsLoading(true);
-    const result = await createCategory(data);
+
+    const pharmacyId = 1; // TODO: Replace with dynamic value once session has it
+
+    const result = await createCategory({
+      ...data,
+      pharmacyId,
+    });
 
     if (result.success) {
       toast.success('Category created successfully');
@@ -53,6 +59,7 @@ const CategoryForm = () => {
     } else {
       toast.error(result.message || 'Failed to create category');
     }
+
     setIsLoading(false);
   };
 
