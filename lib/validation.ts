@@ -99,3 +99,20 @@ export const purchaseOrderSchema = z.object({
     }),
   ),
 });
+
+export const saleSchema = z.object({
+  paymentMethod: z.enum(['CASH', 'GCASH']),
+  discount: z
+    .string()
+    .regex(/^\d+(\.\d{1,2})?$/, 'Invalid discount')
+    .optional(),
+  cart: z
+    .array(
+      z.object({
+        productId: z.number(),
+        quantity: z.number().min(1),
+        unitPrice: z.string(), // string because of decimal
+      }),
+    )
+    .min(1, 'Cart cannot be empty'),
+});
