@@ -1,12 +1,12 @@
-import {
-  TrendingDownIcon,
-  TrendingUpIcon,
-  PackageMinus,
-  PackageCheck,
-  ShoppingCart,
-  ArrowRight,
-} from 'lucide-react';
+'use client';
 
+import {
+  ArrowRight,
+  CalendarClock,
+  PackageCheck,
+  TrendingUpIcon,
+  FileText,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -18,118 +18,111 @@ import {
 
 export function SectionCards() {
   return (
-    <div className="*:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4 grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card lg:px-6">
-      {/* Total Sales */}
-      <Card className="@container/card relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-blue-200/60 to-blue-400/10 rounded-bl-full pointer-events-none" />
-        <CardHeader className="relative z-10">
-          <CardDescription>Total Sales (This Month)</CardDescription>
-          <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-            ₱85,300.00
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-10">
+      {/* Today's Sales */}
+      <Card>
+        <CardHeader>
+          <CardDescription className="text-xs text-muted-foreground">
+            Today’s Sales
+          </CardDescription>
+          <CardTitle className="text-2xl font-bold tabular-nums text-blue-700">
+            ₱12,400.00
           </CardTitle>
-          <div className="absolute right-4 top-4">
-            <Badge variant="outline" className="flex gap-1 rounded-lg text-xs">
-              <TrendingUpIcon className="size-3" />
-              +18.2%
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1 text-sm z-10">
-          <div className="flex gap-2 font-medium">
-            Increased sales this month <TrendingUpIcon className="size-4" />
-          </div>
-          <a
-            href="#"
-            className="mt-2 text-xs text-blue-600 hover:underline flex items-center gap-1"
+          <Badge
+            variant="outline"
+            className="mt-2 flex gap-1 items-center rounded-md text-xs text-blue-600 border-blue-200 bg-blue-50"
           >
-            View Details <ArrowRight className="w-3 h-3" />
+            <TrendingUpIcon className="h-3 w-3" />
+            +6.2% vs yesterday
+          </Badge>
+        </CardHeader>
+        <CardFooter className="justify-end">
+          <a
+            href="/reports/sales"
+            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+          >
+            View Report <ArrowRight className="w-3 h-3" />
           </a>
         </CardFooter>
       </Card>
 
-      {/* Low Stock Items */}
-      <Card className="@container/card relative overflow-hidden">
-        <div className="absolute left-0 top-0 w-24 h-24 bg-gradient-to-br from-orange-200/60 to-orange-400/10 rounded-br-full pointer-events-none" />
-        <CardHeader className="relative z-10">
-          <CardDescription>Low Stock Items</CardDescription>
-          <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-            12
+      {/* Expiring Soon */}
+      <Card>
+        <CardHeader>
+          <CardDescription className="text-xs text-muted-foreground">
+            Expiring Soon (30 Days)
+          </CardDescription>
+          <CardTitle className="text-2xl font-bold tabular-nums text-red-600">
+            9 items
           </CardTitle>
-          <div className="absolute right-4 top-4">
-            <Badge variant="outline" className="flex gap-1 rounded-lg text-xs">
-              <TrendingDownIcon className="size-3" />
-              Needs restock
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1 text-sm z-10">
-          <div className="flex gap-2 font-medium">
-            Inventory below threshold <PackageMinus className="size-4" />
-          </div>
-          <div className="text-muted-foreground">Check stock levels today</div>
-          <a
-            href="#"
-            className="mt-2 text-xs text-orange-600 hover:underline flex items-center gap-1"
+          <Badge
+            variant="outline"
+            className="mt-2 flex gap-1 items-center rounded-md text-xs text-red-600 border-red-200 bg-red-50"
           >
-            View Details <ArrowRight className="w-3 h-3" />
+            <CalendarClock className="h-3 w-3" />
+            Urgent
+          </Badge>
+        </CardHeader>
+        <CardFooter className="justify-end">
+          <a
+            href="/reports/expiration"
+            className="text-xs text-red-600 hover:underline flex items-center gap-1"
+          >
+            View Expiry List <ArrowRight className="w-3 h-3" />
           </a>
         </CardFooter>
       </Card>
 
       {/* Active Products */}
-      <Card className="@container/card relative overflow-hidden">
-        <div className="absolute right-0 bottom-0 w-24 h-24 bg-gradient-to-tr from-green-200/60 to-green-400/10 rounded-tl-full pointer-events-none" />
-        <CardHeader className="relative z-10">
-          <CardDescription>Active Products</CardDescription>
-          <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-            183
+      <Card>
+        <CardHeader>
+          <CardDescription className="text-xs text-muted-foreground">
+            Active Products
+          </CardDescription>
+          <CardTitle className="text-2xl font-bold tabular-nums text-green-700">
+            182 items
           </CardTitle>
-          <div className="absolute right-4 top-4">
-            <Badge variant="outline" className="flex gap-1 rounded-lg text-xs">
-              <PackageCheck className="size-3" />
-              In stock
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1 text-sm z-10">
-          <div className="flex gap-2 font-medium">
-            All products tracked <PackageCheck className="size-4" />
-          </div>
-          <div className="text-muted-foreground">Inventory under control</div>
-          <a
-            href="#"
-            className="mt-2 text-xs text-green-600 hover:underline flex items-center gap-1"
+          <Badge
+            variant="outline"
+            className="mt-2 flex gap-1 items-center rounded-md text-xs text-green-700 border-green-200 bg-green-50"
           >
-            View Details <ArrowRight className="w-3 h-3" />
+            <PackageCheck className="h-3 w-3" />
+            Up to date
+          </Badge>
+        </CardHeader>
+        <CardFooter className="justify-end">
+          <a
+            href="/inventory/products"
+            className="text-xs text-green-700 hover:underline flex items-center gap-1"
+          >
+            Manage Products <ArrowRight className="w-3 h-3" />
           </a>
         </CardFooter>
       </Card>
 
-      {/* Monthly Restocks */}
-      <Card className="@container/card relative overflow-hidden">
-        <div className="absolute left-0 bottom-0 w-24 h-24 bg-gradient-to-tr from-purple-200/60 to-purple-400/10 rounded-tr-full pointer-events-none" />
-        <CardHeader className="relative z-10">
-          <CardDescription>Monthly Restocks</CardDescription>
-          <CardTitle className="@[250px]/card:text-3xl text-2xl font-semibold tabular-nums">
-            27
+      {/* Monthly Purchase Orders */}
+      <Card>
+        <CardHeader>
+          <CardDescription className="text-xs text-muted-foreground">
+            Purchase Orders (July)
+          </CardDescription>
+          <CardTitle className="text-2xl font-bold tabular-nums text-purple-700">
+            11 orders
           </CardTitle>
-          <div className="absolute right-4 top-4">
-            <Badge variant="outline" className="flex gap-1 rounded-lg text-xs">
-              <ShoppingCart className="size-3" />
-              +10%
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardFooter className="flex-col items-start gap-1 text-sm z-10">
-          <div className="flex gap-2 font-medium">
-            Regular restocking <ShoppingCart className="size-4" />
-          </div>
-          <div className="text-muted-foreground">Supplies maintained well</div>
-          <a
-            href="#"
-            className="mt-2 text-xs text-purple-600 hover:underline flex items-center gap-1"
+          <Badge
+            variant="outline"
+            className="mt-2 flex gap-1 items-center rounded-md text-xs text-purple-700 border-purple-200 bg-purple-50"
           >
-            View Details <ArrowRight className="w-3 h-3" />
+            <FileText className="h-3 w-3" />
+            Updated
+          </Badge>
+        </CardHeader>
+        <CardFooter className="justify-end">
+          <a
+            href="/inventory/purchase-order"
+            className="text-xs text-purple-700 hover:underline flex items-center gap-1"
+          >
+            View Orders <ArrowRight className="w-3 h-3" />
           </a>
         </CardFooter>
       </Card>

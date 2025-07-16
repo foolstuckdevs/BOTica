@@ -17,11 +17,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import useIsMobile from '@/hooks/use-mobile';
 import { Tooltip as RechartsTooltip } from 'recharts';
-import { Download, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
+import useIsMobile from '@/hooks/use-mobile';
 
-// Define types for our chart data
 interface ChartData {
   date: string;
   sales: number;
@@ -70,12 +69,9 @@ export function SalesChart() {
   const [timeRange, setTimeRange] = React.useState('30d');
 
   React.useEffect(() => {
-    if (isMobile) {
-      setTimeRange('7d');
-    }
+    if (isMobile) setTimeRange('7d');
   }, [isMobile]);
 
-  // Calculate filtered data and metrics
   const {
     filteredData,
     totalSales,
@@ -83,23 +79,18 @@ export function SalesChart() {
     grossProfit,
     profitMargin,
   } = React.useMemo(() => {
-    const filtered = chartData.filter((item) => {
-      const date = new Date(item.date);
-      const referenceDate = new Date('2024-06-30');
-      let daysToSubtract = 90;
+    const referenceDate = new Date('2024-06-30');
+    const days = timeRange === '7d' ? 7 : 30;
+    const startDate = new Date(referenceDate);
+    startDate.setDate(referenceDate.getDate() - days);
 
-      if (timeRange === '30d') daysToSubtract = 30;
-      else if (timeRange === '7d') daysToSubtract = 7;
-
-      const startDate = new Date(referenceDate);
-      startDate.setDate(startDate.getDate() - daysToSubtract);
-      return date >= startDate;
-    });
-
-    const sales = filtered.reduce((sum, item) => sum + item.sales, 0);
-    const purchases = filtered.reduce((sum, item) => sum + item.purchases, 0);
+    const filtered = chartData.filter(
+      (item) => new Date(item.date) >= startDate,
+    );
+    const sales = filtered.reduce((acc, d) => acc + d.sales, 0);
+    const purchases = filtered.reduce((acc, d) => acc + d.purchases, 0);
     const profit = sales - purchases;
-    const margin = sales > 0 ? ((profit / sales) * 100).toFixed(1) : '0';
+    const margin = sales ? ((profit / sales) * 100).toFixed(1) : '0';
 
     return {
       filteredData: filtered,
@@ -110,95 +101,100 @@ export function SalesChart() {
     };
   }, [timeRange]);
 
-  // Format currency helper
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PH', {
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-PH', {
       style: 'currency',
       currency: 'PHP',
     }).format(amount);
-  };
 
-  // Format date for XAxis
-  const formatXAxis = (date: string) => {
-    return new Date(date).toLocaleDateString('en-PH', {
+  const formatXAxis = (date: string) =>
+    new Date(date).toLocaleDateString('en-PH', {
       month: 'short',
       day: 'numeric',
     });
-  };
 
   return (
     <Card className="w-full">
-      <CardHeader className="relative">
-        <div className="flex flex-col space-y-1.5">
-          <CardTitle>Sales vs Purchases</CardTitle>
-          <CardDescription>
-            Track daily sales revenue against purchase costs
-          </CardDescription>
-        </div>
-        {/* Download Report Button */}
-        <div className="absolute right-4 top-4 flex gap-2">
-          <button className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors">
-            <Download className="w-4 h-4" /> Download Report
-          </button>
-        </div>
+      <CardHeader>
+        <CardTitle className="text-lg">Sales Performance</CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          Revenue vs. purchase costs over the last{' '}
+          {timeRange === '7d' ? '7' : '30'} days
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Summary stats */}
-        <div className="flex flex-wrap gap-4 mb-4">
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-            <span className="text-sm">Sales: {formatCurrency(totalSales)}</span>
+        {/* KPIs */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 text-sm">
+          <div>
+            <p className="text-muted-foreground">Total Sales</p>
+            <p className="font-medium text-blue-600">
+              {formatCurrency(totalSales)}
+            </p>
           </div>
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-            <span className="text-sm">
-              Purchases: {formatCurrency(totalPurchases)}
-            </span>
+          <div>
+            <p className="text-muted-foreground">Total Purchases</p>
+            <p className="font-medium text-orange-600">
+              {formatCurrency(totalPurchases)}
+            </p>
           </div>
-          <div className="flex items-center">
-            <span className="text-sm font-medium">
-              Profit: {formatCurrency(grossProfit)} ({profitMargin}%)
-            </span>
+          <div>
+            <p className="text-muted-foreground">Gross Profit</p>
+            <p className="font-medium text-green-600">
+              {formatCurrency(grossProfit)}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Profit Margin</p>
+            <p className="font-medium">{profitMargin}%</p>
           </div>
         </div>
+
         {/* Chart */}
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[280px] w-full">
+          <ResponsiveContainer>
             <AreaChart
               data={filteredData}
-              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
             >
               <defs>
                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
                 </linearGradient>
                 <linearGradient id="colorPurchases" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#f97316" stopOpacity={0.1} />
+                  <stop offset="0%" stopColor="#f97316" stopOpacity={0.4} />
+                  <stop offset="100%" stopColor="#f97316" stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <XAxis
                 dataKey="date"
                 tickFormatter={formatXAxis}
                 tick={{ fontSize: 12 }}
-                tickMargin={10}
+                axisLine={false}
+                tickLine={false}
               />
               <YAxis
-                tickFormatter={(value) => `₱${value / 1000}k`}
+                tickFormatter={(v) => `₱${v / 1000}k`}
                 tick={{ fontSize: 12 }}
                 width={40}
+                axisLine={false}
+                tickLine={false}
               />
               <CartesianGrid
                 strokeDasharray="3 3"
                 vertical={false}
-                stroke="#f3f4f6"
+                stroke="#e5e7eb"
               />
               <RechartsTooltip
-                contentStyle={{ borderRadius: 8, fontSize: 13 }}
+                contentStyle={{
+                  borderRadius: 8,
+                  fontSize: 13,
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                }}
                 formatter={(value: number, name: string) => [
                   formatCurrency(value),
-                  name.charAt(0).toUpperCase() + name.slice(1),
+                  name === 'sales' ? 'Sales' : 'Purchases',
                 ]}
                 labelFormatter={(label) =>
                   `Date: ${formatXAxis(label as string)}`
@@ -208,40 +204,37 @@ export function SalesChart() {
                 type="monotone"
                 dataKey="sales"
                 stroke="#3b82f6"
-                fillOpacity={1}
                 fill="url(#colorSales)"
                 strokeWidth={2}
-                name="Sales"
               />
               <Area
                 type="monotone"
                 dataKey="purchases"
                 stroke="#f97316"
-                fillOpacity={1}
                 fill="url(#colorPurchases)"
                 strokeWidth={2}
-                name="Purchases"
               />
               <Legend
                 verticalAlign="top"
-                height={36}
+                height={30}
                 iconType="circle"
                 formatter={(value) => (
-                  <span className="text-xs text-gray-700 dark:text-gray-200">
-                    {value.charAt(0).toUpperCase() + value.slice(1)}
+                  <span className="text-xs text-gray-700 dark:text-gray-300">
+                    {value === 'sales' ? 'Sales' : 'Purchases'}
                   </span>
                 )}
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        {/* View Full Report Link */}
+
+        {/* Footer Link */}
         <div className="mt-4 text-right">
           <a
             href="#"
-            className="text-xs text-blue-600 hover:underline flex items-center gap-1 justify-end"
+            className="text-xs text-muted-foreground hover:text-blue-600 flex items-center gap-1 justify-end"
           >
-            <Info className="w-3 h-3" /> View Full Report
+            <Info className="w-3 h-3" /> View full analytics
           </a>
         </div>
       </CardContent>

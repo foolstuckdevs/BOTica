@@ -20,7 +20,6 @@ import {
 import { FIELD_NAMES, FIELD_TYPES } from '@/constants';
 import Link from 'next/link';
 import { ZodType } from 'zod';
-
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -32,7 +31,9 @@ import {
   Lock,
   Mail,
   User,
-  Building2,
+  Pill,
+  Shield,
+  HeartPulse,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -40,7 +41,7 @@ import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
 interface Props<T extends FieldValues> {
   type: 'SIGN_IN' | 'SIGN_UP';
-  schema: ZodType<T>; // ✅ constrain schema to match FieldValues
+  schema: ZodType<T>;
   defaultValues: T;
   onSubmit: (
     data: T,
@@ -73,8 +74,13 @@ const AuthForm = <T extends FieldValues>({
       if (result.success) {
         toast.success(
           isSignIn
-            ? 'Welcome back! Redirecting to dashboard...'
-            : 'Account created successfully! Welcome aboard!',
+            ? 'Welcome back to BOTica! Redirecting to dashboard...'
+            : 'Account created successfully! Welcome to BOTica!',
+          {
+            description: isSignIn
+              ? 'Your pharmacy management dashboard is ready'
+              : 'Start managing your pharmacy efficiently',
+          },
         );
 
         setTimeout(() => router.push('/'), 1500);
@@ -91,41 +97,53 @@ const AuthForm = <T extends FieldValues>({
   const getFieldIcon = (fieldName: string) => {
     switch (fieldName) {
       case 'email':
-        return <Mail className="h-4 w-4 text-gray-400" />;
+        return <Mail className="h-4 w-4 text-blue-500" />;
       case 'password':
-        return <Lock className="h-4 w-4 text-gray-400" />;
+        return <Lock className="h-4 w-4 text-blue-500" />;
       case 'fullName':
-        return <User className="h-4 w-4 text-gray-400" />;
+        return <User className="h-4 w-4 text-blue-500" />;
+      case 'pharmacyName':
+        return <Pill className="h-4 w-4 text-blue-500" />;
+      case 'licenseNumber':
+        return <Shield className="h-4 w-4 text-blue-500" />;
       default:
-        return <Building2 className="h-4 w-4 text-gray-400" />;
+        return <HeartPulse className="h-4 w-4 text-blue-500" />;
     }
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full max-w-md mx-auto p-4">
+      {/* Background options - remove or customize these */}
+      {/* Option 1: Transparent background (remove bg-white/dark:bg-gray-850) */}
+      {/* Option 2: Custom background color (add your own bg- class) */}
+      {/* Option 3: Gradient background (add bg-gradient-to- class) */}
+
       {/* Header */}
       <div className="text-center mb-8">
         <div className="mb-4">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
-            <Building2 className="h-8 w-8 text-white" />
+          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-600 to-teal-500 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+            <Pill className="h-10 w-10 text-white" strokeWidth={2} />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {isSignIn ? 'Welcome Back' : 'Create Account'}
+            {isSignIn ? 'Welcome to ' : 'Join '}
+            <span className="bg-gradient-to-r from-blue-600 to-teal-500 bg-clip-text text-transparent">
+              BOTica
+            </span>
           </h1>
         </div>
         <p className="text-gray-600 dark:text-gray-300 text-sm">
           {isSignIn
-            ? 'Sign in to access your pharmacy management system'
-            : 'Join us to start managing your pharmacy efficiently'}
+            ? 'Sign in to your pharmacy management dashboard'
+            : 'Create an account to streamline your pharmacy operations'}
         </p>
       </div>
 
-      {/* Form */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
+      {/* Form Container - Background options here */}
+      <div className="bg-white/80 dark:bg-gray-850/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 sm:p-8">
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-6"
+            className="space-y-5"
           >
             {Object.keys(defaultValues).map((field) => (
               <FormField
@@ -138,7 +156,7 @@ const AuthForm = <T extends FieldValues>({
                       {FIELD_NAMES[field.name as keyof typeof FIELD_NAMES]}
                     </FormLabel>
                     <FormControl>
-                      <div className="relative">
+                      <div className="relative group">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           {getFieldIcon(field.name)}
                         </div>
@@ -153,7 +171,7 @@ const AuthForm = <T extends FieldValues>({
                                 ]
                           }
                           {...field}
-                          className="pl-10 pr-10 h-12 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all duration-200"
+                          className="pl-10 pr-10 h-11 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800/50 dark:text-white transition-all duration-200 group-hover:border-blue-400"
                           placeholder={`Enter your ${FIELD_NAMES[
                             field.name as keyof typeof FIELD_NAMES
                           ].toLowerCase()}`}
@@ -162,7 +180,7 @@ const AuthForm = <T extends FieldValues>({
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
                           >
                             {showPassword ? (
                               <EyeOff className="h-4 w-4" />
@@ -173,7 +191,7 @@ const AuthForm = <T extends FieldValues>({
                         )}
                       </div>
                     </FormControl>
-                    <FormMessage className="text-red-500 dark:text-red-400 text-sm" />
+                    <FormMessage className="text-red-500 dark:text-red-400 text-xs mt-1" />
                   </FormItem>
                 )}
               />
@@ -181,7 +199,7 @@ const AuthForm = <T extends FieldValues>({
 
             {/* Password Strength Indicator (Sign Up only) */}
             {!isSignIn && form.watch('password' as Path<T>) && (
-              <div className="mt-4">
+              <div className="mt-3">
                 <PasswordStrengthIndicator
                   password={form.watch('password' as Path<T>) as string}
                 />
@@ -190,7 +208,7 @@ const AuthForm = <T extends FieldValues>({
 
             {/* Remember Me & Forgot Password (Sign In only) */}
             {isSignIn && (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-1">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="remember"
@@ -198,10 +216,11 @@ const AuthForm = <T extends FieldValues>({
                     onCheckedChange={(checked: boolean | 'indeterminate') =>
                       setRememberMe(checked === true)
                     }
+                    className="border-gray-300 dark:border-gray-600 data-[state=checked]:bg-blue-600"
                   />
                   <Label
                     htmlFor="remember"
-                    className="text-sm text-gray-600 dark:text-gray-300 cursor-pointer"
+                    className="text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none"
                   >
                     Remember me
                   </Label>
@@ -219,7 +238,7 @@ const AuthForm = <T extends FieldValues>({
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-teal-500 hover:from-blue-700 hover:to-teal-600 text-white font-medium rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
@@ -227,7 +246,7 @@ const AuthForm = <T extends FieldValues>({
                   {isSignIn ? 'Signing In...' : 'Creating Account...'}
                 </>
               ) : (
-                <>{isSignIn ? 'Sign In' : 'Create Account'}</>
+                <>{isSignIn ? 'Sign In' : 'Get Started'}</>
               )}
             </Button>
           </form>
@@ -236,53 +255,39 @@ const AuthForm = <T extends FieldValues>({
         {/* Divider */}
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300 dark:border-gray-600" />
+            <div className="w-full border-t border-gray-200 dark:border-gray-700" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">
+            <span className="px-2 bg-white/80 dark:bg-gray-850/80 text-gray-500">
               Or continue with
             </span>
           </div>
         </div>
 
-        {/* Social Login Buttons (Placeholder) */}
-        <div className="space-y-3">
-          <Button
-            variant="outline"
-            className="w-full h-12 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            disabled
-          >
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-              <path
-                fill="currentColor"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="currentColor"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="currentColor"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              />
-              <path
-                fill="currentColor"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
-            </svg>
-            Continue with Google
-          </Button>
-        </div>
+        {/* Social Login Button - Only Google now */}
+        <Button
+          variant="outline"
+          className="w-full h-10 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+          disabled
+        >
+          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+            <path
+              fill="currentColor"
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+            />
+          </svg>
+          Continue with Google
+        </Button>
 
         {/* Sign Up/Sign In Link */}
-        <div className="mt-6 text-center">
-          <p className="text-gray-600 dark:text-gray-400 text-sm">
+        <div className="mt-6 text-center text-sm">
+          <p className="text-gray-600 dark:text-gray-400">
             {isSignIn ? "Don't have an account?" : 'Already have an account?'}
             <Link
               href={isSignIn ? '/sign-up' : '/sign-in'}
-              className="ml-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              className="ml-1.5 text-blue-600 dark:text-blue-400 hover:underline font-medium"
             >
-              {isSignIn ? 'Sign up' : 'Sign in'}
+              {isSignIn ? 'Sign up free' : 'Sign in'}
             </Link>
           </p>
         </div>
@@ -291,13 +296,18 @@ const AuthForm = <T extends FieldValues>({
       {/* Footer */}
       <div className="mt-8 text-center">
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          By continuing, you agree to our{' '}
+          © {new Date().getFullYear()} BOTica. All rights reserved.
+          <br className="sm:hidden" />{' '}
           <Link href="/terms" className="hover:underline">
-            Terms of Service
+            Terms
           </Link>{' '}
-          and{' '}
+          ·{' '}
           <Link href="/privacy" className="hover:underline">
-            Privacy Policy
+            Privacy
+          </Link>{' '}
+          ·{' '}
+          <Link href="/security" className="hover:underline">
+            Security
           </Link>
         </p>
       </div>

@@ -32,11 +32,16 @@ export const TopSellingProducts = () => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Top Selling Medicines</CardTitle>
-        <CardDescription>Best performers this month</CardDescription>
+        <CardTitle className="text-base font-semibold">
+          Top Selling Medicines
+        </CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">
+          Best performers this month
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col lg:flex-row gap-6">
+          {/* Pie Chart */}
           <div className="flex-1">
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -45,9 +50,10 @@ export const TopSellingProducts = () => {
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
-                  outerRadius={120}
+                  outerRadius={100}
                   paddingAngle={2}
                   dataKey="sales"
+                  stroke="none"
                 >
                   {topSellingProducts.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -56,11 +62,13 @@ export const TopSellingProducts = () => {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex-1 space-y-3">
+
+          {/* Legend / List */}
+          <div className="flex-1 space-y-2">
             {topSellingProducts.map((product, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
+                className="flex items-center justify-between rounded-md px-3 py-2 hover:bg-muted/50 transition"
               >
                 <div className="flex items-center gap-3">
                   <div
@@ -68,14 +76,16 @@ export const TopSellingProducts = () => {
                     style={{ backgroundColor: product.color }}
                   />
                   <div>
-                    <p className="font-medium text-sm">{product.name}</p>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-sm font-medium text-foreground">
+                      {product.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
                       {product.sales} units
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-sm">{product.percentage}%</p>
+                <div className="text-sm font-semibold text-foreground">
+                  {product.percentage}%
                 </div>
               </div>
             ))}

@@ -1,7 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Boxes,
@@ -19,29 +19,56 @@ import {
   AlertTriangle,
   Layers,
   RefreshCw,
+  Pill,
 } from 'lucide-react';
 import React, { useState } from 'react';
 
 const Sidebar = () => {
-  const [inventoryOpen, setInventoryOpen] = useState(false);
-  const [salesOpen, setSalesOpen] = useState(false);
-  const [reportsOpen, setReportsOpen] = useState(false);
+  const pathname = usePathname();
 
-  const linkClasses =
-    'flex items-center gap-2 px-2 py-2 text-sm font-medium rounded hover:bg-gray-100';
+  const [inventoryOpen, setInventoryOpen] = useState(
+    pathname.startsWith('/inventory'),
+  );
+  const [salesOpen, setSalesOpen] = useState(pathname.startsWith('/sales'));
+  const [reportsOpen, setReportsOpen] = useState(
+    pathname.startsWith('/reports'),
+  );
+
+  const isActive = (path: string) => pathname === path;
+  const isChildActive = (prefix: string) => pathname.startsWith(prefix);
+
+  const baseLinkClasses =
+    'flex items-center gap-3 px-4 py-2.5 text-sm rounded-lg transition-all';
   const submenuLinkClasses =
-    'flex items-center gap-2 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-100';
+    'flex items-center gap-3 pl-11 pr-3 py-2 text-sm rounded-lg transition-all';
+
+  const parentActiveClasses = 'bg-blue-50 text-blue-600 font-medium';
+  const submenuActiveClasses =
+    'bg-blue-50/70 text-blue-600 font-medium border-l-2 border-blue-500 pl-[calc(2.75rem-2px)]';
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-56 bg-white text-gray-800 p-4 border-r border-gray-200 z-40">
-      <div className="mb-10 flex justify-center">
-        <Image src="/BOTica2.png" alt="BOTica" height={120} width={120} />
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-white text-gray-800 p-4 border-r border-gray-100/70 z-40">
+      <div className="mb-7 flex items-center gap-3 pt-1 pl-4">
+        <div className="rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 p-2 shadow-sm">
+          <Pill className="w-5 h-5 text-white" />
+        </div>
+        <h1 className="text-xl font-bold tracking-tight">
+          <span className="text-blue-600">BOT</span>
+          <span className="text-gray-700">ica</span>
+        </h1>
       </div>
 
-      <nav className="space-y-2">
+      <nav className="space-y-1">
         {/* Dashboard */}
-        <Link href="/" className={linkClasses}>
-          <LayoutDashboard className="w-4 h-4" />
+        <Link
+          href="/"
+          className={`${baseLinkClasses} ${
+            isActive('/')
+              ? submenuActiveClasses
+              : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5" />
           Dashboard
         </Link>
 
@@ -49,44 +76,62 @@ const Sidebar = () => {
         <div className="flex flex-col">
           <button
             onClick={() => setInventoryOpen(!inventoryOpen)}
-            className={linkClasses}
+            className={`${baseLinkClasses} ${
+              isChildActive('/inventory')
+                ? parentActiveClasses
+                : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
+            }`}
           >
-            <Boxes className="w-4 h-4" />
+            <Boxes className="w-5 h-5" />
             Inventory
             {inventoryOpen ? (
-              <ChevronDown className="ml-auto w-4 h-4" />
+              <ChevronDown className="ml-auto w-4 h-4 text-gray-400" />
             ) : (
-              <ChevronRight className="ml-auto w-4 h-4" />
+              <ChevronRight className="ml-auto w-4 h-4 text-gray-400" />
             )}
           </button>
           {inventoryOpen && (
-            <div className="flex flex-col ml-4 mt-1">
-              <Link href="/inventory/products" className={submenuLinkClasses}>
-                <Package className="w-4 h-4" />
-                Products
-              </Link>
-              <Link href="/inventory/categories" className={submenuLinkClasses}>
-                <Tag className="w-4 h-4" />
-                Categories
-              </Link>
-              <Link href="/inventory/suppliers" className={submenuLinkClasses}>
-                <User className="w-4 h-4" />
-                Suppliers
-              </Link>
-              <Link
-                href="/inventory/adjustments"
-                className={submenuLinkClasses}
-              >
-                <RefreshCw className="w-4 h-4" />
-                Adjusments
-              </Link>
-              <Link
-                href="/inventory/purchase-order"
-                className={submenuLinkClasses}
-              >
-                <ClipboardList className="w-4 h-4" />
-                Purchase Order
-              </Link>
+            <div className="flex flex-col mt-1 space-y-0.5 ml-1">
+              {[
+                {
+                  href: '/inventory/products',
+                  label: 'Products',
+                  icon: <Package className="w-4 h-4" />,
+                },
+                {
+                  href: '/inventory/categories',
+                  label: 'Categories',
+                  icon: <Tag className="w-4 h-4" />,
+                },
+                {
+                  href: '/inventory/suppliers',
+                  label: 'Suppliers',
+                  icon: <User className="w-4 h-4" />,
+                },
+                {
+                  href: '/inventory/adjustments',
+                  label: 'Adjustments',
+                  icon: <RefreshCw className="w-4 h-4" />,
+                },
+                {
+                  href: '/inventory/purchase-order',
+                  label: 'Purchase Orders',
+                  icon: <ClipboardList className="w-4 h-4" />,
+                },
+              ].map(({ href, label, icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`${submenuLinkClasses} ${
+                    isActive(href)
+                      ? submenuActiveClasses
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                  }`}
+                >
+                  {icon}
+                  {label}
+                </Link>
+              ))}
             </div>
           )}
         </div>
@@ -95,23 +140,41 @@ const Sidebar = () => {
         <div className="flex flex-col">
           <button
             onClick={() => setSalesOpen(!salesOpen)}
-            className={linkClasses}
+            className={`${baseLinkClasses} ${
+              isChildActive('/sales')
+                ? parentActiveClasses
+                : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
+            }`}
           >
-            <ShoppingCart className="w-4 h-4" />
+            <ShoppingCart className="w-5 h-5" />
             Sales
             {salesOpen ? (
-              <ChevronDown className="ml-auto w-4 h-4" />
+              <ChevronDown className="ml-auto w-4 h-4 text-gray-400" />
             ) : (
-              <ChevronRight className="ml-auto w-4 h-4" />
+              <ChevronRight className="ml-auto w-4 h-4 text-gray-400" />
             )}
           </button>
           {salesOpen && (
-            <div className="flex flex-col ml-4 mt-1">
-              <Link href="/sales/pos" className={submenuLinkClasses}>
+            <div className="flex flex-col mt-1 space-y-0.5 ml-1">
+              <Link
+                href="/sales/pos"
+                className={`${submenuLinkClasses} ${
+                  isActive('/sales/pos')
+                    ? submenuActiveClasses
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                }`}
+              >
                 <ListOrdered className="w-4 h-4" />
                 POS Terminal
               </Link>
-              <Link href="/sales/transactions" className={submenuLinkClasses}>
+              <Link
+                href="/sales/transactions"
+                className={`${submenuLinkClasses} ${
+                  isActive('/sales/transactions')
+                    ? submenuActiveClasses
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                }`}
+              >
                 <ClipboardList className="w-4 h-4" />
                 Transactions
               </Link>
@@ -123,27 +186,52 @@ const Sidebar = () => {
         <div className="flex flex-col">
           <button
             onClick={() => setReportsOpen(!reportsOpen)}
-            className={linkClasses}
+            className={`${baseLinkClasses} ${
+              isChildActive('/reports')
+                ? parentActiveClasses
+                : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
+            }`}
           >
-            <BarChart2 className="w-4 h-4" />
+            <BarChart2 className="w-5 h-5" />
             Reports
             {reportsOpen ? (
-              <ChevronDown className="ml-auto w-4 h-4" />
+              <ChevronDown className="ml-auto w-4 h-4 text-gray-400" />
             ) : (
-              <ChevronRight className="ml-auto w-4 h-4" />
+              <ChevronRight className="ml-auto w-4 h-4 text-gray-400" />
             )}
           </button>
           {reportsOpen && (
-            <div className="flex flex-col ml-4 mt-1">
-              <Link href="/reports/sales" className={submenuLinkClasses}>
+            <div className="flex flex-col mt-1 space-y-0.5 ml-1">
+              <Link
+                href="/reports/sales"
+                className={`${submenuLinkClasses} ${
+                  isActive('/reports/sales')
+                    ? submenuActiveClasses
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                }`}
+              >
                 <FileText className="w-4 h-4" />
                 Sales Report
               </Link>
-              <Link href="/reports/inventory" className={submenuLinkClasses}>
+              <Link
+                href="/reports/inventory"
+                className={`${submenuLinkClasses} ${
+                  isActive('/reports/inventory')
+                    ? submenuActiveClasses
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                }`}
+              >
                 <Layers className="w-4 h-4" />
                 Inventory Report
               </Link>
-              <Link href="/reports/expiration" className={submenuLinkClasses}>
+              <Link
+                href="/reports/expiration"
+                className={`${submenuLinkClasses} ${
+                  isActive('/reports/expiration')
+                    ? submenuActiveClasses
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                }`}
+              >
                 <AlertTriangle className="w-4 h-4" />
                 Expiration Report
               </Link>
@@ -152,8 +240,15 @@ const Sidebar = () => {
         </div>
 
         {/* Settings */}
-        <Link href="/settings" className={linkClasses}>
-          <Settings className="w-4 h-4" />
+        <Link
+          href="/settings"
+          className={`${baseLinkClasses} ${
+            isActive('/settings')
+              ? submenuActiveClasses
+              : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
+          }`}
+        >
+          <Settings className="w-5 h-5" />
           Settings
         </Link>
       </nav>
