@@ -88,4 +88,45 @@ export interface Adjustment {
   createdAt: string | Date;
   currentStock?: number;
   pharmacyId?: number;
+  notes?: string;
+}
+
+export type PurchaseOrderStatus = 'PENDING' | 'RECEIVED' | 'CANCELLED';
+
+export interface PurchaseOrderParams {
+  supplierId: number;
+  orderDate: string;
+  notes?: string;
+  pharmacyId?: number;
+  items: {
+    productId: number;
+    quantity: number;
+    unitCost: string;
+  }[];
+}
+
+export interface PurchaseOrder {
+  id: number;
+  orderNumber: string;
+  supplierId: number;
+  userId: string;
+  orderDate: string;
+  status: PurchaseOrderStatus;
+  notes?: string | null;
+  pharmacyId: number;
+  createdAt: string;
+  supplierName?: string;
+  totalItems?: number;
+  totalQuantity?: number;
+}
+
+export interface PurchaseOrderItem {
+  id: number;
+  purchaseOrderId: number;
+  productId: number;
+  quantity: number;
+  unitCost: string; // Drizzle decimal => string
+  totalCost: string;
+  productName?: string;
+  productUnit?: string;
 }

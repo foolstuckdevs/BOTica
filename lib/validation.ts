@@ -1,6 +1,7 @@
 import { CategoryParams, SupplierParams } from '@/types';
 import { z } from 'zod';
 
+// ✅ Sign Up Schema
 export const signUpSchema = z.object({
   fullName: z.string().min(5, 'Full name must be at least 5 characters'),
   email: z.string().email(),
@@ -13,11 +14,13 @@ export const signUpSchema = z.object({
     ),
 });
 
+// ✅ Sign In Schema
 export const signInSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
 });
 
+// ✅ Category Schema
 export const categorySchema = z.object({
   name: z
     .string()
@@ -27,22 +30,20 @@ export const categorySchema = z.object({
     .string()
     .min(10, 'Description too short')
     .max(255, 'Description too long'),
-}) satisfies z.ZodType<CategoryParams>; // ensures zod validation matches the interface (CategoryParams)
+}) satisfies z.ZodType<CategoryParams>;
 
+// ✅ Product Schema
 export const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   genericName: z.string().optional(),
-  categoryId: z.number({
-    required_error: 'Category is required',
-  }),
+  categoryId: z.number().min(1, 'Category is required'), // fixed
   barcode: z
     .string()
     .max(50, 'Barcode must be at most 50 characters')
     .optional(),
   batchNumber: z.string().min(1, 'Batch number is required'),
-  expiryDate: z.date({
-    required_error: 'Expiry date is required',
-    invalid_type_error: 'Invalid date format',
+  expiryDate: z.date().refine((date) => !isNaN(date.getTime()), {
+    message: 'Expiry date is required',
   }),
   quantity: z.number().min(1, 'Quantity must be at least 1'),
   costPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid cost price'),
@@ -53,6 +54,7 @@ export const productSchema = z.object({
   imageUrl: z.string().optional().or(z.literal('')),
 });
 
+// ✅ Supplier Schema
 export const supplierSchema = z.object({
   name: z.string().min(1, 'Supplier name is required'),
   contactPerson: z.string().min(1, 'Contact person is required'),
@@ -61,6 +63,7 @@ export const supplierSchema = z.object({
   address: z.string().optional(),
 }) satisfies z.ZodType<SupplierParams>;
 
+// ✅ Adjustment Schema
 export const adjustmentSchema = z.object({
   productId: z.number(),
   quantityChange: z
@@ -79,4 +82,20 @@ export const adjustmentSchema = z.object({
     'RESTOCK',
   ]),
   notes: z.string().optional(),
+});
+
+// ✅ Purchase Order Schema
+export const purchaseOrderSchema = z.object({
+  supplierId: z.number().min(1, 'Supplier is required'),
+  orderDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: 'Order date is required',
+  }),
+  notes: z.string().max(255).optional(),
+  items: z.array(
+    z.object({
+      productId: z.number().min(1, 'Product is required'),
+      quantity: z.number().min(1, 'Quantity must be at least 1'),
+      unitCost: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid unit cost'),
+    }),
+  ),
 });

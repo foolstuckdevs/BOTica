@@ -80,9 +80,12 @@ const Sidebar = () => {
                 <RefreshCw className="w-4 h-4" />
                 Adjusments
               </Link>
-              <Link href="/inventory/purchases" className={submenuLinkClasses}>
+              <Link
+                href="/inventory/purchase-order"
+                className={submenuLinkClasses}
+              >
                 <ClipboardList className="w-4 h-4" />
-                Purchases
+                Purchase Order
               </Link>
             </div>
           )}

@@ -71,6 +71,20 @@
       "when": 1752336238015,
       "tag": "0009_strong_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1752497246297,
+      "tag": "0010_faulty_valkyrie",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1752582520354,
+      "tag": "0011_aberrant_bug",
+      "breakpoints": true
     }
   ]
 }

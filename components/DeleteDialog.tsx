@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,10 @@ import { AlertTriangle, Loader2 } from 'lucide-react';
 interface DeleteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => Promise<void>;
+  onConfirm: () => void;
   entityName: string;
   entityType?: string;
+  isLoading?: boolean;
 }
 
 export const DeleteDialog = ({
@@ -23,19 +24,8 @@ export const DeleteDialog = ({
   onConfirm,
   entityName,
   entityType = 'item',
+  isLoading = false,
 }: DeleteDialogProps) => {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleConfirm = async () => {
-    try {
-      setIsLoading(true);
-      await onConfirm();
-      onOpenChange(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleClose = () => {
     if (!isLoading) {
       onOpenChange(false);
@@ -51,7 +41,7 @@ export const DeleteDialog = ({
             <div>
               <DialogTitle>Delete {entityType}</DialogTitle>
               <p className="text-sm text-muted-foreground mt-2">
-                Are you sure you want to delete this{' '}
+                Are you sure you want to delete{' '}
                 {entityName ? `"${entityName}"` : `this ${entityType}`}? This
                 action cannot be undone.
               </p>
@@ -65,7 +55,7 @@ export const DeleteDialog = ({
           </Button>
           <Button
             variant="destructive"
-            onClick={handleConfirm}
+            onClick={onConfirm}
             disabled={isLoading}
           >
             {isLoading ? (

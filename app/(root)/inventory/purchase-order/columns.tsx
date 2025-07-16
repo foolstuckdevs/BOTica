@@ -2,39 +2,58 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
-import { Supplier } from '@/types';
-import SupplierActions from '@/components/SupplierActions';
+import { PurchaseOrder } from '@/types';
+import PurchaseOrderActions from '@/components/PurchaseOrderActions';
 
-export const columns: ColumnDef<Supplier>[] = [
+export const columns: ColumnDef<PurchaseOrder>[] = [
   {
     accessorKey: 'id',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ID" />
+      <DataTableColumnHeader column={column} title="PO #" />
     ),
   },
   {
-    accessorKey: 'name',
-    header: 'Supplier',
+    accessorKey: 'supplierName',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Supplier" />
+    ),
   },
   {
-    accessorKey: 'contactPerson',
-    header: 'Contact Person',
+    accessorKey: 'orderDate',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Order Date" />
+    ),
+    cell: ({ row }) => {
+      const date = new Date(row.getValue('orderDate'));
+      return date.toLocaleDateString();
+    },
   },
   {
-    accessorKey: 'phone',
-    header: 'Phone',
+    accessorKey: 'status',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
   },
   {
-    accessorKey: 'email',
-    header: 'Email',
+    accessorKey: 'totalItems',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Items" />
+    ),
   },
   {
-    accessorKey: 'address',
-    header: 'Address',
+    accessorKey: 'totalQuantity',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Quantity" />
+    ),
   },
   {
     id: 'actions',
-    header: 'Actions',
-    cell: ({ row }) => <SupplierActions supplier={row.original} />,
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Actions" />
+    ),
+    cell: ({ row }) => {
+      const order = row.original;
+      return <PurchaseOrderActions order={order} />;
+    },
   },
 ];

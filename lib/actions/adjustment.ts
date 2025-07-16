@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { Adjustment } from '@/types';
 
 /**
- * Get all inventory adjustments for a pharmacy
+ * Get all inventory adjustments
  */
 export const getAdjustments = async (pharmacyId: number) => {
   try {
@@ -17,6 +17,7 @@ export const getAdjustments = async (pharmacyId: number) => {
         productId: inventoryAdjustments.productId,
         quantityChange: inventoryAdjustments.quantityChange,
         reason: inventoryAdjustments.reason,
+        notes: inventoryAdjustments.notes,
         createdAt: inventoryAdjustments.createdAt,
         productName: products.name,
         currentStock: products.quantity,
@@ -33,7 +34,7 @@ export const getAdjustments = async (pharmacyId: number) => {
 };
 
 /**
- * Create an inventory adjustment for a pharmacy
+ * Create an inventory adjustment
  */
 export const createAdjustment = async ({
   productId,

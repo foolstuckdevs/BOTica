@@ -5,7 +5,13 @@ const nextConfig: NextConfig = {
     DATABASE_URL: process.env.DATABASE_URL,
   },
   images: {
-    domains: ['otbrcucsdrjvlrsdihnu.supabase.co'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'otbrcucsdrjvlrsdihnu.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
   },
 };
 

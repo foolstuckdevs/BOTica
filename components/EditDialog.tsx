@@ -1,13 +1,11 @@
+'use client';
+
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
-import { DefaultValues, FieldValues, Path, useForm } from 'react-hook-form';
-import { ZodType } from 'zod';
 import {
   Form,
   FormControl,
@@ -16,26 +14,31 @@ import {
   FormLabel,
   FormMessage,
 } from './ui/form';
+
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { useForm, FieldValues, DefaultValues, Path } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ZodType } from 'zod';
 
 interface Props<T extends FieldValues> {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   title: string;
   fields: {
-    name: keyof T;
+    name: Path<T>;
     label: string;
     type?: 'text' | 'number' | 'textarea';
   }[];
-  defaultValues: T;
+  defaultValues: DefaultValues<T>;
   onSubmit: (data: T) => Promise<{ success: boolean; error?: string }>;
-  schema: ZodType<T>; //make optional for forms without validation if needed
+  schema: ZodType<T, unknown, any>;
 }
 
 export const EditDialog = <T extends FieldValues>({
-  open,
+  open = false,
   onOpenChange,
   title,
   fields,
@@ -44,9 +47,10 @@ export const EditDialog = <T extends FieldValues>({
   schema,
 }: Props<T>) => {
   const router = useRouter();
+
   const form = useForm<T>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues as DefaultValues<T>,
+    defaultValues,
   });
 
   const handleSubmit = async (data: T) => {
@@ -73,9 +77,9 @@ export const EditDialog = <T extends FieldValues>({
           >
             {fields.map(({ name, label, type }) => (
               <FormField
-                key={name.toString()}
+                key={name}
                 control={form.control}
-                name={name as Path<T>}
+                name={name}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{label}</FormLabel>

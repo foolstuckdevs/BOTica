@@ -3,7 +3,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import { Adjustment } from '@/types';
-import AdjustmentActions from '@/components/AdjustmentActions';
 
 export const columns: ColumnDef<Adjustment>[] = [
   {
@@ -31,6 +30,13 @@ export const columns: ColumnDef<Adjustment>[] = [
     ),
   },
   {
+    accessorKey: 'notes',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Notes" />
+    ),
+    cell: ({ row }) => row.original.notes,
+  },
+  {
     accessorKey: 'createdAt',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Date" />
@@ -39,10 +45,5 @@ export const columns: ColumnDef<Adjustment>[] = [
       const date = new Date(row.original.createdAt);
       return date.toLocaleString();
     },
-  },
-  {
-    id: 'actions',
-    header: 'Actions',
-    cell: ({ row }) => <AdjustmentActions adjustment={row.original} />, // Optional
   },
 ];
