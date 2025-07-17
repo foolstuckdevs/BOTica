@@ -11,30 +11,67 @@ export const columns: ColumnDef<Supplier>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="ID" />
     ),
+    cell: ({ getValue }) => (
+      <span className="text-muted-foreground">{getValue<number>()}</span>
+    ),
+    enableSorting: true,
   },
   {
     accessorKey: 'name',
-    header: 'Supplier',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Supplier" />
+    ),
+    cell: ({ getValue }) => (
+      <span className="font-medium">{getValue<string>()}</span>
+    ),
+    enableSorting: true,
   },
   {
     accessorKey: 'contactPerson',
-    header: 'Contact Person',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Contact Person" />
+    ),
+    cell: ({ getValue }) => (
+      <span className="text-sm">{getValue<string>()}</span>
+    ),
   },
   {
     accessorKey: 'phone',
-    header: 'Phone',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Phone" />
+    ),
+    cell: ({ getValue }) => (
+      <span className="text-sm text-muted-foreground">
+        {getValue<string>()}
+      </span>
+    ),
   },
   {
     accessorKey: 'email',
-    header: 'Email',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Email" />
+    ),
+    cell: ({ getValue }) => (
+      <span className="text-sm text-muted-foreground">
+        {getValue<string>()}
+      </span>
+    ),
   },
   {
     accessorKey: 'address',
-    header: 'Address',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Address" />
+    ),
+    cell: ({ getValue }) => (
+      <span className="text-sm text-muted-foreground line-clamp-1">
+        {getValue<string>()}
+      </span>
+    ),
   },
   {
     id: 'actions',
-    header: 'Actions',
+    header: () => <div className="pl-3">Actions</div>,
     cell: ({ row }) => <SupplierActions supplier={row.original} />,
+    enableSorting: false,
   },
 ];

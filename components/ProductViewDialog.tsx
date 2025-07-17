@@ -15,12 +15,55 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { formatCurrency } from '@/lib/helpers/formatCurrency';
 
 interface ProductViewDialogProps {
   product: Product;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const Label = ({ children }: { children: React.ReactNode }) => (
+  <p className="text-muted-foreground text-xs">{children}</p>
+);
+
+const Value = ({ children }: { children: React.ReactNode }) => (
+  <p className="text-sm font-medium">{children}</p>
+);
+
+const InfoBlock = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+}) =>
+  value ? (
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      <Value>{value}</Value>
+    </div>
+  ) : null;
+
+const Section = ({
+  title,
+  icon,
+  color,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  color: string;
+  children: React.ReactNode;
+}) => (
+  <div className="space-y-4">
+    <h3 className={`text-sm font-semibold flex items-center gap-2 ${color}`}>
+      {icon}
+      {title}
+    </h3>
+    <div className="grid gap-4 pl-5">{children}</div>
+  </div>
+);
 
 const ProductViewDialog = ({
   product,
@@ -31,118 +74,80 @@ const ProductViewDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
+          <DialogTitle className="flex items-center gap-2 text-lg">
             <PackageIcon className="w-5 h-5 text-primary" />
             Product Details
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2 text-blue-600">
-              <InfoIcon className="w-5 h-5" />
-              Basic Information
-            </h3>
-            <div className="pl-6 space-y-2 text-sm">
-              <div>
-                <p className="text-gray-500">Product Name</p>
-                <p className="font-medium">{product.name}</p>
-              </div>
-              {product.genericName && (
-                <div>
-                  <p className="text-gray-500">Generic Name</p>
-                  <p className="font-medium">{product.genericName}</p>
-                </div>
-              )}
-              {product.categoryName && (
-                <div>
-                  <p className="text-gray-500">Category</p>
-                  <p className="font-medium">{product.categoryName}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-gray-500">Unit</p>
-                <p className="font-medium">{product.unit}</p>
-              </div>
-            </div>
-          </div>
+        <div className="space-y-10 pt-4">
+          {/* First Row: Basic Info & Inventory Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b pb-8">
+            <Section
+              title="Basic Information"
+              icon={<InfoIcon className="w-4 h-4" />}
+              color="text-blue-600"
+            >
+              <InfoBlock label="Product Name" value={product.name} />
+              <InfoBlock label="Generic Name" value={product.genericName} />
+              <InfoBlock label="Category" value={product.categoryName} />
+              <InfoBlock label="Unit" value={product.unit} />
+            </Section>
 
-          {/* Inventory Details */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2 text-green-600">
-              <BoxIcon className="w-5 h-5" />
-              Inventory Details
-            </h3>
-            <div className="pl-6 space-y-2 text-sm">
-              <div>
-                <p className="text-gray-500">Batch Number</p>
-                <p className="font-medium">{product.batchNumber}</p>
-              </div>
-              {product.barcode && (
-                <div>
-                  <p className="text-gray-500">Barcode</p>
-                  <p className="font-medium">{product.barcode}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-gray-500">Expiry Date</p>
-                <p className="font-medium">
-                  {product.expiryDate
+            <Section
+              title="Inventory Details"
+              icon={<BoxIcon className="w-4 h-4" />}
+              color="text-green-600"
+            >
+              <InfoBlock label="Batch Number" value={product.batchNumber} />
+              <InfoBlock label="Barcode" value={product.barcode} />
+              <InfoBlock
+                label="Expiry Date"
+                value={
+                  product.expiryDate
                     ? new Date(product.expiryDate).toLocaleDateString()
-                    : 'N/A'}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500">Quantity</p>
-                <p className="font-medium">{product.quantity}</p>
-              </div>
-            </div>
+                    : 'N/A'
+                }
+              />
+              <InfoBlock label="Quantity" value={product.quantity} />
+            </Section>
           </div>
 
-          {/* Pricing */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2 text-yellow-600">
-              <Banknote className="w-5 h-5" />
-              Pricing
-            </h3>
-            <div className="pl-6 space-y-2 text-sm">
-              <div>
-                <p className="text-gray-500">Cost Price</p>
-                <p className="font-medium">{product.costPrice}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Selling Price</p>
-                <p className="font-medium">{product.sellingPrice}</p>
-              </div>
-            </div>
-          </div>
+          {/* Second Row: Pricing & Stock */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Section
+              title="Pricing"
+              icon={<Banknote className="w-4 h-4" />}
+              color="text-yellow-600"
+            >
+              <InfoBlock
+                label="Cost Price"
+                value={formatCurrency(Number(product.costPrice))}
+              />
+              <InfoBlock
+                label="Selling Price"
+                value={formatCurrency(Number(product.sellingPrice))}
+              />
+            </Section>
 
-          {/* Stock Management */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2 text-purple-600">
-              <LayersIcon className="w-5 h-5" />
-              Stock Management
-            </h3>
-            <div className="pl-6 space-y-2 text-sm">
-              {product.minStockLevel !== undefined && (
-                <div>
-                  <p className="text-gray-500">Minimum Stock Level</p>
-                  <p className="font-medium">{product.minStockLevel}</p>
-                </div>
-              )}
-              {product.supplierName && (
-                <div>
-                  <p className="text-gray-500">Supplier</p>
-                  <p className="font-medium">{product.supplierName}</p>
-                </div>
-              )}
-            </div>
+            <Section
+              title="Stock Management"
+              icon={<LayersIcon className="w-4 h-4" />}
+              color="text-purple-600"
+            >
+              <InfoBlock
+                label="Minimum Stock Level"
+                value={product.minStockLevel}
+              />
+              <InfoBlock label="Supplier" value={product.supplierName} />
+            </Section>
           </div>
         </div>
 
-        <div className="flex justify-end mt-6">
-          <Button onClick={() => onOpenChange(false)}>Close</Button>
+        <div className="flex justify-end pt-6">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

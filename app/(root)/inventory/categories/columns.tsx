@@ -11,20 +11,37 @@ export const columns: ColumnDef<Category>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="ID" />
     ),
+    cell: ({ getValue }) => (
+      <span className="text-muted-foreground">{getValue<number>()}</span>
+    ),
+    enableSorting: true,
   },
   {
     accessorKey: 'name',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Category Name" />
     ),
+    cell: ({ getValue }) => (
+      <span className="font-medium">{getValue<string>()}</span>
+    ),
+    enableSorting: true,
   },
   {
     accessorKey: 'description',
-    header: 'Description',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Description" />
+    ),
+    cell: ({ getValue }) => (
+      <span className="text-sm text-muted-foreground">
+        {getValue<string>() || '-'}
+      </span>
+    ),
+    enableSorting: false,
   },
   {
     id: 'actions',
-    header: 'Actions',
+    header: () => <div className="pl-3">Actions</div>,
     cell: ({ row }) => <CategoryActions category={row.original} />,
+    enableSorting: false,
   },
 ];

@@ -4,6 +4,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import { PurchaseOrder } from '@/types';
 import PurchaseOrderActions from '@/components/PurchaseOrderActions';
+import { Badge } from '@/components/ui/badge';
 
 export const columns: ColumnDef<PurchaseOrder>[] = [
   {
@@ -33,6 +34,18 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Status" />
     ),
+    cell: ({ row }) => {
+      const status = row.getValue('status') as string;
+
+      const badgeVariant =
+        status === 'PENDING'
+          ? 'warning'
+          : status === 'RECEIVED'
+          ? 'default'
+          : 'destructive';
+
+      return <Badge variant={badgeVariant}>{status}</Badge>;
+    },
   },
   {
     accessorKey: 'totalItems',
@@ -48,9 +61,7 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
   },
   {
     id: 'actions',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Actions" />
-    ),
+    header: () => <div className="pl-3">Actions</div>,
     cell: ({ row }) => {
       const order = row.original;
       return <PurchaseOrderActions order={order} />;

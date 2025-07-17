@@ -339,7 +339,7 @@ const ProductForm = ({
                           <div className="w-full">
                             <Input
                               required
-                              placeholder="e.g., BX2023-001"
+                              placeholder="e.g., BX2025-001"
                               {...field}
                               className="w-full"
                             />
@@ -359,7 +359,7 @@ const ProductForm = ({
                         <FormControl>
                           <div className="w-full">
                             <Input
-                              placeholder="Scan or enter barcode"
+                              placeholder="Enter barcode"
                               {...field}
                               className="w-full"
                             />
@@ -460,25 +460,23 @@ const ProductForm = ({
                           <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
-                          <div className="relative w-full">
-                            <span className="absolute left-3 top-2.5 text-gray-500">
-                              $
-                            </span>
-                            <Input
-                              placeholder="0.00"
-                              {...field}
-                              className="pl-8 w-full"
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                if (
-                                  value === '' ||
-                                  /^\d*\.?\d{0,2}$/.test(value)
-                                ) {
-                                  field.onChange(value);
-                                }
-                              }}
-                            />
-                          </div>
+                          <Input
+                            placeholder="₱ 0.00"
+                            className="w-full"
+                            value={field.value}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/[^\d.]/g, '');
+                              if (raw === '' || /^\d*\.?\d{0,2}$/.test(raw)) {
+                                field.onChange(raw);
+                              }
+                            }}
+                            onBlur={() => {
+                              const value = parseFloat(field.value);
+                              if (!isNaN(value)) {
+                                field.onChange(value.toFixed(2));
+                              }
+                            }}
+                          />
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
@@ -496,20 +494,23 @@ const ProductForm = ({
                         </FormLabel>
                         <FormControl>
                           <div className="relative w-full">
-                            <span className="absolute left-3 top-2.5 text-gray-500">
-                              $
-                            </span>
                             <Input
-                              placeholder="0.00"
-                              {...field}
-                              className="pl-8 w-full"
+                              placeholder="₱ 0.00"
+                              className="w-full"
+                              value={field.value}
                               onChange={(e) => {
-                                const value = e.target.value;
-                                if (
-                                  value === '' ||
-                                  /^\d*\.?\d{0,2}$/.test(value)
-                                ) {
-                                  field.onChange(value);
+                                const raw = e.target.value.replace(
+                                  /[^\d.]/g,
+                                  '',
+                                );
+                                if (raw === '' || /^\d*\.?\d{0,2}$/.test(raw)) {
+                                  field.onChange(raw);
+                                }
+                              }}
+                              onBlur={() => {
+                                const value = parseFloat(field.value);
+                                if (!isNaN(value)) {
+                                  field.onChange(value.toFixed(2));
                                 }
                               }}
                             />

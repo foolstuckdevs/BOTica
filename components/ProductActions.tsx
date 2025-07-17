@@ -1,32 +1,32 @@
 'use client';
 
-import Link from 'next/link';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Product } from '@/types';
-import { deleteProduct, getProductById } from '@/lib/actions/products';
-import { toast } from 'sonner';
-import ProductViewDialog from './ProductViewDialog';
-import { DeleteDialog } from './DeleteDialog';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+
+import { Product } from '@/types';
+import { getProductById, deleteProduct } from '@/lib/actions/products';
+import { DeleteDialog } from './DeleteDialog';
+import ProductViewDialog from './ProductViewDialog';
 
 const ProductActions = ({ product }: { product: Product }) => {
   const router = useRouter();
   const [viewOpen, setViewOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productDetails, setProductDetails] = useState<Product | null>(null);
-  const pharmacyId = 1; // hardcoded for now fetch from session later
+  const pharmacyId = 1; // Replace with session-based ID later
 
   const handleView = async () => {
     try {
-      const productDetails = await getProductById(product.id, pharmacyId);
-      if (productDetails) {
-        setProductDetails(productDetails);
+      const details = await getProductById(product.id, pharmacyId);
+      if (details) {
+        setProductDetails(details);
         setViewOpen(true);
       }
     } catch (error) {
-      console.log(error);
+      console.error(error);
       toast.error('Failed to load product details');
     }
   };
@@ -34,52 +34,41 @@ const ProductActions = ({ product }: { product: Product }) => {
   const handleDelete = async () => {
     const result = await deleteProduct(product.id, pharmacyId);
     if (!result.success) {
-      toast.message('Failed to delete product');
+      toast.error('Failed to delete product');
       return;
     }
+
     toast.success('Product deleted');
     setDeleteDialogOpen(false);
     router.refresh();
   };
 
   return (
-    <div className="flex space-x-2">
-      {/* View Button */}
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={handleView}
-        className="h-8 w-8"
-        aria-label="View product"
-      >
-        <Eye className="h-4 w-4" />
-      </Button>
+    <>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" onClick={handleView} title="View">
+          <Eye className="h-4 w-4 text-gray-600" />
+        </Button>
 
-      {/* Edit Button */}
-      <Button
-        variant="outline"
-        size="icon"
-        asChild
-        className="h-8 w-8"
-        aria-label="Edit product"
-      >
-        <Link href={`/inventory/products/${product.id}/edit`}>
-          <Pencil className="h-4 w-4" />
-        </Link>
-      </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push(`/inventory/products/${product.id}/edit`)}
+          title="Edit"
+        >
+          <Pencil className="h-4 w-4 text-gray-600" />
+        </Button>
 
-      {/* Delete Button */}
-      <Button
-        variant="destructive"
-        size="icon"
-        onClick={() => setDeleteDialogOpen(true)}
-        className="h-8 w-8"
-        aria-label="Delete product"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setDeleteDialogOpen(true)}
+          title="Delete"
+        >
+          <Trash2 className="h-4 w-4 text-red-600" />
+        </Button>
+      </div>
 
-      {/* View Dialog */}
       {productDetails && (
         <ProductViewDialog
           product={productDetails}
@@ -88,14 +77,14 @@ const ProductActions = ({ product }: { product: Product }) => {
         />
       )}
 
-      {/* Delete Dialog */}
       <DeleteDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDelete}
-        entityName="Product"
+        entityName={product.name}
+        entityType="product"
       />
-    </div>
+    </>
   );
 };
 

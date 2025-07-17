@@ -1,21 +1,21 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { Pencil, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { deleteCategory, updateCategory } from '@/lib/actions/categories';
-import { toast } from 'sonner';
-import EditDialog from './EditDialog';
-import { categorySchema } from '@/lib/validation';
-import { Category } from '@/types';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Pencil, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { DeleteDialog } from './DeleteDialog';
+import EditDialog from './EditDialog';
+import { Category } from '@/types';
+import { updateCategory, deleteCategory } from '@/lib/actions/categories';
+import { categorySchema } from '@/lib/validation';
 
 export function CategoryActions({ category }: { category: Category }) {
   const router = useRouter();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const pharmacyId = 1; // hardcoded for now fetch from session later
+  const pharmacyId = 1; // Replace with session-based logic later
 
   const handleDelete = async () => {
     const result = await deleteCategory(category.id, pharmacyId);
@@ -29,17 +29,27 @@ export function CategoryActions({ category }: { category: Category }) {
   };
 
   return (
-    <div className="flex space-x-2">
-      {/* Edit Button */}
-      <Button
-        variant="outline"
-        size="xs"
-        onClick={() => setEditDialogOpen(true)}
-      >
-        <Pencil className="h-3 w-3" />
-      </Button>
+    <>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setEditDialogOpen(true)}
+          title="Edit"
+        >
+          <Pencil className="h-4 w-4 text-gray-600" />
+        </Button>
 
-      {/* Edit Dialog */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setDeleteDialogOpen(true)}
+          title="Delete"
+        >
+          <Trash2 className="h-4 w-4 text-red-600" />
+        </Button>
+      </div>
+
       <EditDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
@@ -63,22 +73,13 @@ export function CategoryActions({ category }: { category: Category }) {
         schema={categorySchema}
       />
 
-      {/* Delete Button */}
-      <Button
-        variant="destructive"
-        size="xs"
-        onClick={() => setDeleteDialogOpen(true)}
-      >
-        <Trash2 className="h-3 w-3" />
-      </Button>
-
-      {/* Delete Dialog */}
       <DeleteDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDelete}
-        entityName="Category"
+        entityName={category.name}
+        entityType="category"
       />
-    </div>
+    </>
   );
 }

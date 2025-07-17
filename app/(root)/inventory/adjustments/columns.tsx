@@ -10,23 +10,43 @@ export const columns: ColumnDef<Adjustment>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="ID" />
     ),
+    cell: ({ getValue }) => (
+      <span className="text-muted-foreground">{getValue<number>()}</span>
+    ),
+    enableSorting: true,
   },
   {
     accessorKey: 'productName',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Product" />
     ),
+    cell: ({ getValue }) => (
+      <span className="font-medium">{getValue<string>()}</span>
+    ),
   },
   {
     accessorKey: 'quantityChange',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Quantity Change" />
+      <DataTableColumnHeader column={column} title="Qty Change" />
     ),
+    cell: ({ getValue }) => {
+      const value = getValue<number>();
+      const isNegative = value < 0;
+      return (
+        <span className={isNegative ? 'text-red-500' : 'text-green-600'}>
+          {isNegative ? '' : '+'}
+          {value}
+        </span>
+      );
+    },
   },
   {
     accessorKey: 'reason',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Reason" />
+    ),
+    cell: ({ getValue }) => (
+      <span className="text-sm">{getValue<string>()}</span>
     ),
   },
   {
@@ -34,16 +54,30 @@ export const columns: ColumnDef<Adjustment>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Notes" />
     ),
-    cell: ({ row }) => row.original.notes,
+    cell: ({ getValue }) => (
+      <span className="text-muted-foreground text-sm line-clamp-1">
+        {getValue<string>() || '—'}
+      </span>
+    ),
   },
   {
     accessorKey: 'createdAt',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Date" />
     ),
-    cell: ({ row }) => {
-      const date = new Date(row.original.createdAt);
-      return date.toLocaleString();
+    cell: ({ getValue }) => {
+      const date = new Date(getValue<string>());
+      return (
+        <span className="text-sm text-muted-foreground">
+          {date.toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+          })}
+        </span>
+      );
     },
   },
 ];
