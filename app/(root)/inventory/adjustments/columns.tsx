@@ -16,7 +16,7 @@ export const columns: ColumnDef<Adjustment>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: 'productName',
+    accessorKey: 'name',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Product" />
     ),
@@ -24,6 +24,7 @@ export const columns: ColumnDef<Adjustment>[] = [
       <span className="font-medium">{getValue<string>()}</span>
     ),
   },
+
   {
     accessorKey: 'quantityChange',
     header: ({ column }) => (

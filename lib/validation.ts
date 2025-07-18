@@ -58,21 +58,26 @@ export const productSchema = z.object({
 export const supplierSchema = z.object({
   name: z.string().min(1, 'Supplier name is required'),
   contactPerson: z.string().min(1, 'Contact person is required'),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal('')),
-  address: z.string().optional(),
+  phone: z
+    .string()
+    .min(10, 'Phone number must be at least 10 digits')
+    .regex(/^(\+63|0)?9\d{9}$/, 'Invalid Philippine mobile number'),
+  email: z.string().min(1, 'Email is required').email('Invalid email address'),
+  address: z.string().min(1, 'Address is required'),
 }) satisfies z.ZodType<SupplierParams>;
 
 // ✅ Adjustment Schema
 export const adjustmentSchema = z.object({
-  productId: z.number(),
+  productId: z.number().min(1, 'Product selection is required'),
+
   quantityChange: z
     .number()
-    .min(-1000, 'Too low')
-    .max(1000, 'Too high')
+    .min(-1000, 'Quantity too low (min: -1000)')
+    .max(1000, 'Quantity too high (max: 1000)')
     .refine((val) => val !== 0, {
       message: 'Quantity change cannot be 0',
     }),
+
   reason: z.enum([
     'DAMAGED',
     'EXPIRED',
@@ -81,7 +86,8 @@ export const adjustmentSchema = z.object({
     'CORRECTION',
     'RESTOCK',
   ]),
-  notes: z.string().optional(),
+
+  notes: z.string().max(255, 'Notes must be under 255 characters').optional(),
 });
 
 // ✅ Purchase Order Schema

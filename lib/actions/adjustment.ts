@@ -19,7 +19,7 @@ export const getAdjustments = async (pharmacyId: number) => {
         reason: inventoryAdjustments.reason,
         notes: inventoryAdjustments.notes,
         createdAt: inventoryAdjustments.createdAt,
-        productName: products.name,
+        name: products.name,
         currentStock: products.quantity,
       })
       .from(inventoryAdjustments)

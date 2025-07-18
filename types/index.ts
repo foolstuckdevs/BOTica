@@ -82,7 +82,7 @@ export interface ProductParams {
 export interface Adjustment {
   id: number;
   productId: number;
-  productName: string;
+  name: string;
   quantityChange: number;
   reason: 'DAMAGED' | 'EXPIRED' | 'LOST' | 'THEFT' | 'CORRECTION' | 'RESTOCK';
   createdAt: string | Date;
