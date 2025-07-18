@@ -14,7 +14,7 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
     ),
   },
   {
-    accessorKey: 'supplierName',
+    accessorKey: 'name',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Supplier" />
     ),

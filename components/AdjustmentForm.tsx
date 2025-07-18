@@ -132,7 +132,7 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
       setPendingAdjustments([]);
       setShowConfirmation(true);
       toast.success('All adjustments submitted successfully');
-      setTimeout(() => setShowConfirmation(false), 3000);
+      setTimeout(() => router.push('/inventory/adjustments'), 1500);
     } catch (error) {
       console.error('Adjustment error:', error);
       toast.error('Something went wrong while submitting.');
@@ -153,16 +153,33 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 pb-20">
+    <div className="max-w-6xl mx-auto p-4 md:p-6">
+      <Button
+        variant="ghost"
+        onClick={() => router.push('/inventory/adjustments')}
+        className="group flex items-center gap-2 rounded-full text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4 group-hover:translate-x-[-2px] transition-transform" />
+        <span>Back to Adjustments</span>
+      </Button>
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Inventory Adjustments
-        </h1>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Inventory Adjustments
+            </h1>
+            <p className="text-sm text-gray-500">
+              Update stock levels and track changes
+            </p>
+          </div>
+        </div>
+
         {showConfirmation && (
-          <div className="flex items-center space-x-2 text-green-600 bg-green-50 px-4 py-2 rounded-lg border border-green-100">
+          <div className="flex items-center gap-2 text-green-600 bg-green-50 px-4 py-2 rounded-lg border border-green-100">
             <CheckCircle className="w-5 h-5" />
-            <span>Submitted successfully!</span>
+            <span className="font-medium">Submitted successfully!</span>
           </div>
         )}
       </div>
@@ -170,82 +187,85 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
       {/* Main Content */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left Column - Search & Adjustment Form */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-6">
           {/* Search box */}
-          <div className="bg-white border rounded-lg p-4 shadow-sm">
-            <h2 className="text-lg font-semibold mb-3 flex items-center text-gray-800">
-              <Search className="w-5 h-5 mr-2 text-gray-600" />
-              Search Products
-            </h2>
+          <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium text-gray-800">
+                Search Products
+              </h2>
+              {pendingAdjustments.length > 0 && (
+                <span className="text-sm text-gray-500">
+                  {pendingAdjustments.length} pending adjustment
+                  {pendingAdjustments.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
 
             <div className="relative">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
               <input
                 type="text"
-                placeholder="Search products (min. 2 characters)..."
+                placeholder="Search by product name (min. 2 chars)..."
                 value={search}
                 onChange={handleSearchChange}
-                className="w-full pl-10 pr-8 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg bg-gray-50 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition"
               />
               {search && (
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   onClick={clearSearch}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 h-auto w-auto p-1"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                   aria-label="Clear search"
                 >
-                  <X className="w-4 h-4" />
-                </Button>
+                  <X className="h-5 w-5" />
+                </button>
               )}
             </div>
 
             {isSearching && (
-              <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
+              <div className="mt-4 space-y-2 max-h-72 overflow-y-auto">
                 {filteredProducts.length > 0 ? (
                   filteredProducts.map((product) => (
-                    <div
+                    <button
                       key={product.id}
-                      className="cursor-pointer border rounded-lg p-3 hover:bg-gray-50 transition flex justify-between items-center"
                       onClick={() => selectProduct(product)}
+                      className="w-full border text-left p-3 rounded-lg hover:bg-gray-50"
                     >
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {product.name}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Stock: {product.quantity} {product.unit.toLowerCase()}
-                          s
-                          {product.minStockLevel && (
-                            <span className="ml-2 text-orange-600">
-                              (Min: {product.minStockLevel})
-                            </span>
-                          )}
-                        </div>
+                      <div className="font-medium text-gray-900">
+                        {product.name}
                       </div>
-                      <div className="text-sm text-blue-600 font-medium">
-                        Select
+                      <div className="flex items-center text-xs gap-2 mt-1 text-gray-600">
+                        <span>
+                          {product.unit} • Stock: {product.quantity}
+                        </span>
+                        {product.minStockLevel && (
+                          <span className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
+                            Min: {product.minStockLevel}
+                          </span>
+                        )}
                       </div>
-                    </div>
+                    </button>
                   ))
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Search className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                    <p>No results found for {search}</p>
+                  <div className="text-center py-6 text-gray-500">
+                    <Search className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                    <p>No products found for {search}</p>
+                    <p className="text-xs mt-1">Try a different search term</p>
                   </div>
                 )}
               </div>
             )}
 
             {!isSearching && !selectedProduct && (
-              <div className="text-center py-8 text-gray-500">
-                <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <h3 className="text-lg font-medium text-gray-600 mb-1">
-                  Search for products
+              <div className="text-center py-8 text-gray-400">
+                <Package className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                <h3 className="text-base font-medium text-gray-500">
+                  Search for products to adjust
                 </h3>
-                <p className="text-sm max-w-md mx-auto">
-                  Enter at least 2 characters to search and adjust product
-                  inventory levels
+                <p className="text-sm mt-1">
+                  Enter at least 2 characters to begin searching
                 </p>
               </div>
             )}
@@ -253,56 +273,74 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
 
           {/* Adjustment Form */}
           {selectedProduct && (
-            <div className="bg-white border rounded-lg p-4 space-y-4 shadow-sm">
-              <h3 className="text-lg font-semibold flex items-center text-gray-800">
-                <Package className="w-5 h-5 mr-2 text-gray-600" />
-                Adjust: {selectedProduct.name}
-              </h3>
+            <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-800">
+                  Adjust Stock: {selectedProduct.name}
+                </h3>
+                <button
+                  onClick={() => {
+                    setSelectedProduct(null);
+                    setSearch('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-gray-50 p-3 rounded-lg border">
-                  <div className="text-sm text-gray-600">Current Stock</div>
-                  <div className="text-xl font-bold text-gray-800">
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">
+                    Current
+                  </div>
+                  <div className="text-lg font-semibold text-gray-800">
                     {selectedProduct.quantity}{' '}
-                    {selectedProduct.unit.toLowerCase()}s
+                    {selectedProduct.unit.toLowerCase()}
                   </div>
                 </div>
 
                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                  <div className="text-sm text-blue-600">Adjustment</div>
-                  <div className="text-xl font-bold text-blue-700">
+                  <div className="text-xs font-medium text-blue-500 uppercase tracking-wider mb-1">
+                    Adjustment
+                  </div>
+                  <div
+                    className={`text-lg font-semibold ${
+                      quantityChange >= 0 ? 'text-blue-600' : 'text-red-600'
+                    }`}
+                  >
                     {quantityChange >= 0 ? '+' : ''}
                     {quantityChange}
                   </div>
                 </div>
 
                 <div className="bg-green-50 p-3 rounded-lg border border-green-100">
-                  <div className="text-sm text-green-600">New Stock</div>
-                  <div className="text-xl font-bold text-green-700">
+                  <div className="text-xs font-medium text-green-500 uppercase tracking-wider mb-1">
+                    New Stock
+                  </div>
+                  <div className="text-lg font-semibold text-green-600">
                     {selectedProduct.quantity + quantityChange}{' '}
-                    {selectedProduct.unit.toLowerCase()}s
+                    {selectedProduct.unit.toLowerCase()}
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Quantity Change <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      {...register('quantityChange', { valueAsNumber: true })}
-                      placeholder="e.g. -5 or 10"
-                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    {errors.quantityChange && (
-                      <p className="mt-1 text-sm text-red-600">
-                        {errors.quantityChange.message}
-                      </p>
-                    )}
-                  </div>
+                  <input
+                    type="number"
+                    {...register('quantityChange', { valueAsNumber: true })}
+                    placeholder="e.g. -5 or +10"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  {errors.quantityChange && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.quantityChange.message}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -311,9 +349,9 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
                   </label>
                   <select
                     {...register('reason')}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="">Select a reason</option>
+                    <option value="">Select adjustment reason</option>
                     {[
                       { value: 'DAMAGED', label: 'Damaged Goods' },
                       { value: 'EXPIRED', label: 'Expired Products' },
@@ -341,109 +379,122 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
                   <textarea
                     {...register('notes')}
                     rows={2}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Additional details about this adjustment..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Add any additional details..."
                   />
                 </div>
-              </div>
 
-              <div className="flex space-x-3 pt-2">
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={() => {
-                    setSelectedProduct(null);
-                    setSearch('');
-                  }}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleSubmit(onSubmit)}
-                  className="flex-1"
-                >
-                  Add Adjustment
-                </Button>
-              </div>
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => {
+                      setSelectedProduct(null);
+                      setSearch('');
+                    }}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1">
+                    Add to Pending
+                  </Button>
+                </div>
+              </form>
             </div>
           )}
         </div>
 
         {/* Right Column - Pending Adjustments */}
-        <div className="space-y-4">
-          <div className="bg-white border rounded-lg p-4 shadow-sm">
-            <h3 className="text-lg font-semibold mb-3 flex justify-between items-center text-gray-800">
-              <span>Pending Adjustments</span>
-              <span className="text-sm bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full">
-                {pendingAdjustments.length}
-              </span>
-            </h3>
-
-            <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
-              {pendingAdjustments.map((adj, index) => (
-                <div
-                  key={index}
-                  className="bg-white border rounded-lg p-3 shadow-xs hover:shadow-sm transition"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">
-                        {adj.productName}
-                      </div>
-                      <div className="flex items-center mt-1 space-x-4">
-                        <span className="text-sm text-gray-600">
-                          {adj.currentStock} →{' '}
-                          <span className="font-semibold">{adj.newStock}</span>{' '}
-                          {adj.unit.toLowerCase()}s
-                        </span>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full ${
-                            adj.quantityChange > 0
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {adj.quantityChange > 0 ? '+' : ''}
-                          {adj.quantityChange}
-                        </span>
-                      </div>
-                      <div className="mt-2 text-xs text-gray-500">
-                        <span className="font-medium">Reason:</span>{' '}
-                        {adj.reason}
-                        {adj.notes && (
-                          <div className="mt-1">
-                            <span className="font-medium">Notes:</span>{' '}
-                            {adj.notes}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removePendingAdjustment(index)}
-                      className="text-gray-400 hover:text-red-500 h-auto w-auto p-1"
-                      aria-label="Remove adjustment"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-800">
+                Pending Adjustments
+              </h3>
+              {pendingAdjustments.length > 0 && (
+                <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full">
+                  {pendingAdjustments.length}
+                </span>
+              )}
             </div>
+
+            {pendingAdjustments.length > 0 ? (
+              <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+                {pendingAdjustments.map((adj, index) => (
+                  <div
+                    key={index}
+                    className="group relative bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-gray-300 transition"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {adj.productName}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm text-gray-600">
+                            {adj.currentStock} →{' '}
+                            <span className="font-semibold">
+                              {adj.newStock}
+                            </span>{' '}
+                            {adj.unit.toLowerCase()}
+                          </span>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              adj.quantityChange > 0
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {adj.quantityChange > 0 ? '+' : ''}
+                            {adj.quantityChange}
+                          </span>
+                        </div>
+                        <div className="mt-2">
+                          <span className="text-xs font-medium text-gray-500">
+                            {adj.reason}
+                          </span>
+                          {adj.notes && (
+                            <p className="mt-1 text-xs text-gray-500 line-clamp-2">
+                              {adj.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removePendingAdjustment(index)}
+                        className="text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                        aria-label="Remove adjustment"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                <Package className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                <h3 className="text-base font-medium text-gray-500">
+                  No pending adjustments
+                </h3>
+                <p className="text-sm mt-1">
+                  Add adjustments from the search panel
+                </p>
+              </div>
+            )}
 
             {pendingAdjustments.length > 0 && (
               <Button
                 onClick={submitAllAdjustments}
                 disabled={loading}
                 className="w-full mt-4"
+                size="lg"
               >
                 {loading ? (
-                  <span className="flex items-center justify-center">
+                  <span className="flex items-center justify-center gap-2">
                     <svg
-                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      className="animate-spin h-4 w-4 text-white"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -465,32 +516,12 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
                     Processing...
                   </span>
                 ) : (
-                  `Submit All (${pendingAdjustments.length})`
+                  `Submit All Adjustments`
                 )}
               </Button>
             )}
-
-            {pendingAdjustments.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <h3 className="text-lg font-medium text-gray-600 mb-1">
-                  No pending adjustments
-                </h3>
-                <p className="text-sm">
-                  Add adjustments from the search panel to see them here
-                </p>
-              </div>
-            )}
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => router.push('/inventory/adjustments')}
-          className="flex items-center gap-1 shadow-sm"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Back
-        </Button>
       </div>
     </div>
   );

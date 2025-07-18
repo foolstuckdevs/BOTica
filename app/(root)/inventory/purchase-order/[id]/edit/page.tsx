@@ -3,9 +3,10 @@ import { getSuppliers } from '@/lib/actions/suppliers';
 import { getProducts } from '@/lib/actions/products';
 import { getPurchaseOrderById } from '@/lib/actions/puchase-order';
 
-const page = async ({ params }: { params: { id: string } }) => {
+const page = async ({ params }: { params: Promise<{ id: string }> }) => {
+  const { id } = await params;
   const pharmacyId = 1; // Replace with session pharmacyId later
-  const orderId = Number(params.id);
+  const orderId = Number(id);
 
   const [order, suppliers, products] = await Promise.all([
     getPurchaseOrderById(orderId, pharmacyId),

@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
+import { ChevronLeft } from 'lucide-react';
 
 type PurchaseOrderFormValues = z.infer<typeof purchaseOrderSchema>;
 
@@ -145,6 +146,14 @@ const PurchaseOrderForm = ({
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-6">
+      <Button
+        variant="ghost"
+        onClick={() => router.push('/inventory/purchase-order')}
+        className="group flex items-center gap-2 rounded-full text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4 group-hover:translate-x-[-2px] transition-transform" />
+        <span>Back to Purchase Orders</span>
+      </Button>
       <div className="mb-8">
         <h1 className="text-2xl font-bold">
           {type === 'create' ? 'Create' : 'Edit'} Purchase Order
@@ -239,29 +248,53 @@ const PurchaseOrderForm = ({
               placeholder="Search products..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              className="w-full"
             />
+
             {search.length >= 2 && (
-              <div className="border rounded-md max-h-48 overflow-y-auto">
+              <div className="mt-2 border rounded-lg bg-white max-h-60 overflow-y-auto">
                 {filteredProducts.length > 0 ? (
-                  filteredProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="flex justify-between px-4 py-2 hover:bg-gray-50 cursor-pointer border-b last:border-none"
-                      onClick={() => handleAddProduct(product)}
-                    >
-                      <span>{product.name}</span>
-                      <span className="text-xs text-gray-500">
-                        Stock: {product.quantity}
-                      </span>
-                    </div>
-                  ))
+                  filteredProducts.map((product) => {
+                    const alreadyAdded = fields.some(
+                      (item) => item.productId === product.id,
+                    );
+
+                    return (
+                      <div
+                        key={product.id}
+                        className={`flex justify-between items-center px-4 py-2 hover:bg-gray-50 cursor-pointer ${
+                          alreadyAdded ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                        onClick={() => {
+                          if (!alreadyAdded) handleAddProduct(product);
+                        }}
+                      >
+                        <div>
+                          <p className="font-medium">{product.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs text-gray-500">
+                              {product.unit} • Stock: {product.quantity}
+                            </p>
+                            <span className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
+                              Min: {product.minStockLevel}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="text-center py-4 text-sm text-gray-500">
-                    No products found
+                    No matching products found
                   </div>
                 )}
               </div>
             )}
+
+            {itemError && (
+              <p className="text-sm text-red-500 mt-2">{itemError}</p>
+            )}
+
             {itemError && <p className="text-sm text-red-500">{itemError}</p>}
           </CardContent>
         </Card>
@@ -352,7 +385,15 @@ const PurchaseOrderForm = ({
         )}
 
         {/* Submit */}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSubmitting}
+            onClick={() => router.push('/inventory/purchase-order')}
+          >
+            Cancel
+          </Button>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting
               ? type === 'create'

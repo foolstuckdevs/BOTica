@@ -61,7 +61,7 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
           createdAt: order.createdAt
             ? new Date(order.createdAt).toISOString()
             : new Date().toISOString(),
-          supplierName: order.supplierName ?? undefined,
+          name: order.supplierName ?? undefined,
           totalItems,
           totalQuantity,
         };
