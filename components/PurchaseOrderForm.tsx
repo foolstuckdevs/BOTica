@@ -28,6 +28,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { ChevronLeft } from 'lucide-react';
+import { formatCurrency } from '@/lib/helpers/formatCurrency';
 
 type PurchaseOrderFormValues = z.infer<typeof purchaseOrderSchema>;
 
@@ -143,6 +144,15 @@ const PurchaseOrderForm = ({
       setIsSubmitting(false);
     }
   };
+
+  // Calculate total order cost from current form values
+  const total = fields.reduce(
+    (sum, item, idx) =>
+      sum +
+      Number(form.watch(`items.${idx}.quantity`) || 1) *
+        parseFloat(form.watch(`items.${idx}.unitCost`) || '0'),
+    0,
+  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-6">
@@ -380,6 +390,13 @@ const PurchaseOrderForm = ({
                   })}
                 </tbody>
               </table>
+              {/* Total Cost */}
+              <div className="mt-4 flex justify-end items-center gap-4">
+                <span className="font-medium text-gray-700">Total Cost:</span>
+                <span className="text-lg font-semibold">
+                  {formatCurrency(total)}
+                </span>
+              </div>
             </CardContent>
           </Card>
         )}

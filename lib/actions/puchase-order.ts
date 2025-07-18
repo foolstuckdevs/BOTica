@@ -5,6 +5,7 @@ import {
   purchaseOrders,
   purchaseOrderItems,
   suppliers,
+  users,
 } from '@/database/schema';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -48,6 +49,10 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
           (sum, item) => sum + Number(item.quantity),
           0,
         );
+        const totalCost = items.reduce(
+          (sum, item) => sum + parseFloat(item.totalCost || '0'),
+          0,
+        );
 
         const formattedOrder = {
           id: order.id,
@@ -64,6 +69,7 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
           name: order.supplierName ?? undefined,
           totalItems,
           totalQuantity,
+          totalCost,
         };
 
         return formattedOrder;
@@ -80,9 +86,22 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
 // Get a single purchase order with items
 export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
   try {
-    const order = await db
-      .select()
+    const orderArr = await db
+      .select({
+        id: purchaseOrders.id,
+        orderNumber: purchaseOrders.orderNumber,
+        supplierId: purchaseOrders.supplierId,
+        userId: purchaseOrders.userId,
+        orderDate: purchaseOrders.orderDate,
+        status: purchaseOrders.status,
+        notes: purchaseOrders.notes,
+        pharmacyId: purchaseOrders.pharmacyId,
+        createdAt: purchaseOrders.createdAt,
+        supplierName: suppliers.name,
+      })
       .from(purchaseOrders)
+      .leftJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
+      .leftJoin(users, eq(users.id, purchaseOrders.userId))
       .where(
         and(
           eq(purchaseOrders.id, id),
@@ -90,26 +109,30 @@ export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
         ),
       );
 
-    if (!order.length) return null;
+    if (!orderArr.length) return null;
+    const order = orderArr[0];
 
     const itemsRaw = await db
       .select({
+        id: purchaseOrderItems.id,
+        purchaseOrderId: purchaseOrderItems.purchaseOrderId,
         productId: purchaseOrderItems.productId,
         quantity: purchaseOrderItems.quantity,
         unitCost: purchaseOrderItems.unitCost,
+        totalCost: purchaseOrderItems.totalCost,
       })
       .from(purchaseOrderItems)
       .where(eq(purchaseOrderItems.purchaseOrderId, id));
 
     const formatted = {
-      id: order[0].id,
-      supplierId: order[0].supplierId,
-      orderDate: new Date(order[0].orderDate).toISOString(),
-      notes: order[0].notes ?? '',
+      ...order,
+      orderDate: new Date(order.orderDate).toISOString(),
+      createdAt: order.createdAt
+        ? new Date(order.createdAt).toISOString()
+        : new Date(order.orderDate).toISOString(),
+      notes: order.notes ?? '',
       items: itemsRaw.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        unitCost: item.unitCost,
+        ...item,
       })),
     };
 

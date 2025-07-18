@@ -118,6 +118,7 @@ export interface PurchaseOrder {
   supplierName?: string;
   totalItems?: number;
   totalQuantity?: number;
+  totalCost: number;
 }
 
 export interface PurchaseOrderItem {

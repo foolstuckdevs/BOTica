@@ -342,6 +342,8 @@ const ProductForm = ({
                               placeholder="e.g., BX2025-001"
                               {...field}
                               className="w-full"
+                              readOnly={type === 'update'}
+                              disabled={type === 'update'}
                             />
                           </div>
                         </FormControl>
@@ -551,6 +553,8 @@ const ProductForm = ({
                               onChange={(e) =>
                                 field.onChange(parseInt(e.target.value))
                               }
+                              readOnly={type === 'update'}
+                              disabled={type === 'update'}
                             />
                           </div>
                         </FormControl>

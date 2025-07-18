@@ -5,6 +5,7 @@ import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import { PurchaseOrder } from '@/types';
 import PurchaseOrderActions from '@/components/PurchaseOrderActions';
 import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/lib/helpers/formatCurrency';
 
 export const columns: ColumnDef<PurchaseOrder>[] = [
   {
@@ -25,8 +26,13 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
       <DataTableColumnHeader column={column} title="Order Date" />
     ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue('orderDate'));
-      return date.toLocaleDateString();
+      const dateValue = row.getValue<string>('orderDate');
+      const date = new Date(dateValue);
+      return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
     },
   },
   {
@@ -35,7 +41,7 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
       <DataTableColumnHeader column={column} title="Status" />
     ),
     cell: ({ row }) => {
-      const status = row.getValue('status') as string;
+      const status = row.getValue<string>('status');
 
       const badgeVariant =
         status === 'PENDING'
@@ -59,6 +65,17 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
       <DataTableColumnHeader column={column} title="Quantity" />
     ),
   },
+  {
+    accessorKey: 'totalCost',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Total Cost" />
+    ),
+    cell: ({ row }) => {
+      const cost = row.getValue<number>('totalCost');
+      return <div>{formatCurrency(cost)}</div>;
+    },
+  },
+
   {
     id: 'actions',
     header: () => <div className="pl-3">Actions</div>,
