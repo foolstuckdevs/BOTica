@@ -1,3 +1,4 @@
+//home/iantristanlandagura/Desktop/SCHOOL/BSIT-4/System/BOT-ica/app/(auth)/layout.tsx
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { ReactNode } from 'react';

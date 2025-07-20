@@ -1,3 +1,4 @@
+//home/iantristanlandagura/Desktop/SCHOOL/BSIT-4/System/BOT-ica/lib/actions/products.ts
 'use server';
 
 import { db } from '@/database/drizzle';
@@ -195,3 +196,4 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
     };
   }
 };
+

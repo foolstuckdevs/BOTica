@@ -1,3 +1,4 @@
+//home/iantristanlandagura/Desktop/SCHOOL/BSIT-4/System/BOT-ica/app/(root)/layout.tsx
 import { auth } from '@/auth';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
