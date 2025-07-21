@@ -1,3 +1,4 @@
+//home/iantristanlandagura/Desktop/SCHOOL/BSIT-4/System/BOT-ica/types/index.ts
 export interface AuthCredentials {
   fullName: string;
   email: string;
@@ -131,3 +132,4 @@ export interface PurchaseOrderItem {
   productName?: string;
   productUnit?: string;
 }
+

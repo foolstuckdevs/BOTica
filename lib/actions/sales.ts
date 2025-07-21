@@ -2,8 +2,8 @@
 'use server';
 
 import { db } from '@/database/drizzle';
+import { products, saleItems, sales } from '@/database/schema';
 import { eq, and } from 'drizzle-orm';
-import { products, sales, saleItems } from '@/database/schema';
 import { revalidatePath } from 'next/cache';
 
 export const processSale = async (
@@ -67,8 +67,8 @@ export const processSale = async (
       totalAmount: totalAmount,
       discount,
       paymentMethod,
-      cashReceived: paymentMethod === 'CASH' ? cashReceived.toString() : '0',
-      change: paymentMethod === 'CASH' ? Math.max(0, change).toString() : '0',
+      amountReceived: paymentMethod === 'CASH' ? cashReceived.toString() : '0',
+      changeDue: paymentMethod === 'CASH' ? Math.max(0, change).toString() : '0',
       userId,
       pharmacyId,
     }).returning();

@@ -27,7 +27,7 @@ export default function POSPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<any[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'GCASH'>('CASH');
-  const [discount, setDiscount] = useState(0);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
   const [cashReceived, setCashReceived] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -80,7 +80,8 @@ export default function POSPage() {
     (total, item) => total + item.unitPrice * item.quantity,
     0
   );
-  const discountedTotal = totalAmount - discount;
+  const discountAmount = (totalAmount * discountPercentage) / 100;
+  const discountedTotal = totalAmount - discountAmount;
   const change = cashReceived - discountedTotal;
 
   // Cart functions
@@ -115,18 +116,16 @@ export default function POSPage() {
   };
 
   const handleQuantityChange = (productId: number, newQuantity: number) => {
+    const product = products.find((p) => p.id === productId);
+    const maxQuantity = product?.quantity || 1;
+    
+    // Ensure quantity is at least 1 and doesn't exceed available stock
+    const validatedQuantity = Math.max(1, Math.min(maxQuantity, Math.floor(newQuantity) || 1));
+
     setCart((prevCart) =>
-      prevCart.map((item) => {
-        if (item.id === productId) {
-          const product = products.find((p) => p.id === productId);
-          const validatedQuantity = Math.min(
-            Math.max(1, newQuantity),
-            product?.quantity || 1
-          );
-          return { ...item, quantity: validatedQuantity };
-        }
-        return item;
-      })
+      prevCart.map((item) =>
+        item.id === productId ? { ...item, quantity: validatedQuantity } : item
+      )
     );
   };
 
@@ -156,7 +155,7 @@ export default function POSPage() {
           unitPrice: item.unitPrice.toString(),
         })),
         paymentMethod,
-        discount,
+        discountAmount,
         session.user.pharmacyId,
         session.user.id,
         cashReceived
@@ -173,6 +172,7 @@ export default function POSPage() {
         });
         setCart([]);
         setCashReceived(0);
+        setDiscountPercentage(0);
         setShowPaymentModal(false);
         const updatedProducts = await getProducts(session.user.pharmacyId);
         setProducts(updatedProducts);
@@ -223,51 +223,72 @@ export default function POSPage() {
         
         <div className="space-y-4 mb-4 max-h-[400px] overflow-y-auto">
           {cart.length > 0 ? (
-            cart.map((item) => (
-              <div key={item.id} className="border-b pb-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h4 className="font-medium">{item.name}</h4>
-                    <div className="text-sm text-gray-500">
-                      ₱{item.unitPrice.toFixed(2)} × {item.quantity}
+            cart.map((item) => {
+              const product = products.find((p) => p.id === item.id);
+              const maxQuantity = product?.quantity || 1;
+              
+              return (
+                <div key={item.id} className="border-b pb-3 group">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium truncate">{item.name}</h4>
+                      <div className="text-sm text-gray-500">
+                        ₱{item.unitPrice.toFixed(2)} × {item.quantity}
+                        {maxQuantity > 0 && (
+                          <span className="text-xs text-gray-400 ml-2">
+                            (Max: {maxQuantity})
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    <button
+                      onClick={() => handleRemoveFromCart(item.id)}
+                      className="text-red-500 hover:text-red-700 text-xl p-1 -mt-1 -mr-1 transition-opacity opacity-70 group-hover:opacity-100"
+                      aria-label="Remove item"
+                    >
+                      &times;
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleRemoveFromCart(item.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    ×
-                  </button>
-                </div>
-                
-                <div className="flex items-center mt-2">
-                  <button
-                    onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                    className="w-8 h-8 flex items-center justify-center border rounded-l"
-                    disabled={item.quantity <= 1}
-                  >
-                    -
-                  </button>
-                  <div className="w-10 h-8 flex items-center justify-center border-t border-b">
-                    {item.quantity}
+                  
+                  <div className="flex items-center mt-2 gap-1">
+                    <button
+                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                      className="w-8 h-8 flex items-center justify-center border rounded hover:bg-gray-50 disabled:opacity-40"
+                      disabled={item.quantity <= 1}
+                      aria-label="Decrease quantity"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      max={maxQuantity}
+                      value={item.quantity}
+                      onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value))}
+                      onBlur={(e) => {
+                        if (!e.target.value || parseInt(e.target.value) < 1) {
+                          handleQuantityChange(item.id, 1);
+                        }
+                      }}
+                      className="w-12 h-8 text-center border-t border-b focus:outline-none focus:ring-1 focus:ring-primary"
+                      aria-label="Quantity"
+                    />
+                    <button
+                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                      className="w-8 h-8 flex items-center justify-center border rounded hover:bg-gray-50 disabled:opacity-40"
+                      disabled={item.quantity >= maxQuantity}
+                      aria-label="Increase quantity"
+                    >
+                      +
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                    className="w-8 h-8 flex items-center justify-center border rounded-r"
-                    disabled={
-                      item.quantity >=
-                      (products.find((p) => p.id === item.id)?.quantity || 0)
-                    }
-                  >
-                    +
-                  </button>
+                  
+                  <div className="text-right font-bold mt-1">
+                    ₱{(item.unitPrice * item.quantity).toFixed(2)}
+                  </div>
                 </div>
-                
-                <div className="text-right font-bold mt-1">
-                  ₱{(item.unitPrice * item.quantity).toFixed(2)}
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-center text-gray-500 py-8">
               Your cart is empty
@@ -289,7 +310,7 @@ export default function POSPage() {
                     className={`flex-1 py-2 border rounded-md ${
                       paymentMethod === 'CASH'
                         ? 'bg-primary text-white border-primary'
-                        : 'bg-white'
+                        : 'bg-white hover:bg-gray-50'
                     }`}
                   >
                     Cash
@@ -300,7 +321,7 @@ export default function POSPage() {
                     className={`flex-1 py-2 border rounded-md ${
                       paymentMethod === 'GCASH'
                         ? 'bg-primary text-white border-primary'
-                        : 'bg-white'
+                        : 'bg-white hover:bg-gray-50'
                     }`}
                   >
                     GCash
@@ -310,14 +331,15 @@ export default function POSPage() {
               
               <div>
                 <Label className="block text-sm font-medium mb-1">
-                  Discount (₱)
+                  Discount (%)
                 </Label>
                 <Input
                   type="number"
                   min="0"
-                  step="0.01"
-                  value={discount}
-                  onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                  max="100"
+                  step="1"
+                  value={discountPercentage}
+                  onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)}
                   className="bg-white"
                 />
               </div>
@@ -328,11 +350,15 @@ export default function POSPage() {
                 <span>Subtotal:</span>
                 <span>₱{totalAmount.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Discount:</span>
-                <span className="text-red-500">-₱{discount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between font-bold text-lg">
+              
+              {discountPercentage > 0 && (
+                <div className="flex justify-between">
+                  <span>Discount ({discountPercentage}%):</span>
+                  <span className="text-red-500">-₱{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between font-bold text-lg mt-2">
                 <span>Total:</span>
                 <span>₱{discountedTotal.toFixed(2)}</span>
               </div>
@@ -349,62 +375,87 @@ export default function POSPage() {
         )}
       </div>
 
-      {/* Payment Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h3 className="text-lg font-bold mb-4">Cash Payment</h3>
-            
-            <div className="space-y-4">
-              <div className="flex justify-between text-lg">
-                <span>Total Amount:</span>
-                <span className="font-bold">₱{discountedTotal.toFixed(2)}</span>
-              </div>
-              
-              <div>
-                <Label className="block mb-2">Amount Received</Label>
-                <Input
-                  type="number"
-                  min={discountedTotal}
-                  step="0.01"
-                  value={cashReceived}
-                  onChange={(e) => setCashReceived(parseFloat(e.target.value) || 0)}
-                  className="text-lg bg-white"
-                  autoFocus
-                />
-              </div>
-              
-              {cashReceived > 0 && (
-                <div className="flex justify-between text-lg">
-                  <span>Change:</span>
-                  <span className={`font-bold ${
-                    change < 0 ? 'text-red-500' : 'text-green-500'
-                  }`}>
-                    ₱{Math.abs(change).toFixed(2)}
-                  </span>
-                </div>
-              )}
-              
-              <div className="flex gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowPaymentModal(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={processPayment}
-                  disabled={cashReceived < discountedTotal || isProcessing}
-                >
-                  {isProcessing ? 'Processing...' : 'Confirm Payment'}
-                </Button>
-              </div>
-            </div>
+    {/* Payment Modal */}
+{showPaymentModal && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-lg w-full max-w-md">
+      <h3 className="text-lg font-bold mb-4">Cash Payment</h3>
+      
+      <div className="space-y-4">
+        <div className="flex justify-between text-lg">
+          <span>Total Amount:</span>
+          <span className="font-bold">₱{discountedTotal.toFixed(2)}</span>
+        </div>
+        
+        <div>
+          <Label className="block mb-2">Amount Received</Label>
+          <Input
+            type="number"
+            min={discountedTotal}
+            step="0.01"
+            value={cashReceived}
+            onChange={(e) => setCashReceived(parseFloat(e.target.value) || 0)}
+            className="text-lg bg-white mb-2"
+            autoFocus
+          />
+          
+          {/* Quick Cash Buttons */}
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {[20, 50, 100, 200, 500, 1000].map((amount) => (
+              <button
+                key={amount}
+                type="button"
+                onClick={() => setCashReceived(prev => {
+                  // If current amount is less than the button value, set it
+                  // Otherwise add the button value to current amount
+                  return prev < amount ? amount : prev + amount;
+                })}
+                className="py-2 px-3 border rounded-md text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                ₱{amount}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setCashReceived(discountedTotal)}
+              className="py-2 px-3 border rounded-md text-sm font-medium hover:bg-gray-50 transition-colors col-span-3"
+            >
+              Exact Amount (₱{discountedTotal.toFixed(2)})
+            </button>
           </div>
         </div>
-      )}
+        
+        {cashReceived > 0 && (
+          <div className="flex justify-between text-lg">
+            <span>Change:</span>
+            <span className={`font-bold ${
+              change < 0 ? 'text-red-500' : 'text-green-500'
+            }`}>
+              ₱{Math.abs(change).toFixed(2)}
+            </span>
+          </div>
+        )}
+        
+        <div className="flex gap-2 pt-4">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => setShowPaymentModal(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={processPayment}
+            disabled={cashReceived < discountedTotal || isProcessing}
+          >
+            {isProcessing ? 'Processing...' : 'Confirm Payment'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Hidden receipt for printing */}
       <div className="hidden">
