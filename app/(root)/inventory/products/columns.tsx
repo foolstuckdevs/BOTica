@@ -6,9 +6,7 @@ import { Product } from '@/types';
 import ProductActions from '@/components/ProductActions';
 import { ImageIcon } from 'lucide-react';
 import Image from 'next/image';
-import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { getStockBadgeVariant } from '@/lib/helpers/getStockBadgeVariant';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
 
 export const columns: ColumnDef<Product>[] = [
@@ -45,11 +43,11 @@ export const columns: ColumnDef<Product>[] = [
       <DataTableColumnHeader column={column} title="Product Name" />
     ),
     cell: ({ row }) => (
-      <div className="space-y-1">
-        <p className="font-medium text-gray-900 line-clamp-2">
+      <div className="space-y-0.5">
+        <p className="text-sm font-medium text-gray-900 line-clamp-2">
           {row.getValue('name')}
         </p>
-        <p className="text-sm text-gray-500">
+        <p className="text-xs text-gray-500">
           {(row.original as Product).genericName}
         </p>
       </div>
@@ -63,16 +61,34 @@ export const columns: ColumnDef<Product>[] = [
     ),
     cell: ({ row }) => {
       const quantity = parseFloat(row.getValue('quantity'));
+      const isLow = quantity <= 5;
+      const isOut = quantity === 0;
+
       return (
-        <Badge
-          variant={getStockBadgeVariant(quantity)}
-          className="min-w-[60px] justify-center"
-        >
-          {quantity} {quantity === 1 ? 'unit' : 'units'}
-        </Badge>
+        <div className="flex flex-col">
+          <span
+            className={`text-sm font-medium ${
+              isOut
+                ? 'text-red-600'
+                : isLow
+                ? 'text-amber-600'
+                : 'text-gray-900'
+            }`}
+          >
+            {isOut
+              ? 'Out of stock'
+              : `${quantity} unit${quantity > 1 ? 's' : ''}`}
+          </span>
+          {isOut && (
+            <span className="text-xs text-red-500">Restock needed</span>
+          )}
+          {!isOut && isLow && (
+            <span className="text-xs text-amber-500">Low stock</span>
+          )}
+        </div>
       );
     },
-    size: 100,
+    size: 120,
   },
   {
     accessorKey: 'expiryDate',
@@ -94,13 +110,13 @@ export const columns: ColumnDef<Product>[] = [
       return (
         <div className="flex flex-col">
           <span
-            className={
+            className={`text-sm font-medium ${
               isExpired
                 ? 'text-red-600'
                 : isNearExpiry
                 ? 'text-amber-600'
                 : 'text-gray-700'
-            }
+            }`}
           >
             {formatted}
           </span>
@@ -120,7 +136,11 @@ export const columns: ColumnDef<Product>[] = [
     ),
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue('sellingPrice'));
-      return <div className="font-medium">{formatCurrency(amount)}</div>;
+      return (
+        <div className="text-sm font-medium text-gray-900">
+          {formatCurrency(amount)}
+        </div>
+      );
     },
     size: 100,
   },
