@@ -94,7 +94,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             email: users.email,
             passwordHash: users.password,
             role: users.role,
-            pharmacyId: users.pharmacyId, // ✅ Include pharmacyId
+            pharmacyId: users.pharmacyId,
           })
           .from(users)
           .where(eq(users.email, credentials.email.toString()))
@@ -114,7 +114,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: user[0].email,
           name: user[0].fullName,
           role: user[0].role,
-          pharmacyId: user[0].pharmacyId, // ✅ Add to returned user
+          pharmacyId: user[0].pharmacyId,
         } as User & { pharmacyId: number };
       },
     }),
@@ -128,7 +128,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id as string;
         token.name = user.name;
         token.role = user.role;
-        token.pharmacyId = (user as any).pharmacyId; // ✅ Add pharmacyId to JWT
+        token.pharmacyId = (user as any).pharmacyId;
       }
       return token;
     },
@@ -137,7 +137,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string;
         session.user.name = token.name as string;
         session.user.role = token.role;
-        session.user.pharmacyId = token.pharmacyId as number; // ✅ Add pharmacyId to session
+        session.user.pharmacyId = token.pharmacyId as number;
       }
       return session;
     },
