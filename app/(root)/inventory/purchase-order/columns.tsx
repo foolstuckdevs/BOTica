@@ -23,7 +23,7 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
   {
     accessorKey: 'orderDate',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Order Date" />
+      <DataTableColumnHeader column={column} title="Date Created" />
     ),
     cell: ({ row }) => {
       const dateValue = row.getValue<string>('orderDate');

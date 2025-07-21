@@ -54,10 +54,10 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
         <Button
           variant="ghost"
           onClick={() => router.back()}
-          className="flex items-center gap-1 text-sm"
+          className="group flex items-center gap-2 rounded-full text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
         >
-          <ChevronLeft className="w-4 h-4" />
-          Back to Purchase Orders
+          <ChevronLeft className="w-4 h-4 group-hover:translate-x-[-2px] transition-transform" />
+          <span>Back to Purchase Orders</span>
         </Button>
 
         <Button

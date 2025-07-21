@@ -1,26 +1,24 @@
-import { DataTable } from '@/components/DataTable';
 import { getProducts } from '@/lib/actions/products';
-import Link from 'next/link';
-import { columns } from './columns';
-import { Button } from '@/components/ui/button';
+import { getCategories } from '@/lib/actions/categories';
+import { getSuppliers } from '@/lib/actions/suppliers';
+import { ProductsPageClient } from './ProductsPageClient';
 
-const Page = async () => {
-  const pharmacyId = 1; // hardcoded for now get from session later
-
+// Convert to Client Component for filtering
+const ProductsPage = async () => {
+  const pharmacyId = 1;
   const products = await getProducts(pharmacyId);
+  const categories = await getCategories(pharmacyId);
+  const suppliers = await getSuppliers(pharmacyId);
 
+  // Hydrate filter state client-side
+  // Use a client wrapper for filter state
   return (
-    <div className="px-6 py-6 space-y-6">
-      <div className="flex items-center justify-end">
-        <Button>
-          <Link href="/inventory/products/new">+ Add Product</Link>
-        </Button>
-      </div>
-      <div className="bg-white rounded-lg shadow border">
-        <DataTable columns={columns} data={products} />
-      </div>
-    </div>
+    <ProductsPageClient
+      products={products}
+      categories={categories}
+      suppliers={suppliers}
+    />
   );
 };
 
-export default Page;
+export default ProductsPage;
