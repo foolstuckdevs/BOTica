@@ -4,7 +4,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useReactToPrint } from 'react-to-print';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -43,7 +42,10 @@ export default function POSPage() {
         setProducts(productsData);
 
         // Fetch pharmacy info
-        const pharmacy = await db.select().from(pharmacies).where(eq(pharmacies.id, session.user.pharmacyId));
+        const pharmacy = await db
+          .select()
+          .from(pharmacies)
+          .where(eq(pharmacies.id, session.user.pharmacyId));
         setPharmacyInfo(pharmacy[0]);
       }
     };
@@ -60,7 +62,7 @@ export default function POSPage() {
         html, body { height: 100%; overflow: hidden; }
       }
     `,
-    onAfterPrint: () => setCurrentSale(null)
+    onAfterPrint: () => setCurrentSale(null),
   });
 
   // Trigger print when currentSale changes
@@ -72,13 +74,13 @@ export default function POSPage() {
 
   // Filter products based on search term
   const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Calculate totals
   const totalAmount = cart.reduce(
     (total, item) => total + item.unitPrice * item.quantity,
-    0
+    0,
   );
   const discountedTotal = totalAmount - discount;
   const change = cashReceived - discountedTotal;
@@ -90,12 +92,10 @@ export default function POSPage() {
       if (existingItem) {
         const newQuantity = Math.min(
           existingItem.quantity + 1,
-          product.quantity
+          product.quantity,
         );
         return prevCart.map((item) =>
-          item.id === product.id
-            ? { ...item, quantity: newQuantity }
-            : item
+          item.id === product.id ? { ...item, quantity: newQuantity } : item,
         );
       } else {
         return [
@@ -121,12 +121,12 @@ export default function POSPage() {
           const product = products.find((p) => p.id === productId);
           const validatedQuantity = Math.min(
             Math.max(1, newQuantity),
-            product?.quantity || 1
+            product?.quantity || 1,
           );
           return { ...item, quantity: validatedQuantity };
         }
         return item;
-      })
+      }),
     );
   };
 
@@ -140,14 +140,15 @@ export default function POSPage() {
   };
 
   const processPayment = async () => {
-    if (!session?.user?.pharmacyId || !session.user.id || cart.length === 0) return;
+    if (!session?.user?.pharmacyId || !session.user.id || cart.length === 0)
+      return;
     if (paymentMethod === 'CASH' && cashReceived < discountedTotal) {
       toast.error('Insufficient cash received');
       return;
     }
 
     setIsProcessing(true);
-    
+
     try {
       const result = await processSale(
         cart.map((item) => ({
@@ -159,17 +160,17 @@ export default function POSPage() {
         discount,
         session.user.pharmacyId,
         session.user.id,
-        cashReceived
+        cashReceived,
       );
 
       if (result.success) {
         toast.success('Sale processed successfully');
         setCurrentSale({
           ...result.data,
-          items: cart.map(item => ({
+          items: cart.map((item) => ({
             ...item,
-            unitPrice: item.unitPrice.toString()
-          }))
+            unitPrice: item.unitPrice.toString(),
+          })),
         });
         setCart([]);
         setCashReceived(0);
@@ -199,7 +200,7 @@ export default function POSPage() {
             className="bg-white"
           />
         </div>
-        
+
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredProducts.map((product) => (
@@ -216,11 +217,11 @@ export default function POSPage() {
           </div>
         )}
       </div>
-      
+
       {/* Cart Section */}
       <div className="lg:col-span-1 bg-white p-4 rounded-lg shadow-sm border sticky top-4 h-fit">
         <h2 className="text-lg font-bold mb-4">Cart ({cart.length})</h2>
-        
+
         <div className="space-y-4 mb-4 max-h-[400px] overflow-y-auto">
           {cart.length > 0 ? (
             cart.map((item) => (
@@ -239,10 +240,12 @@ export default function POSPage() {
                     ×
                   </button>
                 </div>
-                
+
                 <div className="flex items-center mt-2">
                   <button
-                    onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                    onClick={() =>
+                      handleQuantityChange(item.id, item.quantity - 1)
+                    }
                     className="w-8 h-8 flex items-center justify-center border rounded-l"
                     disabled={item.quantity <= 1}
                   >
@@ -252,7 +255,9 @@ export default function POSPage() {
                     {item.quantity}
                   </div>
                   <button
-                    onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                    onClick={() =>
+                      handleQuantityChange(item.id, item.quantity + 1)
+                    }
                     className="w-8 h-8 flex items-center justify-center border rounded-r"
                     disabled={
                       item.quantity >=
@@ -262,7 +267,7 @@ export default function POSPage() {
                     +
                   </button>
                 </div>
-                
+
                 <div className="text-right font-bold mt-1">
                   ₱{(item.unitPrice * item.quantity).toFixed(2)}
                 </div>
@@ -307,7 +312,7 @@ export default function POSPage() {
                   </button>
                 </div>
               </div>
-              
+
               <div>
                 <Label className="block text-sm font-medium mb-1">
                   Discount (₱)
@@ -336,7 +341,7 @@ export default function POSPage() {
                 <span>Total:</span>
                 <span>₱{discountedTotal.toFixed(2)}</span>
               </div>
-              
+
               <Button
                 onClick={handleCheckout}
                 className="w-full mt-4"
@@ -354,13 +359,13 @@ export default function POSPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <h3 className="text-lg font-bold mb-4">Cash Payment</h3>
-            
+
             <div className="space-y-4">
               <div className="flex justify-between text-lg">
                 <span>Total Amount:</span>
                 <span className="font-bold">₱{discountedTotal.toFixed(2)}</span>
               </div>
-              
+
               <div>
                 <Label className="block mb-2">Amount Received</Label>
                 <Input
@@ -368,23 +373,27 @@ export default function POSPage() {
                   min={discountedTotal}
                   step="0.01"
                   value={cashReceived}
-                  onChange={(e) => setCashReceived(parseFloat(e.target.value) || 0)}
+                  onChange={(e) =>
+                    setCashReceived(parseFloat(e.target.value) || 0)
+                  }
                   className="text-lg bg-white"
                   autoFocus
                 />
               </div>
-              
+
               {cashReceived > 0 && (
                 <div className="flex justify-between text-lg">
                   <span>Change:</span>
-                  <span className={`font-bold ${
-                    change < 0 ? 'text-red-500' : 'text-green-500'
-                  }`}>
+                  <span
+                    className={`font-bold ${
+                      change < 0 ? 'text-red-500' : 'text-green-500'
+                    }`}
+                  >
                     ₱{Math.abs(change).toFixed(2)}
                   </span>
                 </div>
               )}
-              
+
               <div className="flex gap-2 pt-4">
                 <Button
                   variant="outline"
@@ -419,4 +428,11 @@ export default function POSPage() {
       </div>
     </div>
   );
+}
+function useReactToPrint(arg0: {
+  content: () => HTMLDivElement | null;
+  pageStyle: string;
+  onAfterPrint: () => void;
+}) {
+  throw new Error('Function not implemented.');
 }
