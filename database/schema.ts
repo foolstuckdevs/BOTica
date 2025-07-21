@@ -121,6 +121,9 @@ export const sales = pgTable('sales', {
   invoiceNumber: varchar('invoice_number', { length: 20 }).notNull().unique(),
   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
   discount: decimal('discount', { precision: 10, scale: 2 }).default('0.00'),
+  amountReceived: decimal('amount_received', { precision: 10, scale: 2 }).notNull(),
+  changeDue: decimal('change_due', { precision: 10, scale: 2 }).notNull(),
+
   paymentMethod: PAYMENT_METHOD_ENUM('payment_method')
     .notNull()
     .default('CASH'),
@@ -133,6 +136,7 @@ export const sales = pgTable('sales', {
 
   createdAt: timestamp('created_at').defaultNow(),
 });
+
 
 // ✅ Sale Items
 export const saleItems = pgTable('sale_items', {

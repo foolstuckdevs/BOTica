@@ -1,0 +1,1 @@
+ALTER TABLE "sales" ALTER COLUMN "amount_received" DROP NOT NULL;

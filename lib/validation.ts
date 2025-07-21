@@ -1,3 +1,4 @@
+//home/iantristanlandagura/Desktop/SCHOOL/BSIT-4/System/BOT-ica/lib/validation.ts
 import { CategoryParams, SupplierParams } from '@/types';
 import { z } from 'zod';
 
