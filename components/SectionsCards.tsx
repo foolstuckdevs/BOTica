@@ -5,8 +5,8 @@ import {
   CalendarClock,
   PackageCheck,
   TrendingUpIcon,
-  FileText,
 } from 'lucide-react';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -15,8 +15,34 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Product } from '@/types';
 
-export function SectionCards() {
+interface SectionCardsProps {
+  products: Product[];
+}
+
+export function SectionCards({ products }: SectionCardsProps) {
+  // Calculate dynamic counts
+  const now = new Date();
+  // Placeholder for today's sales, replace with real data if available
+  const todaysSales = 12400; // static fallback
+  const lowStockCount = products.filter(
+    (p) =>
+      p.minStockLevel != null &&
+      p.quantity <= p.minStockLevel &&
+      p.quantity > 0,
+  ).length;
+  const expiringSoonCount = products.filter((p) => {
+    if (!p.expiryDate) return false;
+    const expiry = new Date(p.expiryDate);
+    return (
+      expiry > now &&
+      expiry.getTime() - now.getTime() < 30 * 24 * 60 * 60 * 1000
+    );
+  }).length;
+  const activeCount = products.filter((p) => p.quantity > 0).length;
+  const restockSoonCount = lowStockCount; // alias for clarity
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-10">
       {/* Today's Sales */}
@@ -26,23 +52,54 @@ export function SectionCards() {
             Today’s Sales
           </CardDescription>
           <CardTitle className="text-2xl font-bold tabular-nums text-blue-700">
-            ₱12,400.00
+            ₱
+            {todaysSales.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </CardTitle>
           <Badge
             variant="outline"
-            className="mt-2 flex gap-1 items-center rounded-md text-xs text-blue-600 border-blue-200 bg-blue-50"
+            className="mt-2 flex gap-1 items-center rounded-md text-xs text-blue-600 border-blue-200 bg-blue-100/50"
           >
             <TrendingUpIcon className="h-3 w-3" />
             +6.2% vs yesterday
           </Badge>
         </CardHeader>
         <CardFooter className="justify-end">
-          <a
+          <Link
             href="/reports/sales"
             className="text-xs text-blue-600 hover:underline flex items-center gap-1"
           >
             View Report <ArrowRight className="w-3 h-3" />
-          </a>
+          </Link>
+        </CardFooter>
+      </Card>
+
+      {/* Restock Soon (Low Stock) */}
+      <Card>
+        <CardHeader>
+          <CardDescription className="text-xs text-muted-foreground">
+            Low Stock Items
+          </CardDescription>
+          <CardTitle className="text-2xl font-bold tabular-nums text-yellow-700">
+            {restockSoonCount} items
+          </CardTitle>
+          <Badge
+            variant="outline"
+            className="mt-2 flex gap-1 items-center rounded-md text-xs text-yellow-800 border-yellow-300 bg-yellow-100"
+          >
+            <TrendingUpIcon className="h-3 w-3" />
+            Restock Soon
+          </Badge>
+        </CardHeader>
+        <CardFooter className="justify-end">
+          <Link
+            href="/inventory/products?filter=low-stock"
+            className="text-xs text-yellow-800 hover:underline flex items-center gap-1"
+          >
+            View Products <ArrowRight className="w-3 h-3" />
+          </Link>
         </CardFooter>
       </Card>
 
@@ -52,24 +109,24 @@ export function SectionCards() {
           <CardDescription className="text-xs text-muted-foreground">
             Expiring Soon (30 Days)
           </CardDescription>
-          <CardTitle className="text-2xl font-bold tabular-nums text-red-600">
-            9 items
+          <CardTitle className="text-2xl font-bold tabular-nums text-red-700">
+            {expiringSoonCount} items
           </CardTitle>
           <Badge
             variant="outline"
-            className="mt-2 flex gap-1 items-center rounded-md text-xs text-red-600 border-red-200 bg-red-50"
+            className="mt-2 flex gap-1 items-center rounded-md text-xs text-red-700 border-red-300 bg-red-100"
           >
             <CalendarClock className="h-3 w-3" />
             Urgent
           </Badge>
         </CardHeader>
         <CardFooter className="justify-end">
-          <a
+          <Link
             href="/reports/expiration"
-            className="text-xs text-red-600 hover:underline flex items-center gap-1"
+            className="text-xs text-red-700 hover:underline flex items-center gap-1"
           >
             View Expiry List <ArrowRight className="w-3 h-3" />
-          </a>
+          </Link>
         </CardFooter>
       </Card>
 
@@ -80,50 +137,23 @@ export function SectionCards() {
             Active Products
           </CardDescription>
           <CardTitle className="text-2xl font-bold tabular-nums text-green-700">
-            182 items
+            {activeCount} items
           </CardTitle>
           <Badge
             variant="outline"
-            className="mt-2 flex gap-1 items-center rounded-md text-xs text-green-700 border-green-200 bg-green-50"
+            className="mt-2 flex gap-1 items-center rounded-md text-xs text-green-700 border-green-300 bg-green-100"
           >
             <PackageCheck className="h-3 w-3" />
             Up to date
           </Badge>
         </CardHeader>
         <CardFooter className="justify-end">
-          <a
+          <Link
             href="/inventory/products"
             className="text-xs text-green-700 hover:underline flex items-center gap-1"
           >
             Manage Products <ArrowRight className="w-3 h-3" />
-          </a>
-        </CardFooter>
-      </Card>
-
-      {/* Monthly Purchase Orders */}
-      <Card>
-        <CardHeader>
-          <CardDescription className="text-xs text-muted-foreground">
-            Purchase Orders (July)
-          </CardDescription>
-          <CardTitle className="text-2xl font-bold tabular-nums text-purple-700">
-            11 orders
-          </CardTitle>
-          <Badge
-            variant="outline"
-            className="mt-2 flex gap-1 items-center rounded-md text-xs text-purple-700 border-purple-200 bg-purple-50"
-          >
-            <FileText className="h-3 w-3" />
-            Updated
-          </Badge>
-        </CardHeader>
-        <CardFooter className="justify-end">
-          <a
-            href="/inventory/purchase-order"
-            className="text-xs text-purple-700 hover:underline flex items-center gap-1"
-          >
-            View Orders <ArrowRight className="w-3 h-3" />
-          </a>
+          </Link>
         </CardFooter>
       </Card>
     </div>
