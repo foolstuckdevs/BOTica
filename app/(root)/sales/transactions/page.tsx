@@ -1,4 +1,3 @@
-// app/(root)/sales/transactions/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -8,6 +7,9 @@ import { TransactionCard } from '@/components/TransactionCard';
 import { TransactionDetailsModal } from '@/components/TransactionsDetailModal';
 import { getTransactions } from '@/lib/actions/transactions';
 import { Search } from 'lucide-react';
+import { db } from '@/database/drizzle';
+import { eq } from 'drizzle-orm';
+import { pharmacies } from '@/database/schema';
 
 type PaymentMethod = 'CASH' | 'GCASH';
 
@@ -17,19 +19,28 @@ export default function TransactionsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [pharmacyInfo, setPharmacyInfo] = useState<any>(null);
 
   useEffect(() => {
-    const loadTransactions = async () => {
+    const loadData = async () => {
       if (session?.user?.pharmacyId) {
         setIsLoading(true);
         try {
+          // Load transactions
           const data = await getTransactions(
             session.user.pharmacyId,
             searchTerm || undefined
           );
           setTransactions(data);
+
+          // Load pharmacy info
+          const pharmacy = await db
+            .select()
+            .from(pharmacies)
+            .where(eq(pharmacies.id, session.user.pharmacyId));
+          setPharmacyInfo(pharmacy[0]);
         } catch (error) {
-          console.error('Failed to load transactions:', error);
+          console.error('Failed to load data:', error);
         } finally {
           setIsLoading(false);
         }
@@ -37,7 +48,7 @@ export default function TransactionsPage() {
     };
 
     const debounceTimer = setTimeout(() => {
-      loadTransactions();
+      loadData();
     }, 300);
 
     return () => clearTimeout(debounceTimer);
@@ -60,9 +71,9 @@ export default function TransactionsPage() {
   const transactionList = Object.values(groupedTransactions);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b p-6">
+      <div className="bg-white border-b p-6 shadow-sm">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Transaction History</h1>
@@ -71,46 +82,49 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Content - Non-scrollable */}
-      <div className="flex-1 bg-gray-50 p-6 overflow-hidden">
-        <div className="bg-white rounded-xl shadow-xs border border-gray-200 h-full flex flex-col">
-          {/* Search Bar */}
-          <div className="border-b p-4">
-            <div className="relative max-w-md">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </div>
-              <Input
-                placeholder="Search transactions..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+      {/* Search Bar */}
+      <div className="bg-white border-b p-4 sticky top-0 z-10">
+        <div className="max-w-3xl mx-auto">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
             </div>
+            <Input
+              placeholder="Search transactions by invoice number, cashier, or items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
           </div>
+        </div>
+      </div>
 
-          {/* Transaction List - Non-scrollable */}
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {isLoading ? (
-              <div className="col-span-full flex justify-center items-center h-64">
-                <div className="animate-pulse text-gray-500">Loading transactions...</div>
+      {/* Transaction List */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-6xl mx-auto">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-lg border border-gray-200 p-4 h-32 animate-pulse"></div>
+              ))}
+            </div>
+          ) : transactionList.length === 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center justify-center text-center h-64">
+              <div className="bg-gray-100 p-4 rounded-full mb-3">
+                <Search className="h-6 w-6 text-gray-400" />
               </div>
-            ) : transactionList.length === 0 ? (
-              <div className="col-span-full flex flex-col justify-center items-center text-center p-8">
-                <div className="bg-gray-100 p-4 rounded-full mb-3">
-                  <Search className="h-6 w-6 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-1">
-                  {searchTerm ? 'No transactions found' : 'No transactions yet'}
-                </h3>
-                <p className="text-sm text-gray-500 max-w-md">
-                  {searchTerm 
-                    ? 'Try adjusting your search or filter to find what you\'re looking for'
-                    : 'All completed sales will appear here'}
-                </p>
-              </div>
-            ) : (
-              transactionList.map((transaction: any) => (
+              <h3 className="text-lg font-medium text-gray-900 mb-1">
+                {searchTerm ? 'No transactions found' : 'No transactions yet'}
+              </h3>
+              <p className="text-sm text-gray-500 max-w-md">
+                {searchTerm 
+                  ? 'Try adjusting your search or filter to find what you\'re looking for'
+                  : 'All completed sales will appear here'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {transactionList.map((transaction: any) => (
                 <TransactionCard
                   key={transaction.id}
                   transaction={{
@@ -119,20 +133,21 @@ export default function TransactionsPage() {
                   }}
                   onClick={() => setSelectedTransaction(transaction)}
                 />
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Modal - Scrollable content inside */}
-      {selectedTransaction && (
+      {/* Transaction Details Modal */}
+      {selectedTransaction && pharmacyInfo && (
         <TransactionDetailsModal
           transaction={{
             ...selectedTransaction,
             paymentMethod: selectedTransaction.paymentMethod as PaymentMethod
           }}
           onClose={() => setSelectedTransaction(null)}
+          pharmacyInfo={pharmacyInfo}
         />
       )}
     </div>

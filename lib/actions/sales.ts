@@ -1,4 +1,3 @@
-// lib/actions/sales.ts
 'use server';
 
 import { db } from '@/database/drizzle';
@@ -12,7 +11,7 @@ export const processSale = async (
     quantity: number;
     unitPrice: string;
   }>,
-  paymentMethod: 'CASH' | 'GCASH',
+  paymentMethod: 'CASH',
   discount: number,
   pharmacyId: number,
   userId: string,
@@ -26,10 +25,10 @@ export const processSale = async (
     );
     
     const discountedTotal = totalAmount - discount;
-    const change = paymentMethod === 'CASH' ? cashReceived - discountedTotal : 0;
+    const change = cashReceived - discountedTotal;
 
     // Validate cash payment
-    if (paymentMethod === 'CASH' && cashReceived < discountedTotal) {
+    if (cashReceived < discountedTotal) {
       throw new Error('Insufficient cash received');
     }
 
@@ -67,8 +66,8 @@ export const processSale = async (
       totalAmount: totalAmount,
       discount,
       paymentMethod,
-      amountReceived: paymentMethod === 'CASH' ? cashReceived.toString() : '0',
-      changeDue: paymentMethod === 'CASH' ? Math.max(0, change).toString() : '0',
+      amountReceived: cashReceived.toString(),
+      changeDue: Math.max(0, change).toString(),
       userId,
       pharmacyId,
     }).returning();
