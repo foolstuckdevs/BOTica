@@ -22,7 +22,11 @@ const ProductActions = ({ product }: { product: Product }) => {
     try {
       const details = await getProductById(product.id, pharmacyId);
       if (details) {
-        setProductDetails(details);
+        setProductDetails({
+          ...details,
+          dosageForm: details.dosageForm ?? '',
+          brandName: details.brandName ?? '',
+        });
         setViewOpen(true);
       }
     } catch (error) {

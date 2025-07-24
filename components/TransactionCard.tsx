@@ -1,20 +1,22 @@
 import { format } from 'date-fns';
-import { Button } from './ui/button';
 import { motion } from 'framer-motion';
 import { DollarSign, Smartphone, User, Clock, Tag } from 'lucide-react';
 import { JSX } from 'react';
 
 type PaymentMethod = 'CASH' | 'GCASH';
 
-const paymentConfig: Record<PaymentMethod, { color: string; icon: JSX.Element }> = {
+const paymentConfig: Record<
+  PaymentMethod,
+  { color: string; icon: JSX.Element }
+> = {
   CASH: {
     color: 'bg-blue-50 text-blue-600 border-blue-100',
-    icon: <DollarSign className="w-3 h-3" />
+    icon: <DollarSign className="w-3 h-3" />,
   },
   GCASH: {
     color: 'bg-green-50 text-green-600 border-green-100',
-    icon: <Smartphone className="w-3 h-3" />
-  }
+    icon: <Smartphone className="w-3 h-3" />,
+  },
 };
 
 interface TransactionCardProps {
@@ -33,7 +35,11 @@ interface TransactionCardProps {
   index?: number;
 }
 
-export const TransactionCard = ({ transaction, onClick, index = 0 }: TransactionCardProps) => {
+export const TransactionCard = ({
+  transaction,
+  onClick,
+  index = 0,
+}: TransactionCardProps) => {
   const total = parseFloat(transaction.totalAmount);
   const discount = parseFloat(transaction.discount);
   const discountedTotal = total - discount;
@@ -56,7 +62,9 @@ export const TransactionCard = ({ transaction, onClick, index = 0 }: Transaction
             <span className="font-semibold text-gray-900 text-sm sm:text-base">
               #{transaction.invoiceNumber}
             </span>
-            <span className={`text-xs px-2 py-1 rounded-full ${payment.color} border flex items-center gap-1`}>
+            <span
+              className={`text-xs px-2 py-1 rounded-full ${payment.color} border flex items-center gap-1`}
+            >
               {payment.icon}
               {transaction.paymentMethod}
             </span>
@@ -81,10 +89,14 @@ export const TransactionCard = ({ transaction, onClick, index = 0 }: Transaction
         </div>
 
         <div className="text-right min-w-[90px]">
-          <p className="text-lg font-bold text-gray-900">₱{discountedTotal.toFixed(2)}</p>
+          <p className="text-lg font-bold text-gray-900">
+            ₱{discountedTotal.toFixed(2)}
+          </p>
           {discount > 0 && (
             <div className="flex flex-col mt-1">
-              <p className="text-xs text-gray-400 line-through">₱{total.toFixed(2)}</p>
+              <p className="text-xs text-gray-400 line-through">
+                ₱{total.toFixed(2)}
+              </p>
               <p className="text-xs text-red-500">-₱{discount.toFixed(2)}</p>
             </div>
           )}

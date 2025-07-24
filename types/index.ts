@@ -1,4 +1,3 @@
-//home/iantristanlandagura/Desktop/SCHOOL/BSIT-4/System/BOT-ica/types/index.ts
 export interface AuthCredentials {
   fullName: string;
   email: string;
@@ -39,7 +38,17 @@ export interface SupplierParams {
   pharmacyId?: number;
 }
 
-export type UnitType = 'TABLET' | 'CAPSULE' | 'ML' | 'GM' | 'UNIT' | 'VIAL';
+export type UnitType = 'PIECE' | 'BOTTLE' | 'BOX' | 'VIAL' | 'SACHET' | 'TUBE';
+
+export type DosageFormType =
+  | 'TABLET'
+  | 'CAPSULE'
+  | 'SYRUP'
+  | 'SUSPENSION'
+  | 'LOZENGE'
+  | 'INJECTION'
+  | 'CREAM'
+  | 'OINTMENT';
 
 export interface Product {
   id: number;
@@ -48,7 +57,9 @@ export interface Product {
   categoryId: number | null;
   categoryName: string | null;
   barcode: string | null;
-  batchNumber: string;
+  lotNumber: string;
+  brandName?: string;
+  dosageForm: DosageFormType;
   expiryDate: string; // ISO format if coming from JSON or DB
   quantity: number;
   costPrice: string; // Drizzle decimal maps to string
@@ -68,12 +79,14 @@ export interface ProductParams {
   genericName?: string;
   categoryId?: number;
   barcode?: string;
-  batchNumber: string;
+  lotNumber: string;
+  brandName?: string;
+  dosageForm: DosageFormType;
   expiryDate: string;
   quantity: number;
   costPrice: string; // Drizzle expects decimal values as string
   sellingPrice: string;
-  minStockLevel?: number;
+  minStockLevel: number;
   unit: UnitType;
   supplierId?: number;
   imageUrl?: string;
@@ -132,4 +145,3 @@ export interface PurchaseOrderItem {
   productName?: string;
   productUnit?: string;
 }
-

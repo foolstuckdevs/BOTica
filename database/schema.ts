@@ -15,13 +15,24 @@ import {
 // Enums
 export const ROLE_ENUM = pgEnum('role', ['Admin', 'Pharmacist']);
 export const PAYMENT_METHOD_ENUM = pgEnum('payment_method', ['CASH', 'GCASH']);
-export const UNIT_ENUM = pgEnum('unit', [
+export const DOSAGE_FORM_ENUM = pgEnum('dosage_form', [
   'TABLET',
   'CAPSULE',
-  'ML',
-  'GM',
-  'UNIT',
+  'SYRUP',
+  'SUSPENSION',
+  'LOZENGE',
+  'INJECTION',
+  'CREAM',
+  'OINTMENT',
+]);
+
+export const UNIT_ENUM = pgEnum('unit', [
+  'PIECE',
+  'BOTTLE',
+  'BOX',
   'VIAL',
+  'SACHET',
+  'TUBE',
 ]);
 export const NOTIFICATION_TYPE_ENUM = pgEnum('notification_type', [
   'LOW_STOCK',
@@ -98,12 +109,14 @@ export const products = pgTable('products', {
   genericName: varchar('generic_name', { length: 100 }),
   categoryId: integer('category_id').references(() => categories.id),
   barcode: varchar('barcode', { length: 50 }).unique(),
-  batchNumber: varchar('batch_number', { length: 50 }).notNull(),
+  lotNumber: varchar('lot_number', { length: 50 }).notNull(),
+  brandName: varchar('brand_name', { length: 100 }),
+  dosageForm: DOSAGE_FORM_ENUM('dosage_form').notNull(),
   expiryDate: date('expiry_date').notNull(),
   quantity: integer('quantity').notNull(),
   costPrice: decimal('cost_price', { precision: 10, scale: 2 }).notNull(),
   sellingPrice: decimal('selling_price', { precision: 10, scale: 2 }).notNull(),
-  minStockLevel: integer('min_stock_level').default(5),
+  minStockLevel: integer('min_stock_level').default(10).notNull(),
   unit: UNIT_ENUM('unit').notNull(),
   supplierId: integer('supplier_id').references(() => suppliers.id),
   imageUrl: text('image_url'),
@@ -121,7 +134,10 @@ export const sales = pgTable('sales', {
   invoiceNumber: varchar('invoice_number', { length: 20 }).notNull().unique(),
   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
   discount: decimal('discount', { precision: 10, scale: 2 }).default('0.00'),
-  amountReceived: decimal('amount_received', { precision: 10, scale: 2 }).notNull(),
+  amountReceived: decimal('amount_received', {
+    precision: 10,
+    scale: 2,
+  }).notNull(),
   changeDue: decimal('change_due', { precision: 10, scale: 2 }).notNull(),
 
   paymentMethod: PAYMENT_METHOD_ENUM('payment_method')
@@ -136,7 +152,6 @@ export const sales = pgTable('sales', {
 
   createdAt: timestamp('created_at').defaultNow(),
 });
-
 
 // ✅ Sale Items
 export const saleItems = pgTable('sale_items', {

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,6 @@ import { PrintUtility } from '@/lib/PrintUtility';
 
 export default function POSPage() {
   const { data: session } = useSession();
-  const router = useRouter();
 
   // State
   const [products, setProducts] = useState<any[]>([]);
@@ -92,8 +90,11 @@ export default function POSPage() {
   const handleQuantityChange = (productId: number, newQuantity: number) => {
     const product = products.find((p) => p.id === productId);
     const maxQuantity = product?.quantity || 1;
-    
-    const validatedQuantity = Math.max(1, Math.min(maxQuantity, Math.floor(newQuantity) || 1));
+
+    const validatedQuantity = Math.max(
+      1,
+      Math.min(maxQuantity, Math.floor(newQuantity) || 1),
+    );
 
     setCart((prevCart) =>
       prevCart.map((item) => {
@@ -110,70 +111,71 @@ export default function POSPage() {
     setShowPaymentModal(true);
   };
 
-const processPayment = async () => {
-  if (!session?.user?.pharmacyId || !session.user.id || cart.length === 0)
-    return;
-  if (cashReceived < discountedTotal) {
-    toast.error('Insufficient cash received');
-    return;
-  }
-
-  setIsProcessing(true);
-
-  try {
-    const result = await processSale(
-      cart.map((item) => ({
-        productId: item.id,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice.toString(),
-      })),
-      'CASH',
-      discountAmount,
-      session.user.pharmacyId,
-      session.user.id,
-      cashReceived,
-    );
-
-    if (result.success && result.data) {  // Add check for result.data here
-      toast.success('Sale processed successfully');
-      
-      const printSuccess = await PrintUtility.printDynamicReceipt(
-        {
-          invoiceNumber: result.data.invoiceNumber,
-          createdAt: result.data.createdAt,
-          totalAmount: result.data.totalAmount,
-          discount: discountAmount,
-          amountReceived: cashReceived,
-          changeDue: Math.max(0, change),
-        },
-        cart.map(item => ({
-          ...item,
-          unitPrice: parseFloat(item.unitPrice.toString())
-        })),
-        pharmacyInfo
-      );
-      
-      if (!printSuccess) {
-        toast.warning('Receipt printed with issues - sale was processed');
-      }
-
-      setCart([]);
-      setCashReceived(0);
-      setDiscountPercentage(0);
-      setShowPaymentModal(false);
-      
-      const updatedProducts = await getProducts(session.user.pharmacyId);
-      setProducts(updatedProducts);
-    } else {
-      toast.error(result.message);
+  const processPayment = async () => {
+    if (!session?.user?.pharmacyId || !session.user.id || cart.length === 0)
+      return;
+    if (cashReceived < discountedTotal) {
+      toast.error('Insufficient cash received');
+      return;
     }
-  } catch (error) {
-    toast.error('Failed to process sale');
-    console.error(error);
-  } finally {
-    setIsProcessing(false);
-  }
-};
+
+    setIsProcessing(true);
+
+    try {
+      const result = await processSale(
+        cart.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice.toString(),
+        })),
+        'CASH',
+        discountAmount,
+        session.user.pharmacyId,
+        session.user.id,
+        cashReceived,
+      );
+
+      if (result.success && result.data) {
+        // Add check for result.data here
+        toast.success('Sale processed successfully');
+
+        const printSuccess = await PrintUtility.printDynamicReceipt(
+          {
+            invoiceNumber: result.data.invoiceNumber,
+            createdAt: result.data.createdAt,
+            totalAmount: result.data.totalAmount,
+            discount: discountAmount,
+            amountReceived: cashReceived,
+            changeDue: Math.max(0, change),
+          },
+          cart.map((item) => ({
+            ...item,
+            unitPrice: parseFloat(item.unitPrice.toString()),
+          })),
+          pharmacyInfo,
+        );
+
+        if (!printSuccess) {
+          toast.warning('Receipt printed with issues - sale was processed');
+        }
+
+        setCart([]);
+        setCashReceived(0);
+        setDiscountPercentage(0);
+        setShowPaymentModal(false);
+
+        const updatedProducts = await getProducts(session.user.pharmacyId);
+        setProducts(updatedProducts);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.error('Failed to process sale');
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -214,7 +216,7 @@ const processPayment = async () => {
             cart.map((item) => {
               const product = products.find((p) => p.id === item.id);
               const maxQuantity = product?.quantity || 1;
-              
+
               return (
                 <div key={item.id} className="border-b pb-3 group">
                   <div className="flex justify-between items-start gap-2">
@@ -237,10 +239,12 @@ const processPayment = async () => {
                       &times;
                     </button>
                   </div>
-                  
+
                   <div className="flex items-center mt-2 gap-1">
                     <button
-                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                      onClick={() =>
+                        handleQuantityChange(item.id, item.quantity - 1)
+                      }
                       className="w-8 h-8 flex items-center justify-center border rounded hover:bg-gray-50 disabled:opacity-40"
                       disabled={item.quantity <= 1}
                       aria-label="Decrease quantity"
@@ -252,7 +256,9 @@ const processPayment = async () => {
                       min="1"
                       max={maxQuantity}
                       value={item.quantity}
-                      onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleQuantityChange(item.id, parseInt(e.target.value))
+                      }
                       onBlur={(e) => {
                         if (!e.target.value || parseInt(e.target.value) < 1) {
                           handleQuantityChange(item.id, 1);
@@ -262,7 +268,9 @@ const processPayment = async () => {
                       aria-label="Quantity"
                     />
                     <button
-                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                      onClick={() =>
+                        handleQuantityChange(item.id, item.quantity + 1)
+                      }
                       className="w-8 h-8 flex items-center justify-center border rounded hover:bg-gray-50 disabled:opacity-40"
                       disabled={item.quantity >= maxQuantity}
                       aria-label="Increase quantity"
@@ -270,7 +278,7 @@ const processPayment = async () => {
                       +
                     </button>
                   </div>
-                  
+
                   <div className="text-right font-bold mt-1">
                     ₱{(item.unitPrice * item.quantity).toFixed(2)}
                   </div>
@@ -297,7 +305,9 @@ const processPayment = async () => {
                   max="100"
                   step="1"
                   value={discountPercentage}
-                  onChange={(e) => setDiscountPercentage(parseFloat(e.target.value) || 0)}
+                  onChange={(e) =>
+                    setDiscountPercentage(parseFloat(e.target.value) || 0)
+                  }
                   className="bg-white"
                 />
               </div>
@@ -308,14 +318,16 @@ const processPayment = async () => {
                 <span>Subtotal:</span>
                 <span>₱{totalAmount.toFixed(2)}</span>
               </div>
-              
+
               {discountPercentage > 0 && (
                 <div className="flex justify-between">
                   <span>Discount ({discountPercentage}%):</span>
-                  <span className="text-red-500">-₱{discountAmount.toFixed(2)}</span>
+                  <span className="text-red-500">
+                    -₱{discountAmount.toFixed(2)}
+                  </span>
                 </div>
               )}
-              
+
               <div className="flex justify-between font-bold text-lg mt-2">
                 <span>Total:</span>
                 <span>₱{discountedTotal.toFixed(2)}</span>
@@ -338,13 +350,13 @@ const processPayment = async () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <h3 className="text-lg font-bold mb-4">Cash Payment</h3>
-            
+
             <div className="space-y-4">
               <div className="flex justify-between text-lg">
                 <span>Total Amount:</span>
                 <span className="font-bold">₱{discountedTotal.toFixed(2)}</span>
               </div>
-              
+
               <div>
                 <Label className="block mb-2">Amount Received</Label>
                 <Input
@@ -352,20 +364,24 @@ const processPayment = async () => {
                   min={discountedTotal}
                   step="0.01"
                   value={cashReceived}
-                  onChange={(e) => setCashReceived(parseFloat(e.target.value) || 0)}
+                  onChange={(e) =>
+                    setCashReceived(parseFloat(e.target.value) || 0)
+                  }
                   className="text-lg bg-white mb-2"
                   autoFocus
                 />
-                
+
                 {/* Quick Cash Buttons */}
                 <div className="grid grid-cols-3 gap-2 mt-2">
                   {[20, 50, 100, 200, 500, 1000].map((amount) => (
                     <button
                       key={amount}
                       type="button"
-                      onClick={() => setCashReceived(prev => {
-                        return prev < amount ? amount : prev + amount;
-                      })}
+                      onClick={() =>
+                        setCashReceived((prev) => {
+                          return prev < amount ? amount : prev + amount;
+                        })
+                      }
                       className="py-2 px-3 border rounded-md text-sm font-medium hover:bg-gray-50 transition-colors"
                     >
                       ₱{amount}
@@ -380,18 +396,20 @@ const processPayment = async () => {
                   </button>
                 </div>
               </div>
-              
+
               {cashReceived > 0 && (
                 <div className="flex justify-between text-lg">
                   <span>Change:</span>
-                  <span className={`font-bold ${
-                    change < 0 ? 'text-red-500' : 'text-green-500'
-                  }`}>
+                  <span
+                    className={`font-bold ${
+                      change < 0 ? 'text-red-500' : 'text-green-500'
+                    }`}
+                  >
                     ₱{Math.abs(change).toFixed(2)}
                   </span>
                 </div>
               )}
-              
+
               <div className="flex gap-2 pt-4">
                 <Button
                   variant="outline"

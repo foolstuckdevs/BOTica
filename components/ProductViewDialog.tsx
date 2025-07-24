@@ -99,7 +99,9 @@ const ProductViewDialog = ({
               icon={<BoxIcon className="w-4 h-4" />}
               color="text-green-600"
             >
-              <InfoBlock label="Batch Number" value={product.batchNumber} />
+              <InfoBlock label="Lot Number" value={product.lotNumber} />
+              <InfoBlock label="Dosage Form" value={product.dosageForm} />
+              <InfoBlock label="Brand Name" value={product.brandName} />
               <InfoBlock label="Barcode" value={product.barcode} />
               <InfoBlock
                 label="Expiry Date"

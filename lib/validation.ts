@@ -1,4 +1,3 @@
-//home/iantristanlandagura/Desktop/SCHOOL/BSIT-4/System/BOT-ica/lib/validation.ts
 import { CategoryParams, SupplierParams } from '@/types';
 import { z } from 'zod';
 
@@ -42,7 +41,18 @@ export const productSchema = z.object({
     .string()
     .max(50, 'Barcode must be at most 50 characters')
     .optional(),
-  batchNumber: z.string().min(1, 'Batch number is required'),
+  lotNumber: z.string().min(1, 'Lot number is required'),
+  brandName: z.string().optional(),
+  dosageForm: z.enum([
+    'TABLET',
+    'CAPSULE',
+    'SYRUP',
+    'SUSPENSION',
+    'LOZENGE',
+    'INJECTION',
+    'CREAM',
+    'OINTMENT',
+  ]),
   expiryDate: z.date().refine((date) => !isNaN(date.getTime()), {
     message: 'Expiry date is required',
   }),
@@ -50,7 +60,7 @@ export const productSchema = z.object({
   costPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid cost price'),
   sellingPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid selling price'),
   minStockLevel: z.number().min(0).optional(),
-  unit: z.enum(['TABLET', 'CAPSULE', 'ML', 'GM', 'UNIT', 'VIAL']),
+  unit: z.enum(['PIECE', 'BOTTLE', 'BOX', 'VIAL', 'SACHET', 'TUBE']),
   supplierId: z.number().min(1, 'Supplier is required').optional(),
   imageUrl: z.string().optional().or(z.literal('')),
 });

@@ -66,7 +66,9 @@ const ProductForm = ({
       genericName: product.genericName || '',
       categoryId: product.categoryId || undefined,
       barcode: product.barcode || '',
-      batchNumber: product.batchNumber || '',
+      lotNumber: product.lotNumber || '',
+      brandName: product.brandName || '',
+      dosageForm: product.dosageForm || 'TABLET',
       expiryDate: product.expiryDate
         ? new Date(product.expiryDate)
         : new Date(),
@@ -74,7 +76,7 @@ const ProductForm = ({
       costPrice: product.costPrice || '',
       sellingPrice: product.sellingPrice || '',
       minStockLevel: product.minStockLevel || undefined,
-      unit: product.unit || 'TABLET',
+      unit: product.unit || 'PIECE',
       supplierId: product.supplierId || undefined,
       imageUrl: product.imageUrl || '',
     },
@@ -109,6 +111,11 @@ const ProductForm = ({
         ...values,
         expiryDate: values.expiryDate.toISOString(),
         imageUrl,
+        minStockLevel:
+          typeof values.minStockLevel === 'number' &&
+          !isNaN(values.minStockLevel)
+            ? values.minStockLevel
+            : 10,
       };
 
       const result =
@@ -208,14 +215,70 @@ const ProductForm = ({
                               <SelectValue placeholder="Select unit" />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="PIECE">Piece</SelectItem>
+                              <SelectItem value="BOTTLE">Bottle</SelectItem>
+                              <SelectItem value="BOX">Box</SelectItem>
+                              <SelectItem value="VIAL">Vial</SelectItem>
+                              <SelectItem value="SACHET">Sachet</SelectItem>
+                              <SelectItem value="TUBE">Tube</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="brandName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1">
+                          Brand Name
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g., Biogesic"
+                            {...field}
+                            className="w-full"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="dosageForm"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1">
+                          Dosage Form
+                          <span className="text-red-500">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select dosage form" />
+                            </SelectTrigger>
+                            <SelectContent>
                               <SelectItem value="TABLET">Tablet</SelectItem>
                               <SelectItem value="CAPSULE">Capsule</SelectItem>
-                              <SelectItem value="ML">
-                                Milliliter (ML)
+                              <SelectItem value="SYRUP">Syrup</SelectItem>
+                              <SelectItem value="SUSPENSION">
+                                Suspension
                               </SelectItem>
-                              <SelectItem value="GM">Gram (GM)</SelectItem>
-                              <SelectItem value="UNIT">Unit</SelectItem>
-                              <SelectItem value="VIAL">Vial</SelectItem>
+                              <SelectItem value="LOZENGE">Lozenge</SelectItem>
+                              <SelectItem value="INJECTION">
+                                Injection
+                              </SelectItem>
+                              <SelectItem value="CREAM">Cream</SelectItem>
+                              <SelectItem value="OINTMENT">Ointment</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>
@@ -328,18 +391,18 @@ const ProductForm = ({
                 <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
-                    name="batchNumber"
+                    name="lotNumber"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-1">
-                          Batch Number
+                          Lot Number
                           <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <div className="w-full">
                             <Input
                               required
-                              placeholder="e.g., BX2025-001"
+                              placeholder="e.g., LOT2025-001"
                               {...field}
                               className="w-full"
                               readOnly={type === 'update'}
@@ -618,10 +681,23 @@ const ProductForm = ({
               type="submit"
               className="w-full sm:w-auto"
               disabled={isSubmitting}
+              aria-label={
+                isSubmitting
+                  ? type === 'create'
+                    ? 'Adding product'
+                    : 'Updating product'
+                  : type === 'create'
+                  ? 'Add product'
+                  : 'Update product'
+              }
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <svg
+                    className="animate-spin h-4 w-4"
+                    viewBox="0 0 24 24"
+                    aria-label="Loading"
+                  >
                     <circle
                       className="opacity-25"
                       cx="12"
@@ -636,6 +712,7 @@ const ProductForm = ({
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
+                  <span className="sr-only">Loading</span>
                   {type === 'create' ? 'Adding...' : 'Updating...'}
                 </span>
               ) : type === 'create' ? (

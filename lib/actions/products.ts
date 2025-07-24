@@ -1,4 +1,3 @@
-//home/iantristanlandagura/Desktop/SCHOOL/BSIT-4/System/BOT-ica/lib/actions/products.ts
 'use server';
 
 import { db } from '@/database/drizzle';
@@ -17,7 +16,7 @@ export const getProducts = async (pharmacyId: number) => {
         categoryId: products.categoryId,
         categoryName: categories.name,
         barcode: products.barcode,
-        batchNumber: products.batchNumber,
+        lotNumber: products.lotNumber,
         expiryDate: products.expiryDate,
         quantity: products.quantity,
         costPrice: products.costPrice,
@@ -50,7 +49,7 @@ export const getProductById = async (id: number, pharmacyId: number) => {
         categoryId: products.categoryId,
         categoryName: categories.name,
         unit: products.unit,
-        batchNumber: products.batchNumber,
+        lotNumber: products.lotNumber,
         barcode: products.barcode,
         expiryDate: products.expiryDate,
         quantity: products.quantity,
@@ -62,6 +61,8 @@ export const getProductById = async (id: number, pharmacyId: number) => {
         imageUrl: products.imageUrl,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
+        brandName: products.brandName,
+        dosageForm: products.dosageForm,
       })
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
@@ -196,4 +197,3 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
     };
   }
 };
-
