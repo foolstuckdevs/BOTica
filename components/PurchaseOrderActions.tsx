@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 import { PurchaseOrder } from '@/types';
-import { deletePurchaseOrder } from '@/lib/actions/puchase-order';
+import { deletePurchaseOrder } from '@/lib/actions/purchase-order';
 import { DeleteDialog } from './DeleteDialog';
 
 interface Props {

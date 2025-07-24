@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/DataTable';
 import { columns } from './columns';
 import Link from 'next/link';
-import { getPurchaseOrders } from '@/lib/actions/puchase-order';
+import { getPurchaseOrders } from '@/lib/actions/purchase-order';
 
 const Page = async () => {
   const pharmacyId = 1; // hardcoded for now, get from session later

@@ -28,6 +28,8 @@ export const getProducts = async (pharmacyId: number) => {
         imageUrl: products.imageUrl,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
+        brandName: products.brandName,
+        dosageForm: products.dosageForm,
       })
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))

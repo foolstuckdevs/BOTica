@@ -58,7 +58,7 @@ export interface Product {
   categoryName: string | null;
   barcode: string | null;
   lotNumber: string;
-  brandName?: string;
+  brandName?: string | null;
   dosageForm: DosageFormType;
   expiryDate: string; // ISO format if coming from JSON or DB
   quantity: number;

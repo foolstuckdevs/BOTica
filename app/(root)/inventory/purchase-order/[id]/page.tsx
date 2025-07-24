@@ -1,5 +1,5 @@
 import PurchaseOrderDetails from '@/components/PurchaseOrderDetails';
-import { getPurchaseOrderById } from '@/lib/actions/puchase-order';
+import { getPurchaseOrderById } from '@/lib/actions/purchase-order';
 import { getSuppliers } from '@/lib/actions/suppliers';
 import { getProducts } from '@/lib/actions/products';
 

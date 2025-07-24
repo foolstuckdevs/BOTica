@@ -1,7 +1,7 @@
 import PurchaseOrderForm from '@/components/PurchaseOrderForm';
 import { getSuppliers } from '@/lib/actions/suppliers';
 import { getProducts } from '@/lib/actions/products';
-import { getPurchaseOrderById } from '@/lib/actions/puchase-order';
+import { getPurchaseOrderById } from '@/lib/actions/purchase-order';
 
 const page = async ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;

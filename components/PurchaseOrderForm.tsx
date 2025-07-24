@@ -10,7 +10,7 @@ import { purchaseOrderSchema } from '@/lib/validation';
 import {
   createPurchaseOrder,
   updatePurchaseOrder,
-} from '@/lib/actions/puchase-order';
+} from '@/lib/actions/purchase-order';
 import { getSession } from 'next-auth/react';
 
 import { Supplier, Product } from '@/types';
