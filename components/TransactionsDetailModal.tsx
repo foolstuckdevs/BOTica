@@ -1,20 +1,29 @@
+import React from 'react';
 import { format } from 'date-fns';
 import { Button } from './ui/button';
-import { X, Printer, ChevronDown, ChevronUp, Info, CreditCard, Smartphone, DollarSign } from 'lucide-react';
+import {
+  X,
+  Printer,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  CreditCard,
+  Smartphone,
+  DollarSign,
+} from 'lucide-react';
 import { PrintService } from '@/lib/PrintService';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type PaymentMethod = 'CASH' | 'GCASH';
-
-const paymentIcons: Record<PaymentMethod, JSX.Element> = {
+const paymentIcons: Record<PaymentMethod, React.JSX.Element> = {
   CASH: <DollarSign className="w-4 h-4" />,
-  GCASH: <Smartphone className="w-4 h-4" />
+  GCASH: <Smartphone className="w-4 h-4" />,
 };
 
 const paymentColors: Record<PaymentMethod, string> = {
   CASH: 'bg-blue-100 text-blue-800',
-  GCASH: 'bg-green-100 text-green-800'
+  GCASH: 'bg-green-100 text-green-800',
 };
 
 interface TransactionDetailsModalProps {
@@ -39,15 +48,13 @@ interface TransactionDetailsModalProps {
   pharmacyInfo: {
     name: string;
     address: string;
-    phone: string;
-    logo?: string;
   };
 }
 
-export const TransactionDetailsModal = ({ 
-  transaction, 
+export const TransactionDetailsModal = ({
+  transaction,
   onClose,
-  pharmacyInfo 
+  pharmacyInfo,
 }: TransactionDetailsModalProps) => {
   const [showReceiptPreview, setShowReceiptPreview] = useState(false);
   const [receiptHtml, setReceiptHtml] = useState('');
@@ -61,7 +68,10 @@ export const TransactionDetailsModal = ({
   // Close modal when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(event.target as Node)
+      ) {
         onClose();
       }
     };
@@ -70,7 +80,11 @@ export const TransactionDetailsModal = ({
   }, [onClose]);
 
   const handlePrint = () => {
-    const { html } = PrintService.generateReceiptHTML(transaction, pharmacyInfo);
+    // Pass default empty string for phone to match PrintService type
+    const { html } = PrintService.generateReceiptHTML(transaction, {
+      ...pharmacyInfo,
+      phone: '',
+    });
     setReceiptHtml(html);
     setShowReceiptPreview(true);
   };
@@ -87,7 +101,7 @@ export const TransactionDetailsModal = ({
   const modalVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -20 }
+    exit: { opacity: 0, y: -20 },
   };
 
   return (
@@ -108,20 +122,22 @@ export const TransactionDetailsModal = ({
             <div className="border-b p-6 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
               <div>
                 <div className="flex items-center gap-3">
-                  {pharmacyInfo.logo && (
-                    <img src={pharmacyInfo.logo} alt="Pharmacy Logo" className="h-10 w-10 rounded-md object-contain" />
-                  )}
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900 font-serif">Transaction Details</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 font-serif">
+                      Transaction Details
+                    </h2>
                     <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
                       <Info className="w-3 h-3" />
-                      {format(new Date(transaction.createdAt), 'EEEE, MMMM d, yyyy · h:mm a')}
+                      {format(
+                        new Date(transaction.createdAt),
+                        'EEEE, MMMM d, yyyy · h:mm a',
+                      )}
                     </p>
                   </div>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button 
+                <Button
                   variant="outline"
                   onClick={handlePrint}
                   className="gap-2 hover:bg-gray-100 transition-all hover:shadow-sm"
@@ -129,7 +145,7 @@ export const TransactionDetailsModal = ({
                   <Printer className="w-4 h-4" />
                   Print Receipt
                 </Button>
-                <button 
+                <button
                   onClick={onClose}
                   className="p-2 rounded-full hover:bg-gray-100 transition-colors group"
                   aria-label="Close"
@@ -140,17 +156,25 @@ export const TransactionDetailsModal = ({
             </div>
 
             {/* Collapsible Header */}
-            <div 
+            <div
               className="border-b p-4 bg-gray-50 cursor-pointer flex items-center justify-between"
               onClick={() => setIsCollapsed(!isCollapsed)}
             >
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${paymentColors[transaction.paymentMethod]}`}>
+                <div
+                  className={`p-2 rounded-lg ${
+                    paymentColors[transaction.paymentMethod]
+                  }`}
+                >
                   {paymentIcons[transaction.paymentMethod]}
                 </div>
                 <div>
-                  <h3 className="font-medium">Invoice #{transaction.invoiceNumber}</h3>
-                  <p className="text-sm text-gray-500">Processed by {transaction.user.fullName}</p>
+                  <h3 className="font-medium">
+                    Invoice #{transaction.invoiceNumber}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Processed by {transaction.user.fullName}
+                  </p>
                 </div>
               </div>
               {isCollapsed ? (
@@ -180,14 +204,22 @@ export const TransactionDetailsModal = ({
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Method</span>
-                          <span className={`text-sm px-2.5 py-1 rounded-full ${paymentColors[transaction.paymentMethod]} flex items-center gap-1`}>
+                          <span
+                            className={`text-sm px-2.5 py-1 rounded-full ${
+                              paymentColors[transaction.paymentMethod]
+                            } flex items-center gap-1`}
+                          >
                             {paymentIcons[transaction.paymentMethod]}
                             {transaction.paymentMethod}
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm text-gray-600">Invoice Number</span>
-                          <span className="font-medium text-sm">{transaction.invoiceNumber}</span>
+                          <span className="text-sm text-gray-600">
+                            Invoice Number
+                          </span>
+                          <span className="font-medium text-sm">
+                            {transaction.invoiceNumber}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -195,23 +227,33 @@ export const TransactionDetailsModal = ({
 
                   <div className="space-y-4">
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                      <h4 className="font-medium text-gray-800 mb-2">Transaction Summary</h4>
+                      <h4 className="font-medium text-gray-800 mb-2">
+                        Transaction Summary
+                      </h4>
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Date</span>
                           <span className="font-medium text-sm">
-                            {format(new Date(transaction.createdAt), 'MMM d, yyyy')}
+                            {format(
+                              new Date(transaction.createdAt),
+                              'MMM d, yyyy',
+                            )}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm text-gray-600">Cashier</span>
-                          <span className="font-medium text-sm">{transaction.user.fullName}</span>
+                          <span className="font-medium text-sm">
+                            {transaction.user.fullName}
+                          </span>
                         </div>
                         {discount > 0 && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">Discount</span>
+                            <span className="text-sm text-gray-600">
+                              Discount
+                            </span>
                             <span className="font-medium text-sm text-red-500">
-                              {discountPercentage.toFixed(0)}% (₱{discount.toFixed(2)})
+                              {discountPercentage.toFixed(0)}% (₱
+                              {discount.toFixed(2)})
                             </span>
                           </div>
                         )}
@@ -230,22 +272,40 @@ export const TransactionDetailsModal = ({
                     <table className="w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Subtotal</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Item
+                          </th>
+                          <th className="text-center py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Qty
+                          </th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Price
+                          </th>
+                          <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Subtotal
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white">
                         {transaction.items.map((item, index) => (
-                          <tr 
+                          <tr
                             key={`${transaction.id}-${item.productName}`}
-                            className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                            className={
+                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                            }
                           >
-                            <td className="py-3 px-4 text-sm font-medium text-gray-900">{item.productName}</td>
-                            <td className="py-3 px-4 text-sm text-gray-500 text-center">{item.quantity}</td>
-                            <td className="py-3 px-4 text-sm text-gray-500 text-right">₱{parseFloat(item.unitPrice).toFixed(2)}</td>
-                            <td className="py-3 px-4 text-sm font-medium text-gray-900 text-right">₱{parseFloat(item.subtotal).toFixed(2)}</td>
+                            <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                              {item.productName}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-500 text-center">
+                              {item.quantity}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-500 text-right">
+                              ₱{parseFloat(item.unitPrice).toFixed(2)}
+                            </td>
+                            <td className="py-3 px-4 text-sm font-medium text-gray-900 text-right">
+                              ₱{parseFloat(item.subtotal).toFixed(2)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -263,15 +323,23 @@ export const TransactionDetailsModal = ({
                     {discount > 0 && (
                       <div className="flex justify-between py-1">
                         <div className="text-red-500 flex items-center gap-1">
-                          <span>Discount ({discountPercentage.toFixed(0)}%)</span>
+                          <span>
+                            Discount ({discountPercentage.toFixed(0)}%)
+                          </span>
                         </div>
-                        <span className="text-red-500">-₱{discount.toFixed(2)}</span>
+                        <span className="text-red-500">
+                          -₱{discount.toFixed(2)}
+                        </span>
                       </div>
                     )}
                     <div className="border-t border-gray-200 pt-3 mt-2">
                       <div className="flex justify-between">
-                        <span className="font-semibold text-lg">Total Amount</span>
-                        <span className="text-2xl font-bold text-blue-600">₱{discountedTotal.toFixed(2)}</span>
+                        <span className="font-semibold text-lg">
+                          Total Amount
+                        </span>
+                        <span className="text-2xl font-bold text-blue-600">
+                          ₱{discountedTotal.toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -281,7 +349,7 @@ export const TransactionDetailsModal = ({
 
             {/* Footer */}
             <div className="border-t p-4 flex justify-end bg-gray-50">
-              <Button 
+              <Button
                 onClick={onClose}
                 className="px-6 hover:shadow-md transition-all"
                 variant="outline"
@@ -305,17 +373,19 @@ export const TransactionDetailsModal = ({
               className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-200"
             >
               <div className="border-b p-4 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
-                <h2 className="text-xl font-bold font-serif">Receipt Preview</h2>
+                <h2 className="text-xl font-bold font-serif">
+                  Receipt Preview
+                </h2>
                 <div className="flex gap-2">
-                  <Button 
-                    onClick={confirmPrint} 
+                  <Button
+                    onClick={confirmPrint}
                     className="gap-2 hover:shadow-md transition-all"
                   >
                     <Printer className="w-4 h-4" />
                     Confirm Print
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setShowReceiptPreview(false)}
                     className="hover:shadow-md transition-all"
                   >
@@ -324,7 +394,7 @@ export const TransactionDetailsModal = ({
                 </div>
               </div>
               <div className="overflow-y-auto p-6 flex justify-center">
-                <div 
+                <div
                   className="mx-auto border border-gray-200 shadow-sm bg-white"
                   style={{ width: '80mm', minHeight: '100mm' }}
                   dangerouslySetInnerHTML={{ __html: receiptHtml }}

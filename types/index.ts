@@ -1,5 +1,3 @@
-// ...existing code...
-
 export interface Pharmacy {
   id: number;
   name: string;
@@ -158,4 +156,28 @@ export interface PurchaseOrderItem {
   totalCost: string;
   productName?: string;
   productUnit?: string;
+}
+
+export type PaymentMethod = 'CASH' | 'GCASH';
+
+export interface TransactionItem {
+  id: number;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+  subtotal: string;
+}
+
+export interface Transaction {
+  id: number;
+  invoiceNumber: string;
+  totalAmount: string;
+  discount: string;
+  paymentMethod: PaymentMethod;
+  createdAt: string | Date;
+  user: {
+    id?: number;
+    fullName: string;
+  };
+  items: TransactionItem[];
 }

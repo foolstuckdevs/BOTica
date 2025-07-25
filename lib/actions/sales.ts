@@ -1,11 +1,12 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { products, saleItems, sales, pharmacies } from '@/database/schema';
+import { products, saleItems, sales, pharmacies } from '@/database/schema'; // <-- pharmacies was missing
 import type { Pharmacy } from '@/types';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
+// Get pharmacy info
 export const getPharmacy = async (
   pharmacyId: number,
 ): Promise<Pharmacy | null> => {
@@ -13,17 +14,21 @@ export const getPharmacy = async (
     .select()
     .from(pharmacies)
     .where(eq(pharmacies.id, pharmacyId));
-  if (pharmacyArr[0]) {
+
+  const pharmacy = pharmacyArr[0];
+  if (pharmacy) {
     return {
-      id: pharmacyArr[0].id,
-      name: pharmacyArr[0].name,
-      address: pharmacyArr[0].address ?? undefined,
-      createdAt: pharmacyArr[0].createdAt ?? undefined,
+      id: pharmacy.id,
+      name: pharmacy.name,
+      address: pharmacy.address ?? undefined,
+      createdAt: pharmacy.createdAt ?? undefined,
     };
   }
+
   return null;
 };
 
+// Process a sale transaction
 export const processSale = async (
   cartItems: Array<{
     productId: number;
@@ -37,7 +42,6 @@ export const processSale = async (
   cashReceived: number = 0,
 ) => {
   try {
-    // Calculate total amount
     const totalAmount = cartItems.reduce(
       (total, item) => total + parseFloat(item.unitPrice) * item.quantity,
       0,
@@ -46,73 +50,70 @@ export const processSale = async (
     const discountedTotal = totalAmount - discount;
     const change = cashReceived - discountedTotal;
 
-    // Validate cash payment
     if (cashReceived < discountedTotal) {
       throw new Error('Insufficient cash received');
     }
 
-    // 1. Validate all products and quantities
-    const productValidations = await Promise.all(
-      cartItems.map(async (item) => {
-        const product = await db
-          .select()
-          .from(products)
-          .where(
-            and(
-              eq(products.id, item.productId),
-              eq(products.pharmacyId, pharmacyId),
-            ),
-          )
-          .execute();
+    const result = await db.transaction(async (tx) => {
+      // 1. Validate and fetch product stocks
+      const validatedProducts = await Promise.all(
+        cartItems.map(async (item) => {
+          const found = await tx
+            .select()
+            .from(products)
+            .where(
+              and(
+                eq(products.id, item.productId),
+                eq(products.pharmacyId, pharmacyId),
+              ),
+            );
 
-        if (product.length === 0) {
-          throw new Error(`Product ${item.productId} not found`);
-        }
+          const product = found[0];
+          if (!product) {
+            throw new Error(`Product ${item.productId} not found`);
+          }
 
-        if (product[0].quantity < item.quantity) {
-          throw new Error(
-            `Insufficient stock for ${product[0].name} (Requested: ${item.quantity}, Available: ${product[0].quantity})`,
-          );
-        }
+          if (product.quantity < item.quantity) {
+            throw new Error(
+              `Insufficient stock for ${product.name} (Requested: ${item.quantity}, Available: ${product.quantity})`,
+            );
+          }
 
-        return product[0];
-      }),
-    );
+          return product;
+        }),
+      );
 
-    // 2. Create the sale record
-    const newSale = await db
-      .insert(sales)
-      .values({
-        invoiceNumber: `INV-${Date.now()}`,
-        totalAmount: totalAmount.toString(),
-        discount: discount.toString(),
-        paymentMethod,
-        amountReceived: cashReceived.toString(),
-        changeDue: Math.max(0, change).toString(),
-        userId,
-        pharmacyId,
-      })
-      .returning();
+      // 2. Insert into sales table
+      const [newSale] = await tx
+        .insert(sales)
+        .values({
+          invoiceNumber: `INV-${Date.now()}`,
+          totalAmount: totalAmount.toFixed(2),
+          discount: discount.toFixed(2),
+          paymentMethod,
+          amountReceived: cashReceived.toFixed(2),
+          changeDue: Math.max(0, change).toFixed(2),
+          userId,
+          pharmacyId,
+        })
+        .returning();
 
-    // 3. Create sale items and update product quantities
-    await Promise.all(
-      cartItems.map(async (item) => {
-        // Create sale item
-        await db.insert(saleItems).values({
-          saleId: newSale[0].id,
+      // 3. Insert sale items and update product stock
+      for (const item of cartItems) {
+        const product = validatedProducts.find((p) => p.id === item.productId)!;
+
+        await tx.insert(saleItems).values({
+          saleId: newSale.id,
           productId: item.productId,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          subtotal: (parseFloat(item.unitPrice) * item.quantity).toString(),
+          subtotal: (parseFloat(item.unitPrice) * item.quantity).toFixed(2),
         });
 
-        // Update product quantity
-        await db
+        await tx
           .update(products)
           .set({
-            quantity:
-              productValidations.find((p) => p.id === item.productId)!
-                .quantity - item.quantity,
+            quantity: product.quantity - item.quantity,
           })
           .where(
             and(
@@ -120,16 +121,22 @@ export const processSale = async (
               eq(products.pharmacyId, pharmacyId),
             ),
           );
-      }),
-    );
+      }
 
+      return {
+        sale: newSale,
+        change,
+      };
+    });
+
+    // Revalidate inventory and POS pages
     revalidatePath('/sales/pos');
     revalidatePath('/products');
 
     return {
       success: true,
-      data: newSale[0],
-      change,
+      data: result.sale,
+      change: result.change,
       message: 'Sale processed successfully',
     };
   } catch (error) {
