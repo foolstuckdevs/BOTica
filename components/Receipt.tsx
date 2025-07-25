@@ -31,23 +31,18 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
   ({ sale, items, pharmacy, onPrintComplete }, ref) => {
     const receiptWindowRef = useRef<Window | null>(null);
     const printTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    const handlePrint = () => {
+    const handlePrint = useRef(() => {
       // Close any existing print window
       if (receiptWindowRef.current) {
         receiptWindowRef.current.close();
       }
-
       // Create a new window for printing
       const printWindow = window.open('', '_blank', 'width=80mm,height=100mm');
       if (!printWindow) {
         console.error('Failed to open print window');
         return;
       }
-
       receiptWindowRef.current = printWindow;
-
-      // Write the receipt content to the new window
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -127,7 +122,6 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
               <p>${pharmacy.address}</p>
               <p>${pharmacy.phone} | ${pharmacy.email}</p>
             </div>
-
             <div class="info">
               <div>
                 <span>Invoice:</span>
@@ -135,10 +129,12 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
               </div>
               <div>
                 <span>Date:</span>
-                <span>${format(new Date(sale.createdAt), 'MMM dd, yyyy hh:mm a')}</span>
+                <span>${format(
+                  new Date(sale.createdAt),
+                  'MMM dd, yyyy hh:mm a',
+                )}</span>
               </div>
             </div>
-
             <div class="items">
               <div class="items-header">
                 <div>#</div>
@@ -147,28 +143,42 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
                 <div class="text-right">Price</div>
                 <div class="text-right">Total</div>
               </div>
-              ${items.map((item, index) => `
+              ${items
+                .map(
+                  (item, index) => `
                 <div class="item-row">
                   <div>${index + 1}</div>
                   <div>${item.name}</div>
                   <div class="text-right">${item.quantity}</div>
                   <div class="text-right">₱${item.unitPrice.toFixed(2)}</div>
-                  <div class="text-right">₱${(item.unitPrice * item.quantity).toFixed(2)}</div>
+                  <div class="text-right">₱${(
+                    item.unitPrice * item.quantity
+                  ).toFixed(2)}</div>
                 </div>
-              `).join('')}
+              `,
+                )
+                .join('')}
             </div>
-
             <div class="totals">
               <div>
                 <span>Subtotal:</span>
-                <span>₱${items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0).toFixed(2)}</span>
+                <span>₱${items
+                  .reduce(
+                    (sum, item) => sum + item.unitPrice * item.quantity,
+                    0,
+                  )
+                  .toFixed(2)}</span>
               </div>
-              ${sale.discount > 0 ? `
+              ${
+                sale.discount > 0
+                  ? `
                 <div>
                   <span>Discount:</span>
                   <span>-₱${sale.discount.toFixed(2)}</span>
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
               <div class="bold">
                 <span>Total:</span>
                 <span>₱${sale.totalAmount.toFixed(2)}</span>
@@ -182,13 +192,11 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
                 <span>₱${sale.changeDue.toFixed(2)}</span>
               </div>
             </div>
-
             <div class="footer">
               <p>Thank you for your purchase!</p>
               <p>** This is your official receipt **</p>
               <p>${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</p>
             </div>
-
             <script>
               // Automatically trigger print when window loads
               window.onload = function() {
@@ -203,9 +211,7 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           </body>
         </html>
       `);
-
       printWindow.document.close();
-
       // Clean up after printing
       printWindow.onbeforeunload = () => {
         if (printTimeoutRef.current) {
@@ -215,22 +221,19 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           onPrintComplete();
         }
       };
-    };
-
-    // Auto-print when component mounts if ref is available
+    }).current;
+    // Auto-print when component mounts
     useEffect(() => {
-      if (ref && typeof ref !== 'function') {
-        handlePrint();
-      }
-    }, [ref]);
-
+      handlePrint();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     return (
       <div style={{ display: 'none' }}>
         {/* This hidden div is just to satisfy the forwardRef requirement */}
         <div ref={ref} />
       </div>
     );
-  }
+  },
 );
 
 Receipt.displayName = 'Receipt';
