@@ -1,25 +1,22 @@
+import type { Transaction, TransactionItem, Pharmacy } from '@/types';
+
 export class PrintUtility {
   static async printDynamicReceipt(
-    sale: any,
-    items: any[],
-    pharmacy: any
+    sale: Transaction,
+    items: TransactionItem[],
+    pharmacy: Pharmacy,
   ): Promise<boolean> {
-    // Calculate content height dynamically (5mm per line + margins)
-    const lineHeight = 5;
-    const baseLines = 20; // Header, totals, footer
-    const itemLines = items.length * 3; // Each item takes 3 lines
-    const totalLines = baseLines + itemLines;
-    const contentHeight = totalLines * lineHeight;
-    
+    const baseLines = 20; // For headers, totals, footer
+    const itemLines = items.length * 3; // Rough estimate
+    const contentHeight = baseLines + itemLines;
     const printContent = this.generateDynamicReceipt(
       sale,
       items,
       pharmacy,
-      contentHeight
+      contentHeight,
     );
 
     try {
-      // Create a hidden iframe for printing
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
       iframe.style.right = '0';
@@ -30,7 +27,6 @@ export class PrintUtility {
       iframe.style.visibility = 'hidden';
       document.body.appendChild(iframe);
 
-      // Write content to iframe
       if (iframe.contentDocument) {
         iframe.contentDocument.open();
         iframe.contentDocument.write(printContent);
@@ -40,12 +36,11 @@ export class PrintUtility {
       return new Promise((resolve) => {
         iframe.onload = () => {
           setTimeout(() => {
-            // Print and clean up
-            (iframe.contentWindow as any).print();
+            (iframe.contentWindow as Window).print();
             setTimeout(() => {
               document.body.removeChild(iframe);
               resolve(true);
-            }, 1000); // Extra time for printers
+            }, 1000);
           }, 200);
         };
       });
@@ -56,16 +51,16 @@ export class PrintUtility {
   }
 
   private static generateDynamicReceipt(
-    sale: any,
-    items: any[],
-    pharmacy: any,
-    contentHeight: number
+    sale: Transaction,
+    items: TransactionItem[],
+    pharmacy: Pharmacy,
+    contentHeight: number,
   ): string {
     const subtotal = items.reduce(
-      (sum, item) => sum + parseFloat(item.unitPrice.toString()) * item.quantity,
-      0
+      (sum, item) => sum + parseFloat(item.unitPrice) * item.quantity,
+      0,
     );
-    const discountAmount = parseFloat(sale.discount.toString());
+    const discountAmount = parseFloat(sale.discount ?? '0');
     const total = subtotal - discountAmount;
 
     return `<!DOCTYPE html>
@@ -135,8 +130,8 @@ export class PrintUtility {
 <body>
   <div class="header">
     <div class="bold">${pharmacy.name}</div>
-    <div>${pharmacy.address}</div>
-    <div>${pharmacy.phone}</div>
+    <div>${pharmacy.address ?? ''}</div>
+    <div>${pharmacy.phone ?? ''}</div>
   </div>
 
   <div class="divider"></div>
@@ -149,18 +144,25 @@ export class PrintUtility {
   <div class="divider"></div>
 
   <div class="items-container">
-    ${items.map((item, index) => `
+    ${items
+      .map(
+        (item, index) => `
       <div class="item">
         <div class="item-main">
-          <span>${index + 1}. ${item.name}</span>
-          <span>₱${(parseFloat(item.unitPrice.toString()) * item.quantity).toFixed(2)}</span>
+          <span>${index + 1}. ${item.productName}</span>
+          <span>₱${(parseFloat(item.unitPrice) * item.quantity).toFixed(
+            2,
+          )}</span>
         </div>
         <div class="item-details">
-          <span>${item.quantity} × ₱${parseFloat(item.unitPrice.toString()).toFixed(2)}</span>
-          <span></span>
+          <span>${item.quantity} × ₱${parseFloat(item.unitPrice).toFixed(
+          2,
+        )}</span>
         </div>
       </div>
-    `).join('')}
+    `,
+      )
+      .join('')}
   </div>
 
   <div class="divider"></div>
@@ -170,23 +172,28 @@ export class PrintUtility {
       <span>Subtotal:</span>
       <span>₱${subtotal.toFixed(2)}</span>
     </div>
-    ${discountAmount > 0 ? `
+    ${
+      discountAmount > 0
+        ? `
       <div class="total-row">
         <span>Discount:</span>
         <span>-₱${discountAmount.toFixed(2)}</span>
-      </div>
-    ` : ''}
+      </div>`
+        : ''
+    }
     <div class="total-row bold">
       <span>TOTAL:</span>
       <span>₱${total.toFixed(2)}</span>
     </div>
     <div class="total-row">
       <span>Cash Received:</span>
-      <span>₱${parseFloat(sale.amountReceived.toString()).toFixed(2)}</span>
+      <span>₱${parseFloat(sale.amountReceived?.toString() ?? '0').toFixed(
+        2,
+      )}</span>
     </div>
     <div class="total-row">
       <span>Change:</span>
-      <span>₱${parseFloat(sale.changeDue.toString()).toFixed(2)}</span>
+      <span>₱${parseFloat(sale.changeDue?.toString() ?? '0').toFixed(2)}</span>
     </div>
   </div>
 
@@ -194,7 +201,7 @@ export class PrintUtility {
 
   <div class="footer">
     <div>Thank you for your purchase!</div>
-    <div class="bold">** OFFICIAL RECEIPT **</div>
+    <div class="bold">** TEMPORARY RECEIPT **</div>
     <div>${new Date().toLocaleString()}</div>
   </div>
 

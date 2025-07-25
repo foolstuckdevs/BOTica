@@ -61,6 +61,7 @@ export const pharmacies = pgTable('pharmacies', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull().unique(),
   address: text('address'),
+  phone: varchar('phone', { length: 20 }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

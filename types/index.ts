@@ -2,6 +2,7 @@ export interface Pharmacy {
   id: number;
   name: string;
   address?: string;
+  phone?: string;
   createdAt?: string | Date;
 }
 export interface AuthCredentials {
@@ -175,6 +176,8 @@ export interface Transaction {
   discount: string;
   paymentMethod: PaymentMethod;
   createdAt: string | Date;
+  amountReceived?: string | number;
+  changeDue?: string | number;
   user: {
     id?: number;
     fullName: string;

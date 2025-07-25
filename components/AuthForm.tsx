@@ -41,7 +41,7 @@ import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
 interface Props<T extends FieldValues> {
   type: 'SIGN_IN' | 'SIGN_UP';
-  schema: ZodType<T>;
+  schema: ZodType<T, any, any>;
   defaultValues: T;
   onSubmit: (
     data: T,
@@ -60,7 +60,7 @@ const AuthForm = <T extends FieldValues>({
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  const form = useForm({
+  const form = useForm<T>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues as DefaultValues<T>,
   });
