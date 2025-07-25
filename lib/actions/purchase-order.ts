@@ -165,7 +165,7 @@ export const createPurchaseOrder = async (
         .replace(/[-:.TZ]/g, '')
         .slice(0, 14);
 
-    // Insert purchase order
+    // Insert purchase order with initial status 'DRAFT'
     const [order] = await db
       .insert(purchaseOrders)
       .values({
@@ -175,6 +175,7 @@ export const createPurchaseOrder = async (
         orderDate: new Date(params.orderDate).toISOString(),
         notes: params.notes,
         pharmacyId: params.pharmacyId,
+        status: 'DRAFT',
       })
       .returning();
 
@@ -257,6 +258,48 @@ export const updatePurchaseOrder = async (
   } catch (error) {
     console.error('Error updating purchase order:', error);
     return { success: false, message: 'Failed to update purchase order' };
+  }
+};
+
+// Update only the status of a purchase order
+export const updatePurchaseOrderStatus = async (
+  id: number,
+  status:
+    | 'DRAFT'
+    | 'EXPORTED'
+    | 'SUBMITTED'
+    | 'PARTIALLY_RECEIVED'
+    | 'RECEIVED'
+    | 'CANCELLED',
+  pharmacyId: number,
+) => {
+  try {
+    const existing = await db
+      .select()
+      .from(purchaseOrders)
+      .where(
+        and(
+          eq(purchaseOrders.id, id),
+          eq(purchaseOrders.pharmacyId, pharmacyId),
+        ),
+      );
+    if (!existing.length) {
+      return { success: false, message: 'Purchase order not found' };
+    }
+    await db
+      .update(purchaseOrders)
+      .set({ status })
+      .where(
+        and(
+          eq(purchaseOrders.id, id),
+          eq(purchaseOrders.pharmacyId, pharmacyId),
+        ),
+      );
+    revalidatePath('/purchase-orders');
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating purchase order status:', error);
+    return { success: false, message: 'Failed to update status' };
   }
 };
 

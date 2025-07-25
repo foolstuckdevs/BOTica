@@ -105,7 +105,13 @@ export interface Adjustment {
   notes?: string;
 }
 
-export type PurchaseOrderStatus = 'PENDING' | 'RECEIVED' | 'CANCELLED';
+export type PurchaseOrderStatus =
+  | 'DRAFT'
+  | 'EXPORTED'
+  | 'SUBMITTED'
+  | 'PARTIALLY_RECEIVED'
+  | 'RECEIVED'
+  | 'CANCELLED';
 
 export interface PurchaseOrderParams {
   supplierId: number;

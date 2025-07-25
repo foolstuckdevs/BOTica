@@ -48,7 +48,10 @@ export const ADJUSTMENT_REASON_ENUM = pgEnum('adjustment_reason', [
   'RESTOCK',
 ]);
 export const PURCHASE_ORDER_STATUS_ENUM = pgEnum('purchase_order_status', [
-  'PENDING',
+  'DRAFT',
+  'EXPORTED',
+  'SUBMITTED',
+  'PARTIALLY_RECEIVED',
   'RECEIVED',
   'CANCELLED',
 ]);
@@ -225,7 +228,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
     .references(() => users.id)
     .notNull(),
   orderDate: date('order_date').notNull(),
-  status: PURCHASE_ORDER_STATUS_ENUM('status').notNull().default('PENDING'),
+  status: PURCHASE_ORDER_STATUS_ENUM('status').notNull().default('DRAFT'),
   notes: text('notes'),
   pharmacyId: integer('pharmacy_id')
     .notNull()
@@ -242,6 +245,7 @@ export const purchaseOrderItems = pgTable('purchase_order_items', {
     .references(() => products.id)
     .notNull(),
   quantity: integer('quantity').notNull(),
+  receivedQuantity: integer('received_quantity').default(0).notNull(),
   unitCost: decimal('unit_cost', { precision: 10, scale: 2 }).notNull(),
   totalCost: decimal('total_cost', { precision: 10, scale: 2 }).notNull(),
 });

@@ -1,4 +1,3 @@
-// lib/utils/date-format.ts
 export const formatToTimestamp = (date: Date | null | undefined): string => {
   if (!date) return '-';
 
