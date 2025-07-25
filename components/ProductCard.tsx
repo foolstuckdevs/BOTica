@@ -23,6 +23,8 @@ export const ProductCard = ({
             src={product.imageUrl}
             alt={product.name}
             fill
+            sizes="(max-width: 768px) 100vw, 400px"
+            priority
             className="object-cover"
           />
         ) : (
@@ -42,7 +44,9 @@ export const ProductCard = ({
               product.quantity > 0 ? 'text-green-500' : 'text-red-500'
             }`}
           >
-            {product.quantity > 0 ? `${product.quantity} in stock` : 'Out of stock'}
+            {product.quantity > 0
+              ? `${product.quantity} in stock`
+              : 'Out of stock'}
           </span>
         </div>
         <Button

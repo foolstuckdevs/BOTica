@@ -1,9 +1,28 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { products, saleItems, sales } from '@/database/schema';
+import { products, saleItems, sales, pharmacies } from '@/database/schema';
+import type { Pharmacy } from '@/types';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+
+export const getPharmacy = async (
+  pharmacyId: number,
+): Promise<Pharmacy | null> => {
+  const pharmacyArr = await db
+    .select()
+    .from(pharmacies)
+    .where(eq(pharmacies.id, pharmacyId));
+  if (pharmacyArr[0]) {
+    return {
+      id: pharmacyArr[0].id,
+      name: pharmacyArr[0].name,
+      address: pharmacyArr[0].address ?? undefined,
+      createdAt: pharmacyArr[0].createdAt ?? undefined,
+    };
+  }
+  return null;
+};
 
 export const processSale = async (
   cartItems: Array<{
@@ -15,15 +34,15 @@ export const processSale = async (
   discount: number,
   pharmacyId: number,
   userId: string,
-  cashReceived: number = 0
+  cashReceived: number = 0,
 ) => {
   try {
     // Calculate total amount
     const totalAmount = cartItems.reduce(
       (total, item) => total + parseFloat(item.unitPrice) * item.quantity,
-      0
+      0,
     );
-    
+
     const discountedTotal = totalAmount - discount;
     const change = cashReceived - discountedTotal;
 
@@ -41,8 +60,8 @@ export const processSale = async (
           .where(
             and(
               eq(products.id, item.productId),
-              eq(products.pharmacyId, pharmacyId)
-            )
+              eq(products.pharmacyId, pharmacyId),
+            ),
           )
           .execute();
 
@@ -52,25 +71,28 @@ export const processSale = async (
 
         if (product[0].quantity < item.quantity) {
           throw new Error(
-            `Insufficient stock for ${product[0].name} (Requested: ${item.quantity}, Available: ${product[0].quantity})`
+            `Insufficient stock for ${product[0].name} (Requested: ${item.quantity}, Available: ${product[0].quantity})`,
           );
         }
 
         return product[0];
-      })
+      }),
     );
 
     // 2. Create the sale record
-    const newSale = await db.insert(sales).values({
-      invoiceNumber: `INV-${Date.now()}`,
-      totalAmount: totalAmount,
-      discount,
-      paymentMethod,
-      amountReceived: cashReceived.toString(),
-      changeDue: Math.max(0, change).toString(),
-      userId,
-      pharmacyId,
-    }).returning();
+    const newSale = await db
+      .insert(sales)
+      .values({
+        invoiceNumber: `INV-${Date.now()}`,
+        totalAmount: totalAmount.toString(),
+        discount: discount.toString(),
+        paymentMethod,
+        amountReceived: cashReceived.toString(),
+        changeDue: Math.max(0, change).toString(),
+        userId,
+        pharmacyId,
+      })
+      .returning();
 
     // 3. Create sale items and update product quantities
     await Promise.all(
@@ -88,20 +110,22 @@ export const processSale = async (
         await db
           .update(products)
           .set({
-            quantity: productValidations.find(p => p.id === item.productId)!.quantity - item.quantity,
+            quantity:
+              productValidations.find((p) => p.id === item.productId)!
+                .quantity - item.quantity,
           })
           .where(
             and(
               eq(products.id, item.productId),
-              eq(products.pharmacyId, pharmacyId)
-            )
+              eq(products.pharmacyId, pharmacyId),
+            ),
           );
-      })
+      }),
     );
 
     revalidatePath('/sales/pos');
     revalidatePath('/products');
-    
+
     return {
       success: true,
       data: newSale[0],
@@ -112,7 +136,8 @@ export const processSale = async (
     console.error('Error processing sale:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Failed to process sale',
+      message:
+        error instanceof Error ? error.message : 'Failed to process sale',
     };
   }
 };

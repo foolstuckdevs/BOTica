@@ -1,3 +1,11 @@
+// ...existing code...
+
+export interface Pharmacy {
+  id: number;
+  name: string;
+  address?: string;
+  createdAt?: string | Date;
+}
 export interface AuthCredentials {
   fullName: string;
   email: string;
