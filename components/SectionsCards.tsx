@@ -15,24 +15,32 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Product } from '@/types';
+import { ProductStockSummary } from '@/types';
 
 interface SectionCardsProps {
-  products: Product[];
+  productStats: ProductStockSummary[];
+  salesComparison: {
+    todaysSales: number;
+    yesterdaysSales: number;
+    percentageChange: number;
+    trend: 'up' | 'down' | 'equal';
+  };
 }
 
-export function SectionCards({ products }: SectionCardsProps) {
-  // Calculate dynamic counts
+export function SectionCards({
+  productStats,
+  salesComparison,
+}: SectionCardsProps) {
   const now = new Date();
-  // Placeholder for today's sales, replace with real data if available
-  const todaysSales = 12400; // static fallback
-  const lowStockCount = products.filter(
+
+  const lowStockCount = productStats.filter(
     (p) =>
       p.minStockLevel != null &&
       p.quantity <= p.minStockLevel &&
       p.quantity > 0,
   ).length;
-  const expiringSoonCount = products.filter((p) => {
+
+  const expiringSoonCount = productStats.filter((p) => {
     if (!p.expiryDate) return false;
     const expiry = new Date(p.expiryDate);
     return (
@@ -40,8 +48,10 @@ export function SectionCards({ products }: SectionCardsProps) {
       expiry.getTime() - now.getTime() < 30 * 24 * 60 * 60 * 1000
     );
   }).length;
-  const activeCount = products.filter((p) => p.quantity > 0).length;
-  const restockSoonCount = lowStockCount; // alias for clarity
+
+  const activeCount = productStats.filter((p) => p.quantity > 0).length;
+
+  const { todaysSales, percentageChange, trend } = salesComparison;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-10">
@@ -60,10 +70,17 @@ export function SectionCards({ products }: SectionCardsProps) {
           </CardTitle>
           <Badge
             variant="outline"
-            className="mt-2 flex gap-1 items-center rounded-md text-xs text-blue-600 border-blue-200 bg-blue-100/50"
+            className={`mt-2 flex gap-1 items-center rounded-md text-xs border-blue-200 bg-blue-100/50 ${
+              trend === 'up'
+                ? 'text-green-600 border-green-200 bg-green-100/50'
+                : trend === 'down'
+                ? 'text-red-600 border-red-200 bg-red-100/50'
+                : 'text-blue-600 border-blue-200 bg-blue-100/50'
+            }`}
           >
             <TrendingUpIcon className="h-3 w-3" />
-            +6.2% vs yesterday
+            {percentageChange > 0 ? '+' : ''}
+            {percentageChange.toFixed(1)}% vs yesterday
           </Badge>
         </CardHeader>
         <CardFooter className="justify-end">
@@ -76,14 +93,14 @@ export function SectionCards({ products }: SectionCardsProps) {
         </CardFooter>
       </Card>
 
-      {/* Restock Soon (Low Stock) */}
+      {/* Low Stock */}
       <Card>
         <CardHeader>
           <CardDescription className="text-xs text-muted-foreground">
             Low Stock Items
           </CardDescription>
           <CardTitle className="text-2xl font-bold tabular-nums text-yellow-700">
-            {restockSoonCount} items
+            {lowStockCount} items
           </CardTitle>
           <Badge
             variant="outline"

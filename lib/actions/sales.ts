@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { products, saleItems, sales, pharmacies } from '@/database/schema'; // <-- pharmacies was missing
+import { products, saleItems, sales, pharmacies } from '@/database/schema';
 import type { Pharmacy } from '@/types';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';

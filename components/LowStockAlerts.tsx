@@ -8,41 +8,13 @@ import {
   CardTitle,
 } from './ui/card';
 import { AlertTriangle } from 'lucide-react';
+import { LowStockProduct } from '@/types';
 
-export const LowStockAlerts = () => {
-  const lowStockAlerts = [
-    {
-      product: 'Paracetamol 500mg',
-      currentStock: 12,
-      minThreshold: 50,
-      category: 'Pain Relief',
-    },
-    {
-      product: 'Amoxicillin 250mg Capsules',
-      currentStock: 8,
-      minThreshold: 30,
-      category: 'Antibiotics',
-    },
-    {
-      product: 'Omeprazole 20mg',
-      currentStock: 5,
-      minThreshold: 25,
-      category: 'Gastrointestinal',
-    },
-    {
-      product: 'Salbutamol Inhaler',
-      currentStock: 3,
-      minThreshold: 15,
-      category: 'Respiratory',
-    },
-    {
-      product: 'Metformin 500mg',
-      currentStock: 10,
-      minThreshold: 40,
-      category: 'Diabetes',
-    },
-  ];
+interface LowStockAlertsProps {
+  lowStockProducts: LowStockProduct[];
+}
 
+export const LowStockAlerts = ({ lowStockProducts }: LowStockAlertsProps) => {
   return (
     <Card>
       <CardHeader>
@@ -55,25 +27,33 @@ export const LowStockAlerts = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {lowStockAlerts.map((item, index) => (
-            <div
-              key={index}
-              className="grid grid-cols-2 items-center border rounded-md px-3 py-2 text-sm border-orange-200"
-            >
-              <div>
-                <p className="font-medium text-gray-900">{item.product}</p>
-                <p className="text-xs text-muted-foreground">{item.category}</p>
+        {lowStockProducts.length === 0 ? (
+          <div className="text-center text-muted-foreground text-sm py-10">
+            No low stock alerts at the moment. All products are well stocked.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {lowStockProducts.map((item) => (
+              <div
+                key={item.id}
+                className="grid grid-cols-2 items-center border rounded-md px-3 py-2 text-sm border-orange-200"
+              >
+                <div>
+                  <p className="font-medium text-gray-900">{item.product}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.genericName || item.category}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold text-orange-600">
+                    {item.currentStock}/{item.minThreshold}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Current / Min</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="font-semibold text-orange-600">
-                  {item.currentStock}/{item.minThreshold}
-                </p>
-                <p className="text-xs text-muted-foreground">Current / Min</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

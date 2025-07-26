@@ -17,8 +17,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Tooltip as RechartsTooltip } from 'recharts';
-import { Info } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import useIsMobile from '@/hooks/use-mobile';
 
 interface ChartData {
@@ -87,6 +88,7 @@ export function SalesChart() {
     const filtered = chartData.filter(
       (item) => new Date(item.date) >= startDate,
     );
+
     const sales = filtered.reduce((acc, d) => acc + d.sales, 0);
     const purchases = filtered.reduce((acc, d) => acc + d.purchases, 0);
     const profit = sales - purchases;
@@ -105,6 +107,8 @@ export function SalesChart() {
     new Intl.NumberFormat('en-PH', {
       style: 'currency',
       currency: 'PHP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(amount);
 
   const formatXAxis = (date: string) =>
@@ -116,41 +120,69 @@ export function SalesChart() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-lg">Sales Performance</CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
-          Revenue vs. purchase costs over the last{' '}
-          {timeRange === '7d' ? '7' : '30'} days
-        </CardDescription>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg font-semibold">
+              Sales Performance
+            </CardTitle>
+            <CardDescription className="text-sm text-muted-foreground">
+              Revenue vs. purchase costs over the last{' '}
+              {timeRange === '7d' ? '7' : '30'} days
+            </CardDescription>
+          </div>
+
+          {/* Time Range Selector */}
+          <div className="flex bg-muted rounded-lg p-1">
+            <Button
+              variant={timeRange === '7d' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setTimeRange('7d')}
+              className="h-8 px-3"
+            >
+              <Calendar className="w-3 h-3 mr-1" />7 Days
+            </Button>
+            <Button
+              variant={timeRange === '30d' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setTimeRange('30d')}
+              className="h-8 px-3"
+            >
+              <Calendar className="w-3 h-3 mr-1" />
+              30 Days
+            </Button>
+          </div>
+        </div>
       </CardHeader>
+
       <CardContent>
         {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4 text-sm">
-          <div>
-            <p className="text-muted-foreground">Total Sales</p>
-            <p className="font-medium text-blue-600">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">Total Sales</p>
+            <p className="text-xl font-bold text-blue-600">
               {formatCurrency(totalSales)}
             </p>
           </div>
-          <div>
-            <p className="text-muted-foreground">Total Purchases</p>
-            <p className="font-medium text-orange-600">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">Total Purchases</p>
+            <p className="text-xl font-bold text-orange-600">
               {formatCurrency(totalPurchases)}
             </p>
           </div>
-          <div>
-            <p className="text-muted-foreground">Gross Profit</p>
-            <p className="font-medium text-green-600">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">Gross Profit</p>
+            <p className="text-xl font-bold text-green-600">
               {formatCurrency(grossProfit)}
             </p>
           </div>
-          <div>
-            <p className="text-muted-foreground">Profit Margin</p>
-            <p className="font-medium">{profitMargin}%</p>
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">Profit Margin</p>
+            <p className="text-xl font-bold">{profitMargin}%</p>
           </div>
         </div>
 
         {/* Chart */}
-        <div className="h-[280px] w-full">
+        <div className="h-[300px] w-full">
           <ResponsiveContainer>
             <AreaChart
               data={filteredData}
@@ -176,7 +208,7 @@ export function SalesChart() {
               <YAxis
                 tickFormatter={(v) => `₱${v / 1000}k`}
                 tick={{ fontSize: 12 }}
-                width={40}
+                width={50}
                 axisLine={false}
                 tickLine={false}
               />
@@ -184,6 +216,7 @@ export function SalesChart() {
                 strokeDasharray="3 3"
                 vertical={false}
                 stroke="#e5e7eb"
+                opacity={0.5}
               />
               <RechartsTooltip
                 contentStyle={{
@@ -206,6 +239,7 @@ export function SalesChart() {
                 stroke="#3b82f6"
                 fill="url(#colorSales)"
                 strokeWidth={2}
+                name="sales"
               />
               <Area
                 type="monotone"
@@ -213,29 +247,20 @@ export function SalesChart() {
                 stroke="#f97316"
                 fill="url(#colorPurchases)"
                 strokeWidth={2}
+                name="purchases"
               />
               <Legend
                 verticalAlign="top"
                 height={30}
                 iconType="circle"
                 formatter={(value) => (
-                  <span className="text-xs text-gray-700 dark:text-gray-300">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
                     {value === 'sales' ? 'Sales' : 'Purchases'}
                   </span>
                 )}
               />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
-
-        {/* Footer Link */}
-        <div className="mt-4 text-right">
-          <a
-            href="#"
-            className="text-xs text-muted-foreground hover:text-blue-600 flex items-center gap-1 justify-end"
-          >
-            <Info className="w-3 h-3" /> View full analytics
-          </a>
         </div>
       </CardContent>
     </Card>

@@ -81,6 +81,22 @@ export interface Product {
   pharmacyId?: number;
 }
 
+export type ProductStockSummary = {
+  id: number;
+  quantity: number;
+  minStockLevel: number;
+  expiryDate: string | null;
+};
+
+export type LowStockProduct = {
+  id: number;
+  product: string;
+  genericName: string | null;
+  currentStock: number;
+  minThreshold: number;
+  category: string;
+};
+
 export interface ProductParams {
   name: string;
   genericName?: string;
