@@ -10,52 +10,53 @@ import {
   TrendingDown,
   Package,
 } from 'lucide-react';
+import {
+  SalesOverviewData,
+  SalesComparisonData,
+} from '@/lib/actions/sales-reports';
 
-export const SalesReportOverview = () => {
+interface SalesReportOverviewProps {
+  salesData: {
+    today: SalesOverviewData;
+    yesterday: SalesOverviewData;
+    week: SalesOverviewData;
+    month: SalesOverviewData;
+    comparison: SalesComparisonData;
+  };
+}
+
+export const SalesReportOverview = ({
+  salesData,
+}: SalesReportOverviewProps) => {
   const [selectedPeriod, setSelectedPeriod] = React.useState('today');
 
-  // Sample data - you'll replace this with real data from your database
-  const salesData = {
-    today: {
-      totalSales: 15420.5,
-      totalCost: 9252.3,
-      profit: 6168.2,
-      transactions: 24,
-      totalItems: 87,
-    },
-    yesterday: {
-      totalSales: 12890.75,
-      totalCost: 7734.45,
-      profit: 5156.3,
-      transactions: 19,
-      totalItems: 68,
-    },
-    week: {
-      totalSales: 98750.25,
-      totalCost: 59250.15,
-      profit: 39500.1,
-      transactions: 156,
-      totalItems: 542,
-    },
-    month: {
-      totalSales: 387650.75,
-      totalCost: 232590.45,
-      profit: 155060.3,
-      transactions: 634,
-      totalItems: 2186,
-    },
+  const getCurrentData = (): SalesOverviewData => {
+    switch (selectedPeriod) {
+      case 'today':
+        return salesData.today;
+      case 'yesterday':
+        return salesData.yesterday;
+      case 'week':
+        return salesData.week;
+      case 'month':
+        return salesData.month;
+      default:
+        return salesData.today;
+    }
   };
 
-  const currentData = salesData[selectedPeriod as keyof typeof salesData];
-  const profitMargin = (
-    (currentData.profit / currentData.totalSales) *
-    100
-  ).toFixed(1);
+  const currentData = getCurrentData();
+  const profitMargin =
+    currentData.totalSales > 0
+      ? ((currentData.profit / currentData.totalSales) * 100).toFixed(1)
+      : '0.0';
 
   const getPeriodLabel = (period: string) => {
     switch (period) {
       case 'today':
         return 'Today';
+      case 'yesterday':
+        return 'Yesterday';
       case 'week':
         return 'This Week';
       case 'month':
@@ -79,7 +80,7 @@ export const SalesReportOverview = () => {
         {/* Period Selector */}
         <div className="flex items-center gap-3">
           <div className="flex bg-muted/50 rounded-xl p-1">
-            {['today', 'week', 'month'].map((period) => (
+            {['yesterday', 'today', 'week', 'month'].map((period) => (
               <Button
                 key={period}
                 variant={selectedPeriod === period ? 'default' : 'ghost'}
@@ -185,7 +186,7 @@ export const SalesReportOverview = () => {
         </Card>
       </div>
 
-      {/* Comparison Section - Auto-show when viewing today */}
+      {/* Comparison Sections */}
       {selectedPeriod === 'today' && (
         <Card className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
           <CardContent className="p-4">
@@ -193,74 +194,87 @@ export const SalesReportOverview = () => {
               <TrendingUp className="w-4 h-4" />
               Performance vs Yesterday
             </h3>
-            <div className="space-y-3">
-              <>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Sales Growth:</span>
-                  <div className="flex items-center gap-1">
-                    {salesData.today.totalSales >
-                    salesData.yesterday.totalSales ? (
-                      <TrendingUp className="w-3 h-3 text-green-600" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3 text-red-600" />
-                    )}
-                    <span
-                      className={`text-sm font-medium ${
-                        salesData.today.totalSales >
-                        salesData.yesterday.totalSales
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {(
-                        ((salesData.today.totalSales -
-                          salesData.yesterday.totalSales) /
-                          salesData.yesterday.totalSales) *
-                        100
-                      ).toFixed(1)}
-                      %
-                    </span>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Profit Growth:</span>
+
+            {/* Simplified comparison */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Sales Growth:</span>
+                <div className="flex items-center gap-1">
+                  {salesData.comparison.salesGrowth > 0 ? (
+                    <TrendingUp className="w-3 h-3 text-green-600" />
+                  ) : (
+                    <TrendingDown className="w-3 h-3 text-red-600" />
+                  )}
                   <span
                     className={`text-sm font-medium ${
-                      salesData.today.profit > salesData.yesterday.profit
+                      salesData.comparison.salesGrowth > 0
                         ? 'text-green-600'
                         : 'text-red-600'
                     }`}
                   >
-                    {(
-                      ((salesData.today.profit - salesData.yesterday.profit) /
-                        salesData.yesterday.profit) *
-                      100
-                    ).toFixed(1)}
-                    %
+                    {salesData.comparison.salesGrowth}%
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (₱
+                    {salesData.comparison.previous.totalSales.toLocaleString(
+                      'en-PH',
+                      { maximumFractionDigits: 0 },
+                    )}{' '}
+                    yesterday)
                   </span>
                 </div>
-                <div className="pt-2 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">
-                      Overall Performance:
-                    </span>
-                    <span
-                      className={`text-sm font-bold ${
-                        salesData.today.totalSales >
-                        salesData.yesterday.totalSales
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {salesData.today.totalSales >
-                      salesData.yesterday.totalSales
-                        ? 'Better'
-                        : 'Lower'}{' '}
-                      than yesterday
-                    </span>
-                  </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Profit Growth:</span>
+                <div className="flex items-center gap-1">
+                  <span
+                    className={`text-sm font-medium ${
+                      salesData.comparison.profitGrowth > 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    {salesData.comparison.profitGrowth}%
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-1">
+                    (₱
+                    {salesData.comparison.previous.profit.toLocaleString(
+                      'en-PH',
+                      { maximumFractionDigits: 0 },
+                    )}{' '}
+                    yesterday)
+                  </span>
                 </div>
-              </>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Transactions:</span>
+                <div className="flex items-center gap-1">
+                  <span
+                    className={`text-sm font-medium ${
+                      salesData.comparison.transactionGrowth > 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    {salesData.comparison.transactionGrowth}%
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({salesData.comparison.previous.transactions} yesterday)
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick comparison info for Yesterday */}
+      {selectedPeriod === 'yesterday' && (
+        <Card className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
+          <CardContent className="p-3">
+            <div className="text-sm text-muted-foreground">
+              Yesterday&apos;s performance. Switch to &quot;Today&quot; for
+              growth comparisons.
             </div>
           </CardContent>
         </Card>

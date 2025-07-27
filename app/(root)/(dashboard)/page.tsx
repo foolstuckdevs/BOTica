@@ -9,6 +9,7 @@ import {
   getTopSellingProducts,
   getLowStockProducts,
 } from '@/lib/actions/dashboard';
+import { QuickActionsPanel } from '@/components/QuickActionsPanel';
 
 const Page = async () => {
   const session = await auth();
@@ -56,6 +57,7 @@ const Page = async () => {
         <LowStockAlerts lowStockProducts={lowStockProducts} />
         <TopSellingProducts products={topSellingProducts} />
       </div>
+      <QuickActionsPanel />
     </main>
   );
 };

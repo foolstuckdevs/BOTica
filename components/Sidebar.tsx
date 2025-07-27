@@ -16,7 +16,6 @@ import {
   Settings,
   BarChart2,
   FileText,
-  AlertTriangle,
   Layers,
   RefreshCw,
   Pill,
@@ -223,17 +222,6 @@ const Sidebar = () => {
               >
                 <Layers className="w-4 h-4" />
                 Inventory Report
-              </Link>
-              <Link
-                href="/reports/expiration"
-                className={`${submenuLinkClasses} ${
-                  isActive('/reports/expiration')
-                    ? submenuActiveClasses
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
-                }`}
-              >
-                <AlertTriangle className="w-4 h-4" />
-                Expiration Report
               </Link>
             </div>
           )}
