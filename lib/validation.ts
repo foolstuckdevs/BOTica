@@ -112,9 +112,52 @@ export const purchaseOrderSchema = z.object({
     z.object({
       productId: z.number().min(1, 'Product is required'),
       quantity: z.number().min(1, 'Quantity must be at least 1'),
-      unitCost: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid unit cost'),
+      unitCost: z
+        .string()
+        .regex(/^\d+(\.\d{1,2})?$/, 'Invalid unit cost')
+        .optional(),
     }),
   ),
+});
+
+// Purchase Order Confirmation Schema
+export const purchaseOrderConfirmationSchema = z.object({
+  confirmedItems: z
+    .record(
+      z.string(),
+      z.object({
+        unitCost: z
+          .string()
+          .min(1, 'Unit cost is required')
+          .regex(/^\d+(\.\d{1,2})?$/, 'Invalid unit cost format')
+          .refine((val) => parseFloat(val) > 0, {
+            message: 'Unit cost must be greater than 0',
+          }),
+        available: z.boolean(),
+      }),
+    )
+    .refine(
+      (items) => {
+        const availableItems = Object.values(items).filter(
+          (item) => item.available,
+        );
+        return availableItems.length > 0;
+      },
+      {
+        message: 'At least one item must be available for confirmation',
+      },
+    )
+    .refine(
+      (items) => {
+        const availableItems = Object.values(items).filter(
+          (item) => item.available,
+        );
+        return availableItems.every((item) => parseFloat(item.unitCost) > 0);
+      },
+      {
+        message: 'All available items must have a valid price greater than 0',
+      },
+    ),
 });
 
 export const saleSchema = z.object({

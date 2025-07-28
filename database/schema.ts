@@ -51,8 +51,10 @@ export const PURCHASE_ORDER_STATUS_ENUM = pgEnum('purchase_order_status', [
   'DRAFT',
   'EXPORTED',
   'SUBMITTED',
+  'CONFIRMED',
   'PARTIALLY_RECEIVED',
   'RECEIVED',
+  'COMPLETED',
   'CANCELLED',
 ]);
 
@@ -231,10 +233,12 @@ export const purchaseOrders = pgTable('purchase_orders', {
   orderDate: date('order_date').notNull(),
   status: PURCHASE_ORDER_STATUS_ENUM('status').notNull().default('DRAFT'),
   notes: text('notes'),
+  totalCost: decimal('total_cost', { precision: 10, scale: 2 }).default('0.00'), // Only set after confirmation
   pharmacyId: integer('pharmacy_id')
     .notNull()
     .references(() => pharmacies.id),
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 export const purchaseOrderItems = pgTable('purchase_order_items', {
@@ -247,6 +251,5 @@ export const purchaseOrderItems = pgTable('purchase_order_items', {
     .notNull(),
   quantity: integer('quantity').notNull(),
   receivedQuantity: integer('received_quantity').default(0).notNull(),
-  unitCost: decimal('unit_cost', { precision: 10, scale: 2 }).notNull(),
-  totalCost: decimal('total_cost', { precision: 10, scale: 2 }).notNull(),
+  unitCost: decimal('unit_cost', { precision: 10, scale: 2 }), // NULL until confirmed, then set by supplier
 });

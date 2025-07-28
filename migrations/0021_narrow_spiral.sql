@@ -1,0 +1,1 @@
+ALTER TYPE "public"."purchase_order_status" ADD VALUE 'CONFIRMED' BEFORE 'PARTIALLY_RECEIVED';

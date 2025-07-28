@@ -28,7 +28,6 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { ChevronLeft } from 'lucide-react';
-import { formatCurrency } from '@/lib/helpers/formatCurrency';
 
 type PurchaseOrderFormValues = z.infer<typeof purchaseOrderSchema>;
 
@@ -81,7 +80,6 @@ const PurchaseOrderForm = ({
     append({
       productId: product.id,
       quantity: 1,
-      unitCost: product.costPrice,
     });
 
     setSearch('');
@@ -145,34 +143,38 @@ const PurchaseOrderForm = ({
     }
   };
 
-  // Calculate total order cost from current form values
-  const total = fields.reduce(
-    (sum, item, idx) =>
-      sum +
-      Number(form.watch(`items.${idx}.quantity`) || 1) *
-        parseFloat(form.watch(`items.${idx}.unitCost`) || '0'),
-    0,
-  );
-
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-8 py-6">
+    <div className="max-w-6xl mx-auto px-4 md:px-8 py-6">
+      {/* Header Navigation */}
       <Button
         variant="ghost"
         onClick={() => router.push('/inventory/purchase-order')}
-        className="group flex items-center gap-2 rounded-full text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+        className="group flex items-center gap-2 rounded-full text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors mb-6"
       >
         <ChevronLeft className="w-4 h-4 group-hover:translate-x-[-2px] transition-transform" />
         <span>Back to Purchase Orders</span>
       </Button>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">
-          {type === 'create' ? 'Create' : 'Edit'} Purchase Order
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {type === 'create'
-            ? 'Select a supplier, add products, and submit your order.'
-            : 'Update the purchase order details and items.'}
-        </p>
+
+      {/* Page Header */}
+      <div className="mb-8 border-b border-gray-200 pb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {type === 'create' ? 'Create New' : 'Edit'} Purchase Order
+            </h1>
+            <p className="text-gray-600 mt-1">
+              {type === 'create'
+                ? 'Select a supplier and add products for your order.'
+                : 'Update the purchase order details and items.'}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-blue-600">
+              {fields.length} items
+            </div>
+            <p className="text-sm text-gray-500">Order Summary</p>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -323,8 +325,6 @@ const PurchaseOrderForm = ({
                     <th className="px-3 py-2 text-left">Qty</th>
                     <th className="px-3 py-2 text-left">Unit</th>
                     <th className="px-3 py-2 text-left">Stock</th>
-                    <th className="px-3 py-2 text-left">Unit Cost</th>
-                    <th className="px-3 py-2 text-left">Total</th>
                     <th />
                   </tr>
                 </thead>
@@ -353,29 +353,6 @@ const PurchaseOrderForm = ({
                         <td className="px-3 py-2">{product?.unit}</td>
                         <td className="px-3 py-2">{product?.quantity}</td>
                         <td className="px-3 py-2">
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={form.watch(`items.${idx}.unitCost`) || ''}
-                            onChange={(e) =>
-                              form.setValue(
-                                `items.${idx}.unitCost`,
-                                e.target.value,
-                              )
-                            }
-                            className="w-24"
-                          />
-                        </td>
-                        <td className="px-3 py-2">
-                          {(
-                            Number(form.watch(`items.${idx}.quantity`) || 1) *
-                            parseFloat(
-                              form.watch(`items.${idx}.unitCost`) || '0',
-                            )
-                          ).toFixed(2)}
-                        </td>
-                        <td className="px-3 py-2">
                           <Button
                             type="button"
                             variant="destructive"
@@ -391,12 +368,6 @@ const PurchaseOrderForm = ({
                 </tbody>
               </table>
               {/* Total Cost */}
-              <div className="mt-4 flex justify-end items-center gap-4">
-                <span className="font-medium text-gray-700">Total Cost:</span>
-                <span className="text-lg font-semibold">
-                  {formatCurrency(total)}
-                </span>
-              </div>
             </CardContent>
           </Card>
         )}

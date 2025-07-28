@@ -132,8 +132,10 @@ export type PurchaseOrderStatus =
   | 'DRAFT'
   | 'EXPORTED'
   | 'SUBMITTED'
+  | 'CONFIRMED'
   | 'PARTIALLY_RECEIVED'
   | 'RECEIVED'
+  | 'COMPLETED'
   | 'CANCELLED';
 
 export interface PurchaseOrderParams {
@@ -144,7 +146,7 @@ export interface PurchaseOrderParams {
   items: {
     productId: number;
     quantity: number;
-    unitCost: string;
+    unitCost?: string;
   }[];
 }
 
@@ -158,10 +160,13 @@ export interface PurchaseOrder {
   notes?: string | null;
   pharmacyId: number;
   createdAt: string;
-  supplierName?: string;
-  totalItems?: number;
-  totalQuantity?: number;
-  totalCost: number;
+  updatedAt?: string;
+  totalCost: string; // Changed from number to string (decimal from DB)
+  // Computed fields (not stored in DB)
+  supplierName?: string; // From JOIN with suppliers table
+  totalItems?: number; // COUNT of items
+  totalQuantity?: number; // SUM of quantities
+  userName?: string; // From JOIN with users table
 }
 
 export interface PurchaseOrderItem {
@@ -169,10 +174,12 @@ export interface PurchaseOrderItem {
   purchaseOrderId: number;
   productId: number;
   quantity: number;
-  unitCost: string; // Drizzle decimal => string
-  totalCost: string;
-  productName?: string;
-  productUnit?: string;
+  receivedQuantity?: number;
+  unitCost?: string | null; // NULL until confirmed by supplier
+  // Computed fields (not stored in DB)
+  totalCost?: number; // Calculated: unitCost * quantity
+  productName?: string; // From JOIN with products table
+  productUnit?: string; // From JOIN with products table
 }
 
 export type PaymentMethod = 'CASH' | 'GCASH';

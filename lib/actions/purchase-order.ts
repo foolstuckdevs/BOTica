@@ -10,7 +10,10 @@ import {
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { PurchaseOrderParams } from '@/types';
-import { purchaseOrderSchema } from '@/lib/validation';
+import {
+  purchaseOrderSchema,
+  purchaseOrderConfirmationSchema,
+} from '@/lib/validation';
 
 export const getPurchaseOrders = async (pharmacyId: number) => {
   try {
@@ -23,9 +26,11 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
         orderDate: purchaseOrders.orderDate,
         status: purchaseOrders.status,
         notes: purchaseOrders.notes,
+        totalCost: purchaseOrders.totalCost,
         pharmacyId: purchaseOrders.pharmacyId,
         createdAt: purchaseOrders.createdAt,
-        supplierName: suppliers.name,
+        updatedAt: purchaseOrders.updatedAt,
+        supplierName: suppliers.name, // JOIN to get supplier name
       })
       .from(purchaseOrders)
       .leftJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
@@ -39,18 +44,14 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
             productId: purchaseOrderItems.productId,
             quantity: purchaseOrderItems.quantity,
             unitCost: purchaseOrderItems.unitCost,
-            totalCost: purchaseOrderItems.totalCost,
           })
           .from(purchaseOrderItems)
           .where(eq(purchaseOrderItems.purchaseOrderId, order.id));
 
+        // Calculate computed fields
         const totalItems = items.length;
         const totalQuantity = items.reduce(
           (sum, item) => sum + Number(item.quantity),
-          0,
-        );
-        const totalCost = items.reduce(
-          (sum, item) => sum + parseFloat(item.totalCost || '0'),
           0,
         );
 
@@ -62,14 +63,17 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
           orderDate: order.orderDate,
           status: order.status,
           notes: order.notes ?? null,
+          totalCost: order.totalCost || '0.00',
           pharmacyId: order.pharmacyId,
           createdAt: order.createdAt
             ? new Date(order.createdAt).toISOString()
             : new Date().toISOString(),
-          name: order.supplierName ?? undefined,
+          updatedAt: order.updatedAt
+            ? new Date(order.updatedAt).toISOString()
+            : undefined,
+          supplierName: order.supplierName ?? undefined,
           totalItems,
           totalQuantity,
-          totalCost,
         };
 
         return formattedOrder;
@@ -95,8 +99,10 @@ export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
         orderDate: purchaseOrders.orderDate,
         status: purchaseOrders.status,
         notes: purchaseOrders.notes,
+        totalCost: purchaseOrders.totalCost,
         pharmacyId: purchaseOrders.pharmacyId,
         createdAt: purchaseOrders.createdAt,
+        updatedAt: purchaseOrders.updatedAt,
         supplierName: suppliers.name,
       })
       .from(purchaseOrders)
@@ -118,11 +124,18 @@ export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
         purchaseOrderId: purchaseOrderItems.purchaseOrderId,
         productId: purchaseOrderItems.productId,
         quantity: purchaseOrderItems.quantity,
+        receivedQuantity: purchaseOrderItems.receivedQuantity,
         unitCost: purchaseOrderItems.unitCost,
-        totalCost: purchaseOrderItems.totalCost,
       })
       .from(purchaseOrderItems)
       .where(eq(purchaseOrderItems.purchaseOrderId, id));
+
+    // Calculate computed fields
+    const totalItems = itemsRaw.length;
+    const totalQuantity = itemsRaw.reduce(
+      (sum, item) => sum + item.quantity,
+      0,
+    );
 
     const formatted = {
       ...order,
@@ -130,9 +143,19 @@ export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
       createdAt: order.createdAt
         ? new Date(order.createdAt).toISOString()
         : new Date(order.orderDate).toISOString(),
+      updatedAt: order.updatedAt
+        ? new Date(order.updatedAt).toISOString()
+        : undefined,
       notes: order.notes ?? '',
+      totalCost: order.totalCost || '0.00',
+      totalItems,
+      totalQuantity,
       items: itemsRaw.map((item) => ({
         ...item,
+        // Add computed totalCost for each item
+        totalCost: item.unitCost
+          ? parseFloat(item.unitCost) * item.quantity
+          : 0,
       })),
     };
 
@@ -181,13 +204,13 @@ export const createPurchaseOrder = async (
 
     // Insert items
     for (const item of params.items) {
-      const totalCost = (parseFloat(item.unitCost) * item.quantity).toFixed(2);
+      // Use unitCost if provided, otherwise set to null for draft orders
+      const unitCost = item.unitCost || null;
       await db.insert(purchaseOrderItems).values({
         purchaseOrderId: order.id,
         productId: item.productId,
         quantity: item.quantity,
-        unitCost: item.unitCost,
-        totalCost,
+        unitCost: unitCost,
       });
     }
 
@@ -242,14 +265,14 @@ export const updatePurchaseOrder = async (
 
     // 🆕 Insert new items
     for (const item of params.items) {
-      const totalCost = (parseFloat(item.unitCost) * item.quantity).toFixed(2);
+      // Use unitCost if provided, otherwise set to null for draft orders
+      const unitCost = item.unitCost || null;
 
       await db.insert(purchaseOrderItems).values({
         purchaseOrderId: id,
         productId: item.productId,
         quantity: item.quantity,
-        unitCost: item.unitCost,
-        totalCost,
+        unitCost: unitCost,
       });
     }
 
@@ -268,8 +291,10 @@ export const updatePurchaseOrderStatus = async (
     | 'DRAFT'
     | 'EXPORTED'
     | 'SUBMITTED'
+    | 'CONFIRMED'
     | 'PARTIALLY_RECEIVED'
     | 'RECEIVED'
+    | 'COMPLETED'
     | 'CANCELLED',
   pharmacyId: number,
 ) => {
@@ -296,6 +321,8 @@ export const updatePurchaseOrderStatus = async (
         ),
       );
     revalidatePath('/purchase-orders');
+    revalidatePath(`/inventory/purchase-order/${id}`);
+    revalidatePath('/inventory/purchase-order');
     return { success: true };
   } catch (error) {
     console.error('Error updating purchase order status:', error);
@@ -338,5 +365,102 @@ export const deletePurchaseOrder = async (id: number, pharmacyId: number) => {
   } catch (error) {
     console.error('Error deleting purchase order:', error);
     return { success: false, message: 'Failed to delete purchase order' };
+  }
+};
+
+// Confirm purchase order with supplier pricing
+export const confirmPurchaseOrder = async (
+  id: number,
+  pharmacyId: number,
+  confirmedItems: Record<number, { unitCost: string; available: boolean }>,
+) => {
+  try {
+    // Filter out unavailable items before validation
+    const availableItemsOnly = Object.fromEntries(
+      Object.entries(confirmedItems).filter(([, item]) => item.available),
+    );
+
+    // Validate only the available items
+    const validation = purchaseOrderConfirmationSchema.safeParse({
+      confirmedItems: availableItemsOnly,
+    });
+
+    if (!validation.success) {
+      return {
+        success: false,
+        message: validation.error.issues[0]?.message || 'Validation failed',
+      };
+    }
+
+    // Check if purchase order exists
+    const existing = await db
+      .select()
+      .from(purchaseOrders)
+      .where(
+        and(
+          eq(purchaseOrders.id, id),
+          eq(purchaseOrders.pharmacyId, pharmacyId),
+        ),
+      );
+
+    if (!existing.length) {
+      return { success: false, message: 'Purchase order not found' };
+    }
+
+    // Update items with confirmed pricing and remove unavailable items
+    let confirmedTotalCost = 0;
+
+    for (const [itemId, itemData] of Object.entries(confirmedItems)) {
+      const itemIdNum = parseInt(itemId);
+
+      if (itemData.available) {
+        // Get current quantity for total cost calculation
+        const quantityResult = await db
+          .select({ quantity: purchaseOrderItems.quantity })
+          .from(purchaseOrderItems)
+          .where(eq(purchaseOrderItems.id, itemIdNum))
+          .limit(1);
+
+        const quantity = quantityResult[0]?.quantity || 0;
+        const itemTotal = parseFloat(itemData.unitCost) * quantity;
+        confirmedTotalCost += itemTotal;
+
+        // Update item with confirmed pricing (no totalCost field)
+        await db
+          .update(purchaseOrderItems)
+          .set({
+            unitCost: itemData.unitCost,
+          })
+          .where(eq(purchaseOrderItems.id, itemIdNum));
+      } else {
+        // Remove unavailable items
+        await db
+          .delete(purchaseOrderItems)
+          .where(eq(purchaseOrderItems.id, itemIdNum));
+      }
+    }
+
+    // Update purchase order status and total cost
+    await db
+      .update(purchaseOrders)
+      .set({
+        status: 'CONFIRMED',
+        totalCost: confirmedTotalCost.toFixed(2),
+      })
+      .where(
+        and(
+          eq(purchaseOrders.id, id),
+          eq(purchaseOrders.pharmacyId, pharmacyId),
+        ),
+      );
+
+    revalidatePath('/inventory/purchase-order');
+    return {
+      success: true,
+      message: 'Purchase order confirmed successfully',
+    };
+  } catch (error) {
+    console.error('Error confirming purchase order:', error);
+    return { success: false, message: 'Failed to confirm purchase order' };
   }
 };
