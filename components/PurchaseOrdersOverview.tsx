@@ -44,6 +44,11 @@ const PurchaseOrdersOverview: React.FC<PurchaseOrdersOverviewProps> = ({
         icon: <CheckCircle className="w-3 h-3" />,
         label: 'Submitted',
       },
+      CONFIRMED: {
+        color: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+        icon: <CheckCircle className="w-3 h-3" />,
+        label: 'Confirmed',
+      },
       PARTIALLY_RECEIVED: {
         color: 'bg-orange-100 text-orange-700 border-orange-200',
         icon: <Truck className="w-3 h-3" />,
@@ -84,6 +89,7 @@ const PurchaseOrdersOverview: React.FC<PurchaseOrdersOverviewProps> = ({
       DRAFT: 15,
       EXPORTED: 25,
       SUBMITTED: 40,
+      CONFIRMED: 55,
       PARTIALLY_RECEIVED: 70,
       RECEIVED: 85,
       COMPLETED: 100,

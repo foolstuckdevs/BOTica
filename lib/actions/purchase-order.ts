@@ -6,8 +6,9 @@ import {
   purchaseOrderItems,
   suppliers,
   users,
+  products,
 } from '@/database/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { PurchaseOrderParams } from '@/types';
 import {
@@ -462,5 +463,254 @@ export const confirmPurchaseOrder = async (
   } catch (error) {
     console.error('Error confirming purchase order:', error);
     return { success: false, message: 'Failed to confirm purchase order' };
+  }
+};
+
+// Update received quantities for purchase order items
+export const updateReceivedQuantities = async (
+  orderId: number,
+  pharmacyId: number,
+  receivedItems: Record<number, number>,
+) => {
+  try {
+    // Validate that the purchase order exists
+    const orderExists = await db
+      .select()
+      .from(purchaseOrders)
+      .where(
+        and(
+          eq(purchaseOrders.id, orderId),
+          eq(purchaseOrders.pharmacyId, pharmacyId),
+        ),
+      );
+
+    if (!orderExists.length) {
+      return { success: false, message: 'Purchase order not found' };
+    }
+
+    // Update received quantities in purchase order items
+    for (const [itemId, receivedQty] of Object.entries(receivedItems)) {
+      if (receivedQty > 0) {
+        await db
+          .update(purchaseOrderItems)
+          .set({ receivedQuantity: receivedQty })
+          .where(eq(purchaseOrderItems.id, parseInt(itemId)));
+      }
+    }
+
+    // Check if all items are fully received to update order status
+    const allItems = await db
+      .select({
+        id: purchaseOrderItems.id,
+        quantity: purchaseOrderItems.quantity,
+        receivedQuantity: purchaseOrderItems.receivedQuantity,
+      })
+      .from(purchaseOrderItems)
+      .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+
+    const allFullyReceived = allItems.every(
+      (item) => item.receivedQuantity >= item.quantity,
+    );
+    const anyPartiallyReceived = allItems.some(
+      (item) =>
+        item.receivedQuantity > 0 && item.receivedQuantity < item.quantity,
+    );
+
+    // Update order status based on received quantities
+    let newStatus: 'PARTIALLY_RECEIVED' | 'RECEIVED' = 'PARTIALLY_RECEIVED';
+    if (allFullyReceived) {
+      newStatus = 'RECEIVED';
+    } else if (anyPartiallyReceived) {
+      newStatus = 'PARTIALLY_RECEIVED';
+    }
+
+    await db
+      .update(purchaseOrders)
+      .set({ status: newStatus })
+      .where(
+        and(
+          eq(purchaseOrders.id, orderId),
+          eq(purchaseOrders.pharmacyId, pharmacyId),
+        ),
+      );
+
+    revalidatePath('/inventory/purchase-order');
+    return {
+      success: true,
+      message: 'Received quantities updated successfully',
+    };
+  } catch (error) {
+    console.error('Error updating received quantities:', error);
+    return { success: false, message: 'Failed to update received quantities' };
+  }
+};
+
+// Receive all items (mark all quantities as fully received)
+export const receiveAllItems = async (
+  orderId: number,
+  pharmacyId: number,
+  updateInventory: boolean = true,
+) => {
+  try {
+    // Get all items for this purchase order
+    const orderItems = await db
+      .select({
+        id: purchaseOrderItems.id,
+        productId: purchaseOrderItems.productId,
+        quantity: purchaseOrderItems.quantity,
+        receivedQuantity: purchaseOrderItems.receivedQuantity,
+        unitCost: purchaseOrderItems.unitCost,
+      })
+      .from(purchaseOrderItems)
+      .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+
+    if (!orderItems.length) {
+      return { success: false, message: 'No items found for this order' };
+    }
+
+    await db.transaction(async (tx) => {
+      // Update all items to fully received
+      for (const item of orderItems) {
+        await tx
+          .update(purchaseOrderItems)
+          .set({ receivedQuantity: item.quantity })
+          .where(eq(purchaseOrderItems.id, item.id));
+
+        // Update product inventory if requested
+        if (updateInventory) {
+          const quantityToAdd = item.quantity - item.receivedQuantity;
+          if (quantityToAdd > 0) {
+            await tx
+              .update(products)
+              .set({
+                quantity: sql`${products.quantity} + ${quantityToAdd}`,
+                costPrice: item.unitCost || products.costPrice,
+              })
+              .where(
+                and(
+                  eq(products.id, item.productId),
+                  eq(products.pharmacyId, pharmacyId),
+                ),
+              );
+          }
+        }
+      }
+
+      // Update order status to RECEIVED
+      await tx
+        .update(purchaseOrders)
+        .set({ status: 'RECEIVED' })
+        .where(
+          and(
+            eq(purchaseOrders.id, orderId),
+            eq(purchaseOrders.pharmacyId, pharmacyId),
+          ),
+        );
+    });
+
+    revalidatePath('/inventory/purchase-order');
+    revalidatePath('/products');
+    return { success: true, message: 'All items received successfully' };
+  } catch (error) {
+    console.error('Error receiving all items:', error);
+    return { success: false, message: 'Failed to receive all items' };
+  }
+};
+
+// Partially receive items with inventory update
+export const partiallyReceiveItems = async (
+  orderId: number,
+  pharmacyId: number,
+  receivedItems: Record<number, number>,
+  updateInventory: boolean = true,
+) => {
+  try {
+    await db.transaction(async (tx) => {
+      // Update received quantities and inventory
+      for (const [itemId, receivedQty] of Object.entries(receivedItems)) {
+        if (receivedQty > 0) {
+          const itemIdNum = parseInt(itemId);
+
+          // Get current item details
+          const [currentItem] = await tx
+            .select({
+              productId: purchaseOrderItems.productId,
+              receivedQuantity: purchaseOrderItems.receivedQuantity,
+              unitCost: purchaseOrderItems.unitCost,
+            })
+            .from(purchaseOrderItems)
+            .where(eq(purchaseOrderItems.id, itemIdNum));
+
+          if (currentItem) {
+            // Update received quantity
+            await tx
+              .update(purchaseOrderItems)
+              .set({ receivedQuantity: receivedQty })
+              .where(eq(purchaseOrderItems.id, itemIdNum));
+
+            // Update product inventory if requested
+            if (updateInventory) {
+              const quantityToAdd = receivedQty - currentItem.receivedQuantity;
+              if (quantityToAdd > 0) {
+                await tx
+                  .update(products)
+                  .set({
+                    quantity: sql`${products.quantity} + ${quantityToAdd}`,
+                    costPrice: currentItem.unitCost || products.costPrice,
+                  })
+                  .where(
+                    and(
+                      eq(products.id, currentItem.productId),
+                      eq(products.pharmacyId, pharmacyId),
+                    ),
+                  );
+              }
+            }
+          }
+        }
+      }
+
+      // Check if all items are fully received to update order status
+      const allItems = await tx
+        .select({
+          id: purchaseOrderItems.id,
+          quantity: purchaseOrderItems.quantity,
+          receivedQuantity: purchaseOrderItems.receivedQuantity,
+        })
+        .from(purchaseOrderItems)
+        .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+
+      const allFullyReceived = allItems.every(
+        (item) => item.receivedQuantity >= item.quantity,
+      );
+      const anyPartiallyReceived = allItems.some(
+        (item) => item.receivedQuantity > 0,
+      );
+
+      // Update order status based on received quantities
+      let newStatus: 'PARTIALLY_RECEIVED' | 'RECEIVED' = 'PARTIALLY_RECEIVED';
+      if (allFullyReceived) {
+        newStatus = 'RECEIVED';
+      } else if (anyPartiallyReceived) {
+        newStatus = 'PARTIALLY_RECEIVED';
+      }
+
+      await tx
+        .update(purchaseOrders)
+        .set({ status: newStatus })
+        .where(
+          and(
+            eq(purchaseOrders.id, orderId),
+            eq(purchaseOrders.pharmacyId, pharmacyId),
+          ),
+        );
+    });
+
+    revalidatePath('/inventory/purchase-order');
+    revalidatePath('/products');
+    return { success: true, message: 'Items received successfully' };
+  } catch (error) {
+    console.error('Error partially receiving items:', error);
+    return { success: false, message: 'Failed to receive items' };
   }
 };

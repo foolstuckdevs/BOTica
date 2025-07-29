@@ -4,14 +4,6 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
 import {
   Table,
   TableHeader,
@@ -22,9 +14,14 @@ import {
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
 import { Supplier, Product, PurchaseOrder, PurchaseOrderItem } from '@/types';
-import { updatePurchaseOrderStatus } from '@/lib/actions/purchase-order';
+import {
+  updatePurchaseOrderStatus,
+  receiveAllItems,
+  partiallyReceiveItems,
+} from '@/lib/actions/purchase-order';
 import { PurchaseOrderConfirmDialog } from '@/components/PurchaseOrderConfirmDialog';
 import { PurchaseOrderPaymentDialog } from '@/components/PurchaseOrderPaymentDialog';
+import PartiallyReceivedDialog from '@/components/PartiallyReceivedDialog';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft,
@@ -35,8 +32,6 @@ import {
   CheckCircle2,
   Package,
   AlertCircle,
-  Plus,
-  Minus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -125,7 +120,14 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [receivedItems, setReceivedItems] = useState<Record<number, number>>(
-    {},
+    () => {
+      // Initialize with existing received quantities from the order items
+      const initialReceived: Record<number, number> = {};
+      order.items.forEach((item) => {
+        initialReceived[item.id] = item.receivedQuantity || 0; // Default to 0 if undefined
+      });
+      return initialReceived;
+    },
   );
 
   const statusInfo =
@@ -235,7 +237,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
           label: 'All Items Received',
           icon: <CheckCircle2 className="w-4 h-4" />,
           variant: 'outline' as const,
-          onClick: () => handleStatusUpdate('RECEIVED'),
+          onClick: () => handleReceiveAllItems(),
         },
         {
           label: 'Cancel Order',
@@ -253,7 +255,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
         label: 'All Items Received',
         icon: <CheckCircle2 className="w-4 h-4" />,
         variant: 'default' as const,
-        onClick: () => handleStatusUpdate('RECEIVED'),
+        onClick: () => handleReceiveAllItems(),
       });
     }
 
@@ -291,8 +293,71 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
   };
 
   const handlePartialReceipt = async () => {
-    await handleStatusUpdate('PARTIALLY_RECEIVED');
-    setShowPartialDialog(false);
+    setIsUpdating(true);
+    try {
+      const result = await partiallyReceiveItems(
+        order.id,
+        order.pharmacyId,
+        receivedItems,
+        true, // Update inventory
+      );
+      if (result.success) {
+        toast.success(result.message);
+
+        // Update the order items locally to reflect the changes immediately
+        order.items.forEach((item) => {
+          if (receivedItems[item.id] !== undefined) {
+            item.receivedQuantity = receivedItems[item.id];
+          }
+        });
+
+        setShowPartialDialog(false);
+
+        // Refresh to get the latest data from server (with a small delay to ensure DB update is complete)
+        setTimeout(() => {
+          router.refresh();
+        }, 100);
+      } else {
+        toast.error(result.message || 'Failed to receive items');
+      }
+    } catch {
+      toast.error('Failed to receive items');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleReceiveAllItems = async () => {
+    setIsUpdating(true);
+    try {
+      const result = await receiveAllItems(
+        order.id,
+        order.pharmacyId,
+        true, // Update inventory
+      );
+      if (result.success) {
+        toast.success(result.message);
+
+        // Update the local state to show all items as fully received immediately
+        const updatedReceivedItems: Record<number, number> = {};
+        order.items.forEach((item) => {
+          item.receivedQuantity = item.quantity; // Mark as fully received
+          updatedReceivedItems[item.id] = item.quantity;
+        });
+        setReceivedItems(updatedReceivedItems);
+
+        // Refresh to get the latest data from server (with a small delay to ensure DB update is complete)
+        setTimeout(() => {
+          router.refresh();
+        }, 100);
+      } else {
+        toast.error(result.message || 'Failed to receive all items');
+      }
+    } catch {
+      toast.error('Failed to receive all items');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const updateReceivedQuantity = (itemId: number, quantity: number) => {
@@ -432,6 +497,16 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
                       <TableHead className="text-right text-gray-600 font-medium">
                         Quantity
                       </TableHead>
+                      {[
+                        'CONFIRMED',
+                        'PARTIALLY_RECEIVED',
+                        'RECEIVED',
+                        'COMPLETED',
+                      ].includes(order.status) && (
+                        <TableHead className="text-right text-gray-600 font-medium">
+                          Received
+                        </TableHead>
+                      )}
                       <TableHead className="text-right text-gray-600 font-medium">
                         Unit
                       </TableHead>
@@ -454,6 +529,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
                       );
                       const unitCost = parseFloat(item.unitCost || '0');
                       const total = unitCost * item.quantity;
+                      const receivedQty = receivedItems[item.id] || 0;
 
                       return (
                         <TableRow key={item.id} className="border-gray-100">
@@ -465,6 +541,29 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
                           <TableCell className="text-right text-gray-700">
                             {item.quantity}
                           </TableCell>
+                          {[
+                            'CONFIRMED',
+                            'PARTIALLY_RECEIVED',
+                            'RECEIVED',
+                            'COMPLETED',
+                          ].includes(order.status) && (
+                            <TableCell className="text-right">
+                              <span
+                                className={`font-medium ${
+                                  receivedQty >= item.quantity
+                                    ? 'text-green-600'
+                                    : receivedQty > 0
+                                    ? 'text-amber-600'
+                                    : 'text-gray-500'
+                                }`}
+                              >
+                                {receivedQty}
+                              </span>
+                              <span className="text-gray-400 text-sm ml-1">
+                                / {item.quantity}
+                              </span>
+                            </TableCell>
+                          )}
                           <TableCell className="text-right text-gray-500">
                             {product?.unit || item.productUnit || '—'}
                           </TableCell>
@@ -650,107 +749,5 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
     </div>
   );
 };
-
-// Extracted Dialog Components for better organization
-const PartiallyReceivedDialog = ({
-  open,
-  onOpenChange,
-  order,
-  products,
-  receivedItems,
-  updateReceivedQuantity,
-  onConfirm,
-  isUpdating,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  order: PurchaseOrder & { items: PurchaseOrderItem[] };
-  products?: Product[];
-  receivedItems: Record<number, number>;
-  updateReceivedQuantity: (itemId: number, quantity: number) => void;
-  onConfirm: () => void;
-  isUpdating: boolean;
-}) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle>Partially Received</DialogTitle>
-        <DialogDescription>
-          Specify received quantities for each item
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-        {order.items.map((item) => {
-          const product = products?.find((p) => p.id === item.productId);
-          const received = receivedItems[item.id] || 0;
-
-          return (
-            <div key={item.id} className="p-3 border rounded-lg">
-              <div className="flex justify-between items-center gap-4">
-                <div>
-                  <p className="font-medium">
-                    {product?.name ||
-                      item.productName ||
-                      `Product #${item.productId}`}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Ordered: {item.quantity} {product?.unit || ''}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      updateReceivedQuantity(item.id, received - 1)
-                    }
-                    disabled={received <= 0}
-                  >
-                    <Minus className="w-3 h-3" />
-                  </Button>
-                  <Input
-                    type="number"
-                    value={received}
-                    onChange={(e) =>
-                      updateReceivedQuantity(
-                        item.id,
-                        parseInt(e.target.value) || 0,
-                      )
-                    }
-                    className="w-20 text-center"
-                    min="0"
-                    max={item.quantity}
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      updateReceivedQuantity(item.id, received + 1)
-                    }
-                    disabled={received >= item.quantity}
-                  >
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex gap-2 pt-4">
-        <Button
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-          className="flex-1"
-        >
-          Cancel
-        </Button>
-        <Button onClick={onConfirm} disabled={isUpdating} className="flex-1">
-          {isUpdating ? 'Saving...' : 'Confirm Partially Received'}
-        </Button>
-      </div>
-    </DialogContent>
-  </Dialog>
-);
 
 export default PurchaseOrderDetails;

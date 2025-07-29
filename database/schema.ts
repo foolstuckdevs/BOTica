@@ -193,7 +193,7 @@ export const activityLogs = pgTable('activity_logs', {
   userId: uuid('user_id')
     .references(() => users.id)
     .notNull(),
-  action: varchar('action', { length: 100 }).notNull(), // 'SALE', 'STOCK_UPDATE', etc.
+  action: varchar('action', { length: 100 }).notNull(),
   details: text('details'),
   pharmacyId: integer('pharmacy_id')
     .notNull()

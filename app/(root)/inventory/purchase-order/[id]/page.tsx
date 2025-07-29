@@ -28,7 +28,7 @@ const Page = async ({ params }: { params: { id: string } }) => {
 
   const items = (orderRaw.items || []).map((item) => {
     const product = productMap.get(item.productId);
-    const unitCost = parseFloat(item.unitCost);
+    const unitCost = parseFloat(item.unitCost || '0');
     return {
       id: item.id ?? 0,
       purchaseOrderId: orderRaw.id,
@@ -36,13 +36,14 @@ const Page = async ({ params }: { params: { id: string } }) => {
       quantity: item.quantity,
       unitCost: item.unitCost,
       totalCost: item.totalCost ?? (unitCost * item.quantity).toFixed(2),
+      receivedQuantity: item.receivedQuantity ?? 0, // Include receivedQuantity from database
       productName: product?.name ?? 'Unknown Product',
       productUnit: product?.unit ?? '',
     };
   });
 
   const totalCost = items.reduce(
-    (sum, item) => sum + parseFloat(item.totalCost),
+    (sum, item) => sum + parseFloat(item.totalCost.toString()),
     0,
   );
 
@@ -59,7 +60,7 @@ const Page = async ({ params }: { params: { id: string } }) => {
     supplierName: orderRaw.supplierName ?? supplier?.name ?? 'Unknown Supplier',
     totalItems: items.length,
     totalQuantity: items.reduce((sum, item) => sum + Number(item.quantity), 0),
-    totalCost,
+    totalCost: totalCost.toFixed(2), // Convert to string to match expected type
     items,
   };
 
