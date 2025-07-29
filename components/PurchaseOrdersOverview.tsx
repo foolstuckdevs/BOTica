@@ -56,11 +56,6 @@ const PurchaseOrdersOverview: React.FC<PurchaseOrdersOverviewProps> = ({
       },
       RECEIVED: {
         color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-        icon: <Package2 className="w-3 h-3" />,
-        label: 'Received',
-      },
-      COMPLETED: {
-        color: 'bg-green-100 text-green-700 border-green-200',
         icon: <CheckCircle className="w-3 h-3" />,
         label: 'Completed',
       },
@@ -91,8 +86,7 @@ const PurchaseOrdersOverview: React.FC<PurchaseOrdersOverviewProps> = ({
       SUBMITTED: 40,
       CONFIRMED: 55,
       PARTIALLY_RECEIVED: 70,
-      RECEIVED: 85,
-      COMPLETED: 100,
+      RECEIVED: 100,
       CANCELLED: 0,
     };
     return progressMap[status] || 0;
@@ -105,7 +99,8 @@ const PurchaseOrdersOverview: React.FC<PurchaseOrdersOverviewProps> = ({
         <div>
           <h1 className="text-3xl font-bold">Purchase Orders</h1>
           <p className="text-muted-foreground">
-            Streamlined purchase order management with smart workflow
+            Document and track supplier orders with comprehensive workflow
+            management
           </p>
         </div>
         <Button asChild>
@@ -128,14 +123,14 @@ const PurchaseOrdersOverview: React.FC<PurchaseOrdersOverviewProps> = ({
           {
             label: 'In Progress',
             value: orders.filter(
-              (o) => !['COMPLETED', 'CANCELLED'].includes(o.status),
+              (o) => !['RECEIVED', 'CANCELLED'].includes(o.status),
             ).length,
             color: 'text-orange-600',
             icon: <Clock className="w-4 h-4" />,
           },
           {
             label: 'Completed',
-            value: orders.filter((o) => o.status === 'COMPLETED').length,
+            value: orders.filter((o) => o.status === 'RECEIVED').length,
             color: 'text-green-600',
             icon: <CheckCircle className="w-4 h-4" />,
           },
@@ -241,7 +236,7 @@ const PurchaseOrdersOverview: React.FC<PurchaseOrdersOverviewProps> = ({
                       {order.status === 'PARTIALLY_RECEIVED' && (
                         <span> • Partially received</span>
                       )}
-                      {['RECEIVED', 'COMPLETED'].includes(order.status) && (
+                      {order.status === 'RECEIVED' && (
                         <span> • All items received</span>
                       )}
                     </div>

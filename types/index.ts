@@ -135,7 +135,6 @@ export type PurchaseOrderStatus =
   | 'CONFIRMED'
   | 'PARTIALLY_RECEIVED'
   | 'RECEIVED'
-  | 'COMPLETED'
   | 'CANCELLED';
 
 export interface PurchaseOrderParams {

@@ -10,11 +10,11 @@ import { PurchaseOrder } from '@/types';
 import { deletePurchaseOrder } from '@/lib/actions/purchase-order';
 import { DeleteDialog } from './DeleteDialog';
 
-interface Props {
+interface PurchaseOrderActionsProps {
   order: PurchaseOrder;
 }
 
-const PurchaseOrderActions = ({ order }: Props) => {
+const PurchaseOrderActions = ({ order }: PurchaseOrderActionsProps) => {
   const router = useRouter();
   const pharmacyId = 1; // TODO: Replace with session-based pharmacyId
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);

@@ -31,7 +31,7 @@ import { ChevronLeft } from 'lucide-react';
 
 type PurchaseOrderFormValues = z.infer<typeof purchaseOrderSchema>;
 
-interface Props {
+interface PurchaseOrderFormProps {
   type?: 'create' | 'update';
   suppliers: Supplier[];
   products: Product[];
@@ -43,7 +43,7 @@ const PurchaseOrderForm = ({
   suppliers,
   products,
   initialValues,
-}: Props) => {
+}: PurchaseOrderFormProps) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');

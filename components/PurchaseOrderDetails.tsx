@@ -20,7 +20,6 @@ import {
   partiallyReceiveItems,
 } from '@/lib/actions/purchase-order';
 import { PurchaseOrderConfirmDialog } from '@/components/PurchaseOrderConfirmDialog';
-import { PurchaseOrderPaymentDialog } from '@/components/PurchaseOrderPaymentDialog';
 import PartiallyReceivedDialog from '@/components/PartiallyReceivedDialog';
 import { useRouter } from 'next/navigation';
 import {
@@ -63,43 +62,37 @@ const statusConfig = {
     label: 'Draft',
     color: 'bg-gray-100 text-gray-800',
     icon: <FileText className="w-3 h-3" />,
-    description: 'Export purchase order to submit to supplier',
+    description: 'Ready to export and send to supplier',
   },
   EXPORTED: {
     label: 'Exported',
     color: 'bg-blue-100 text-blue-800',
     icon: <Send className="w-3 h-3" />,
-    description: 'Order exported and ready to submit to supplier',
+    description: 'Exported - submit to supplier for confirmation',
   },
   SUBMITTED: {
     label: 'Submitted',
     color: 'bg-purple-100 text-purple-800',
     icon: <Send className="w-3 h-3" />,
-    description: 'Order submitted to supplier, awaiting confirmation',
+    description: 'Awaiting supplier confirmation and pricing',
   },
   CONFIRMED: {
     label: 'Confirmed',
     color: 'bg-indigo-100 text-indigo-800',
     icon: <CheckCircle2 className="w-3 h-3" />,
-    description: 'Supplier confirmed order and pricing',
+    description: 'Confirmed by supplier - ready for delivery',
   },
   PARTIALLY_RECEIVED: {
     label: 'Partially Received',
     color: 'bg-amber-100 text-amber-800',
     icon: <Package className="w-3 h-3" />,
-    description: 'Some items received',
+    description: 'Some items delivered - add products to inventory',
   },
   RECEIVED: {
-    label: 'All Items Received',
-    color: 'bg-green-100 text-green-800',
-    icon: <CheckCircle2 className="w-3 h-3" />,
-    description: 'All items received, pending payment',
-  },
-  COMPLETED: {
     label: 'Completed',
     color: 'bg-emerald-100 text-emerald-800',
     icon: <CheckCircle2 className="w-3 h-3" />,
-    description: 'Order paid and completed',
+    description: 'All items received - add products to inventory',
   },
   CANCELLED: {
     label: 'Cancelled',
@@ -117,14 +110,12 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
   const router = useRouter();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showPartialDialog, setShowPartialDialog] = useState(false);
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [receivedItems, setReceivedItems] = useState<Record<number, number>>(
     () => {
-      // Initialize with existing received quantities from the order items
       const initialReceived: Record<number, number> = {};
       order.items.forEach((item) => {
-        initialReceived[item.id] = item.receivedQuantity || 0; // Default to 0 if undefined
+        initialReceived[item.id] = item.receivedQuantity || 0;
       });
       return initialReceived;
     },
@@ -143,7 +134,6 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
   const getAvailableActions = () => {
     const actions = [];
 
-    // Actions for DRAFT: Export Order and Mark as Submitted
     if (order.status === 'DRAFT') {
       actions.push(
         {
@@ -185,7 +175,6 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
       );
     }
 
-    // Actions for EXPORTED: Mark as Submitted and Cancel Order
     if (order.status === 'EXPORTED') {
       actions.push(
         {
@@ -205,7 +194,6 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
       );
     }
 
-    // Actions for SUBMITTED: Confirm Order and Cancel Order
     if (order.status === 'SUBMITTED') {
       actions.push(
         {
@@ -224,7 +212,6 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
       );
     }
 
-    // Actions for CONFIRMED: Partially Received, All Items Received, and Cancel Order
     if (order.status === 'CONFIRMED') {
       actions.push(
         {
@@ -249,23 +236,12 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
       );
     }
 
-    // Actions for PARTIALLY_RECEIVED
     if (order.status === 'PARTIALLY_RECEIVED') {
       actions.push({
         label: 'All Items Received',
         icon: <CheckCircle2 className="w-4 h-4" />,
         variant: 'default' as const,
         onClick: () => handleReceiveAllItems(),
-      });
-    }
-
-    // Actions for RECEIVED
-    if (order.status === 'RECEIVED') {
-      actions.push({
-        label: 'Mark as Paid',
-        icon: <CheckCircle2 className="w-4 h-4" />,
-        variant: 'default' as const,
-        onClick: () => setShowPaymentDialog(true),
       });
     }
 
@@ -299,12 +275,14 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
         order.id,
         order.pharmacyId,
         receivedItems,
-        true, // Update inventory
+        false, // Documentation only - manual inventory update required
       );
       if (result.success) {
-        toast.success(result.message);
+        toast.success(
+          `${result.message}. Add received products with lot numbers and expiry dates to inventory.`,
+        );
 
-        // Update the order items locally to reflect the changes immediately
+        // Update order items to reflect changes
         order.items.forEach((item) => {
           if (receivedItems[item.id] !== undefined) {
             item.receivedQuantity = receivedItems[item.id];
@@ -313,7 +291,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
 
         setShowPartialDialog(false);
 
-        // Refresh to get the latest data from server (with a small delay to ensure DB update is complete)
+        // Refresh to get the latest data from server
         setTimeout(() => {
           router.refresh();
         }, 100);
@@ -333,20 +311,22 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
       const result = await receiveAllItems(
         order.id,
         order.pharmacyId,
-        true, // Update inventory
+        false, // Documentation only - manual inventory update required
       );
       if (result.success) {
-        toast.success(result.message);
+        toast.success(
+          `${result.message}. Add all received products to inventory.`,
+        );
 
-        // Update the local state to show all items as fully received immediately
+        // Update local state to show all items as received
         const updatedReceivedItems: Record<number, number> = {};
         order.items.forEach((item) => {
-          item.receivedQuantity = item.quantity; // Mark as fully received
+          item.receivedQuantity = item.quantity;
           updatedReceivedItems[item.id] = item.quantity;
         });
         setReceivedItems(updatedReceivedItems);
 
-        // Refresh to get the latest data from server (with a small delay to ensure DB update is complete)
+        // Refresh to get the latest data from server
         setTimeout(() => {
           router.refresh();
         }, 100);
@@ -378,7 +358,11 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
     'CONFIRMED',
     'PARTIALLY_RECEIVED',
     'RECEIVED',
-    'COMPLETED',
+  ].includes(order.status);
+  const showReceivedColumns = [
+    'CONFIRMED',
+    'PARTIALLY_RECEIVED',
+    'RECEIVED',
   ].includes(order.status);
 
   return (
@@ -497,12 +481,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
                       <TableHead className="text-right text-gray-600 font-medium">
                         Quantity
                       </TableHead>
-                      {[
-                        'CONFIRMED',
-                        'PARTIALLY_RECEIVED',
-                        'RECEIVED',
-                        'COMPLETED',
-                      ].includes(order.status) && (
+                      {showReceivedColumns && (
                         <TableHead className="text-right text-gray-600 font-medium">
                           Received
                         </TableHead>
@@ -541,12 +520,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
                           <TableCell className="text-right text-gray-700">
                             {item.quantity}
                           </TableCell>
-                          {[
-                            'CONFIRMED',
-                            'PARTIALLY_RECEIVED',
-                            'RECEIVED',
-                            'COMPLETED',
-                          ].includes(order.status) && (
+                          {showReceivedColumns && (
                             <TableCell className="text-right">
                               <span
                                 className={`font-medium ${
@@ -596,7 +570,8 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-amber-800">
-                  Track which items have been received
+                  Track delivery progress. Add received items to inventory for
+                  proper lot tracking.
                 </p>
                 <div className="space-y-3">
                   {order.items.map((item) => {
@@ -732,12 +707,6 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
         updateReceivedQuantity={updateReceivedQuantity}
         onConfirm={handlePartialReceipt}
         isUpdating={isUpdating}
-      />
-
-      <PurchaseOrderPaymentDialog
-        open={showPaymentDialog}
-        onOpenChange={setShowPaymentDialog}
-        order={order}
       />
 
       <PurchaseOrderConfirmDialog

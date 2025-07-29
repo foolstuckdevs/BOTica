@@ -54,7 +54,6 @@ export const PURCHASE_ORDER_STATUS_ENUM = pgEnum('purchase_order_status', [
   'CONFIRMED',
   'PARTIALLY_RECEIVED',
   'RECEIVED',
-  'COMPLETED',
   'CANCELLED',
 ]);
 

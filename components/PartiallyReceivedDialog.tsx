@@ -33,87 +33,111 @@ const PartiallyReceivedDialog: React.FC<PartiallyReceivedDialogProps> = ({
   updateReceivedQuantity,
   onConfirm,
   isUpdating,
-}) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="max-w-md">
-      <DialogHeader>
-        <DialogTitle>Partially Received</DialogTitle>
-        <DialogDescription>
-          Specify received quantities for each item
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-        {order.items.map((item) => {
-          const product = products?.find((p) => p.id === item.productId);
-          const received = receivedItems[item.id] || 0;
+}) => {
+  const hasReceivedItems = Object.values(receivedItems).some((qty) => qty > 0);
 
-          return (
-            <div key={item.id} className="p-3 border rounded-lg">
-              <div className="flex justify-between items-center gap-4">
-                <div>
-                  <p className="font-medium">
-                    {product?.name ||
-                      item.productName ||
-                      `Product #${item.productId}`}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Ordered: {item.quantity} {product?.unit || ''}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      updateReceivedQuantity(item.id, received - 1)
-                    }
-                    disabled={received <= 0}
-                  >
-                    <Minus className="w-3 h-3" />
-                  </Button>
-                  <Input
-                    type="number"
-                    value={received}
-                    onChange={(e) =>
-                      updateReceivedQuantity(
-                        item.id,
-                        parseInt(e.target.value) || 0,
-                      )
-                    }
-                    className="w-20 text-center"
-                    min="0"
-                    max={item.quantity}
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      updateReceivedQuantity(item.id, received + 1)
-                    }
-                    disabled={received >= item.quantity}
-                  >
-                    <Plus className="w-3 h-3" />
-                  </Button>
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Record Received Items</DialogTitle>
+          <DialogDescription>
+            Update quantities for items delivered. Add received products to
+            inventory afterward.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+          {order.items.map((item) => {
+            const product = products?.find((p) => p.id === item.productId);
+            const received = receivedItems[item.id] || 0;
+
+            return (
+              <div key={item.id} className="p-3 border rounded-lg">
+                <div className="flex justify-between items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">
+                      {product?.name ||
+                        item.productName ||
+                        `Product #${item.productId}`}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Expected: {item.quantity} {product?.unit || 'units'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        updateReceivedQuantity(item.id, received - 1)
+                      }
+                      disabled={received <= 0}
+                      aria-label={`Decrease received quantity for ${
+                        product?.name || 'product'
+                      }`}
+                    >
+                      <Minus className="w-3 h-3" />
+                    </Button>
+
+                    <Input
+                      type="number"
+                      value={received}
+                      onChange={(e) =>
+                        updateReceivedQuantity(
+                          item.id,
+                          parseInt(e.target.value) || 0,
+                        )
+                      }
+                      className="w-20 text-center"
+                      min="0"
+                      max={item.quantity}
+                      aria-label={`Received quantity for ${
+                        product?.name || 'product'
+                      }`}
+                    />
+
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        updateReceivedQuantity(item.id, received + 1)
+                      }
+                      disabled={received >= item.quantity}
+                      aria-label={`Increase received quantity for ${
+                        product?.name || 'product'
+                      }`}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="flex gap-2 pt-4">
-        <Button
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-          className="flex-1"
-        >
-          Cancel
-        </Button>
-        <Button onClick={onConfirm} disabled={isUpdating} className="flex-1">
-          {isUpdating ? 'Saving...' : 'Confirm Partially Received'}
-        </Button>
-      </div>
-    </DialogContent>
-  </Dialog>
-);
+            );
+          })}
+        </div>
+
+        <div className="flex gap-2 pt-4">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="flex-1"
+            disabled={isUpdating}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={onConfirm}
+            disabled={isUpdating || !hasReceivedItems}
+            className="flex-1"
+          >
+            {isUpdating ? 'Updating...' : 'Update Received Quantities'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default PartiallyReceivedDialog;
