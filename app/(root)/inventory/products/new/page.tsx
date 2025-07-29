@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import ProductForm from '@/components/ProductForm';
 import { getCategories } from '@/lib/actions/categories';
 import { getSuppliers } from '@/lib/actions/suppliers';
@@ -10,11 +11,13 @@ const Page = async () => {
 
   return (
     <div className="p-4">
-      <ProductForm
-        type="create"
-        categories={categories}
-        suppliers={suppliers}
-      />
+      <Suspense fallback={<div>Loading...</div>}>
+        <ProductForm
+          type="create"
+          categories={categories}
+          suppliers={suppliers}
+        />
+      </Suspense>
     </div>
   );
 };

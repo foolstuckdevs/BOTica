@@ -353,6 +353,23 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
     }));
   };
 
+  const handleAddToInventory = (item: PurchaseOrderItem, product?: Product) => {
+    // Create URL search params to pre-populate the add product form
+    const params = new URLSearchParams({
+      // Pre-fill form with purchase order item data
+      name: product?.name || item.productName || '',
+      quantity: (receivedItems[item.id] || 0).toString(),
+      unitCost: item.unitCost || '',
+      supplierId: order.supplierId.toString(),
+      // Add context about the purchase order
+      fromPurchaseOrder: order.id.toString(),
+      purchaseOrderItem: item.id.toString(),
+    });
+
+    // Navigate to add product form with pre-populated data
+    router.push(`/inventory/products/new?${params.toString()}`);
+  };
+
   const availableActions = getAvailableActions();
   const showCostColumns = [
     'CONFIRMED',
@@ -559,62 +576,11 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
               </div>
             </CardContent>
           </Card>
-
-          {/* Partially Received Status */}
-          {order.status === 'PARTIALLY_RECEIVED' && (
-            <Card className="border-amber-200 bg-amber-50">
-              <CardHeader>
-                <CardTitle className="text-amber-900">
-                  Partially Received
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-amber-800">
-                  Track delivery progress. Add received items to inventory for
-                  proper lot tracking.
-                </p>
-                <div className="space-y-3">
-                  {order.items.map((item) => {
-                    const product = products?.find(
-                      (p) => p.id === item.productId,
-                    );
-                    const received = receivedItems[item.id] || 0;
-                    const pending = item.quantity - received;
-
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex justify-between items-center text-sm"
-                      >
-                        <span className="font-medium">
-                          {product?.name ||
-                            item.productName ||
-                            `Product #${item.productId}`}
-                        </span>
-                        <div>
-                          <span className="text-green-600">{received}</span>
-                          <span className="text-muted-foreground">
-                            {' '}
-                            / {item.quantity}
-                          </span>
-                          {pending > 0 && (
-                            <span className="text-amber-600 ml-2">
-                              ({pending} pending)
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Right Column */}
         <div className="space-y-4">
-          {/* Status Card */}
+          {/* Order Status Card */}
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium text-gray-900">
@@ -622,7 +588,68 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <p className="text-sm text-gray-600">{statusInfo.description}</p>
+              {['PARTIALLY_RECEIVED', 'RECEIVED'].includes(order.status) ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Add received products to inventory.
+                  </p>
+
+                  {/* Inventory Actions */}
+                  {order.items.filter(
+                    (item) => (receivedItems[item.id] || 0) > 0,
+                  ).length > 0 && (
+                    <div className="space-y-2">
+                      {order.items
+                        .filter((item) => (receivedItems[item.id] || 0) > 0)
+                        .map((item) => {
+                          const product = products?.find(
+                            (p) => p.id === item.productId,
+                          );
+                          const receivedQty = receivedItems[item.id] || 0;
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
+                            >
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {product?.name ||
+                                    item.productName ||
+                                    `Product #${item.productId}`}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {receivedQty}{' '}
+                                  {product?.unit || item.productUnit || 'items'}{' '}
+                                  received
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="h-8 px-4 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                                onClick={() =>
+                                  handleAddToInventory(item, product)
+                                }
+                                title={`Add ${receivedQty} ${
+                                  product?.unit || item.productUnit || 'items'
+                                } to inventory`}
+                              >
+                                <Package className="w-3 h-3 mr-1" />
+                                Add to Inventory
+                              </Button>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    {statusInfo.description}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -12,7 +12,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Category, Product, Supplier } from '@/types';
 import { productSchema } from '@/lib/validation';
 import { Button } from '@/components/ui/button';
@@ -59,10 +59,20 @@ const ProductForm = ({
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Get URL search params for pre-population
+  const urlParams = useSearchParams();
+  const fromPurchaseOrder = urlParams?.get('fromPurchaseOrder');
+  const preFilledName = urlParams?.get('name') || product.name || '';
+  const preFilledQuantity = urlParams?.get('quantity') || product.quantity || 1;
+  const preFilledUnitCost =
+    urlParams?.get('unitCost') || product.costPrice || '';
+  const preFilledSupplierId =
+    urlParams?.get('supplierId') || product.supplierId || undefined;
+
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      name: product.name || '',
+      name: preFilledName,
       genericName: product.genericName || '',
       categoryId: product.categoryId || undefined,
       barcode: product.barcode || '',
@@ -72,12 +82,12 @@ const ProductForm = ({
       expiryDate: product.expiryDate
         ? new Date(product.expiryDate)
         : new Date(),
-      quantity: product.quantity || 1,
-      costPrice: product.costPrice || '',
+      quantity: Number(preFilledQuantity) || 1,
+      costPrice: preFilledUnitCost,
       sellingPrice: product.sellingPrice || '',
       minStockLevel: product.minStockLevel || undefined,
       unit: product.unit || 'PIECE',
-      supplierId: product.supplierId || undefined,
+      supplierId: preFilledSupplierId ? Number(preFilledSupplierId) : undefined,
       imageUrl: product.imageUrl || '',
     },
   });
@@ -151,6 +161,17 @@ const ProductForm = ({
               ? 'Fill in the details to add a new product to your inventory'
               : 'Update the product information as needed'}
           </p>
+          {fromPurchaseOrder && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800">
+                📦 Adding inventory from Purchase Order #{fromPurchaseOrder}
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Some fields have been pre-filled based on the purchase order
+                details.
+              </p>
+            </div>
+          )}
         </div>
         <Badge
           variant={type === 'create' ? 'default' : 'secondary'}
