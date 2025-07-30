@@ -8,7 +8,7 @@ import { revalidatePath } from 'next/cache';
 
 export const getProducts = async (pharmacyId: number) => {
   try {
-    return await db
+    const result = await db
       .select({
         id: products.id,
         name: products.name,
@@ -35,8 +35,70 @@ export const getProducts = async (pharmacyId: number) => {
       .leftJoin(categories, eq(products.categoryId, categories.id))
       .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
       .where(eq(products.pharmacyId, pharmacyId));
+
+    // FEFO Implementation: Sort by expiry date (earliest first), then by product name
+    // Filter out expired products for safety and regulatory compliance
+    const activeProducts = result.filter((product) => {
+      const today = new Date();
+      const expiryDate = new Date(product.expiryDate);
+      return expiryDate >= today; // Only show products that haven't expired
+    });
+
+    return activeProducts.sort((a, b) => {
+      // First sort by expiry date (FEFO)
+      const expiryA = new Date(a.expiryDate);
+      const expiryB = new Date(b.expiryDate);
+
+      if (expiryA.getTime() !== expiryB.getTime()) {
+        return expiryA.getTime() - expiryB.getTime();
+      }
+
+      // Then sort by product name for consistent grouping
+      return a.name.localeCompare(b.name);
+    });
   } catch (error) {
     console.error('Error fetching products:', error);
+    return [];
+  }
+};
+
+export const getProductBatches = async (
+  productName: string,
+  pharmacyId: number,
+) => {
+  try {
+    const result = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        brandName: products.brandName,
+        lotNumber: products.lotNumber,
+        expiryDate: products.expiryDate,
+        quantity: products.quantity,
+        sellingPrice: products.sellingPrice,
+      })
+      .from(products)
+      .where(
+        and(
+          eq(products.name, productName),
+          eq(products.pharmacyId, pharmacyId),
+        ),
+      );
+
+    // Sort by expiry date (FEFO) and filter out expired products
+    const activeProducts = result.filter((product) => {
+      const today = new Date();
+      const expiryDate = new Date(product.expiryDate);
+      return expiryDate >= today; // Only show products that haven't expired
+    });
+
+    return activeProducts.sort((a, b) => {
+      const expiryA = new Date(a.expiryDate);
+      const expiryB = new Date(b.expiryDate);
+      return expiryA.getTime() - expiryB.getTime();
+    });
+  } catch (error) {
+    console.error('Error fetching product batches:', error);
     return [];
   }
 };
@@ -82,18 +144,26 @@ export const createProduct = async (
   params: ProductParams & { pharmacyId: number },
 ) => {
   try {
-    const existingProduct = await db
-      .select()
-      .from(products)
-      .where(
-        and(
-          eq(products.name, params.name),
-          eq(products.pharmacyId, params.pharmacyId),
-        ),
-      );
+    // For batch tracking: Allow same barcode with different lot numbers
+    // Only check for duplicate barcode + lot combination if both are provided
+    if (params.barcode && params.lotNumber) {
+      const existingProduct = await db
+        .select()
+        .from(products)
+        .where(
+          and(
+            eq(products.barcode, params.barcode),
+            eq(products.lotNumber, params.lotNumber),
+            eq(products.pharmacyId, params.pharmacyId),
+          ),
+        );
 
-    if (existingProduct.length > 0) {
-      return { success: false, message: 'Product already exists' };
+      if (existingProduct.length > 0) {
+        return {
+          success: false,
+          message: 'This lot number already exists for this product',
+        };
+      }
     }
 
     const newProduct = await db.insert(products).values(params).returning();
@@ -128,19 +198,26 @@ export const updateProduct = async (
       return { success: false, message: 'Product not found' };
     }
 
-    if (params.name) {
-      const nameCheck = await db
+    // For updates, we don't need to check name uniqueness since multiple products
+    // can have the same name with different brands, lots, or batches in pharmacy systems
+    // Only check for barcode + lot number combination if both are being updated
+    if (params.barcode && params.lotNumber) {
+      const existingProduct = await db
         .select()
         .from(products)
         .where(
           and(
-            eq(products.name, params.name),
+            eq(products.barcode, params.barcode),
+            eq(products.lotNumber, params.lotNumber),
             eq(products.pharmacyId, pharmacyId),
           ),
         );
 
-      if (nameCheck.length > 0 && nameCheck[0].id !== id) {
-        return { success: false, message: 'Product name already exists' };
+      if (existingProduct.length > 0 && existingProduct[0].id !== id) {
+        return {
+          success: false,
+          message: 'This lot number already exists for this product',
+        };
       }
     }
 

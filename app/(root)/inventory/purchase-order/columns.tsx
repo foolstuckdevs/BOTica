@@ -71,8 +71,8 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
       <DataTableColumnHeader column={column} title="Total Cost" />
     ),
     cell: ({ row }) => {
-      const cost = row.getValue<number>('totalCost');
-      return <div>{formatCurrency(cost)}</div>;
+      const cost = row.getValue<string>('totalCost');
+      return <div>{formatCurrency(parseFloat(cost || '0'))}</div>;
     },
   },
 

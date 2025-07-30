@@ -27,7 +27,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
   onChange,
 }) => {
   return (
-    <div className="flex flex-wrap gap-4 mb-4 items-end">
+    <div className="flex flex-wrap gap-4 items-end">
       <Select
         value={filters.status}
         onValueChange={(value) => onChange({ ...filters, status: value })}

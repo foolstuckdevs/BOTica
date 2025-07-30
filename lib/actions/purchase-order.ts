@@ -6,12 +6,17 @@ import {
   purchaseOrderItems,
   suppliers,
   users,
+  products,
 } from '@/database/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { PurchaseOrderParams } from '@/types';
-import { purchaseOrderSchema } from '@/lib/validation';
+import {
+  purchaseOrderSchema,
+  purchaseOrderConfirmationSchema,
+} from '@/lib/validation';
 
+// Generate purchase orders list with computed totals
 export const getPurchaseOrders = async (pharmacyId: number) => {
   try {
     const orders = await db
@@ -23,8 +28,10 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
         orderDate: purchaseOrders.orderDate,
         status: purchaseOrders.status,
         notes: purchaseOrders.notes,
+        totalCost: purchaseOrders.totalCost,
         pharmacyId: purchaseOrders.pharmacyId,
         createdAt: purchaseOrders.createdAt,
+        updatedAt: purchaseOrders.updatedAt,
         supplierName: suppliers.name,
       })
       .from(purchaseOrders)
@@ -39,7 +46,6 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
             productId: purchaseOrderItems.productId,
             quantity: purchaseOrderItems.quantity,
             unitCost: purchaseOrderItems.unitCost,
-            totalCost: purchaseOrderItems.totalCost,
           })
           .from(purchaseOrderItems)
           .where(eq(purchaseOrderItems.purchaseOrderId, order.id));
@@ -49,12 +55,8 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
           (sum, item) => sum + Number(item.quantity),
           0,
         );
-        const totalCost = items.reduce(
-          (sum, item) => sum + parseFloat(item.totalCost || '0'),
-          0,
-        );
 
-        const formattedOrder = {
+        return {
           id: order.id,
           orderNumber: order.orderNumber,
           supplierId: order.supplierId,
@@ -62,17 +64,18 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
           orderDate: order.orderDate,
           status: order.status,
           notes: order.notes ?? null,
+          totalCost: order.totalCost || '0.00',
           pharmacyId: order.pharmacyId,
           createdAt: order.createdAt
             ? new Date(order.createdAt).toISOString()
             : new Date().toISOString(),
-          name: order.supplierName ?? undefined,
+          updatedAt: order.updatedAt
+            ? new Date(order.updatedAt).toISOString()
+            : undefined,
+          supplierName: order.supplierName ?? undefined,
           totalItems,
           totalQuantity,
-          totalCost,
         };
-
-        return formattedOrder;
       }),
     );
 
@@ -83,7 +86,7 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
   }
 };
 
-// Get a single purchase order with items
+// Get purchase order details with items
 export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
   try {
     const orderArr = await db
@@ -95,8 +98,10 @@ export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
         orderDate: purchaseOrders.orderDate,
         status: purchaseOrders.status,
         notes: purchaseOrders.notes,
+        totalCost: purchaseOrders.totalCost,
         pharmacyId: purchaseOrders.pharmacyId,
         createdAt: purchaseOrders.createdAt,
+        updatedAt: purchaseOrders.updatedAt,
         supplierName: suppliers.name,
       })
       .from(purchaseOrders)
@@ -118,37 +123,49 @@ export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
         purchaseOrderId: purchaseOrderItems.purchaseOrderId,
         productId: purchaseOrderItems.productId,
         quantity: purchaseOrderItems.quantity,
+        receivedQuantity: purchaseOrderItems.receivedQuantity,
         unitCost: purchaseOrderItems.unitCost,
-        totalCost: purchaseOrderItems.totalCost,
       })
       .from(purchaseOrderItems)
       .where(eq(purchaseOrderItems.purchaseOrderId, id));
 
-    const formatted = {
+    const totalItems = itemsRaw.length;
+    const totalQuantity = itemsRaw.reduce(
+      (sum, item) => sum + item.quantity,
+      0,
+    );
+
+    return {
       ...order,
       orderDate: new Date(order.orderDate).toISOString(),
       createdAt: order.createdAt
         ? new Date(order.createdAt).toISOString()
         : new Date(order.orderDate).toISOString(),
+      updatedAt: order.updatedAt
+        ? new Date(order.updatedAt).toISOString()
+        : undefined,
       notes: order.notes ?? '',
+      totalCost: order.totalCost || '0.00',
+      totalItems,
+      totalQuantity,
       items: itemsRaw.map((item) => ({
         ...item,
+        totalCost: item.unitCost
+          ? parseFloat(item.unitCost) * item.quantity
+          : 0,
       })),
     };
-
-    return formatted;
   } catch (error) {
     console.error('Error fetching purchase order:', error);
     return null;
   }
 };
 
-// Create a new purchase order
+// Create new purchase order with DRAFT status
 export const createPurchaseOrder = async (
   params: PurchaseOrderParams & { pharmacyId: number; userId: string },
 ) => {
   try {
-    // Validate input
     const parsed = purchaseOrderSchema.safeParse(params);
     if (!parsed.success) {
       return {
@@ -157,7 +174,7 @@ export const createPurchaseOrder = async (
       };
     }
 
-    // Generate order number (simple: PO-yyyyMMddHHmmss)
+    // Generate unique order number
     const orderNumber =
       'PO-' +
       new Date()
@@ -165,7 +182,6 @@ export const createPurchaseOrder = async (
         .replace(/[-:.TZ]/g, '')
         .slice(0, 14);
 
-    // Insert purchase order with initial status 'DRAFT'
     const [order] = await db
       .insert(purchaseOrders)
       .values({
@@ -179,15 +195,14 @@ export const createPurchaseOrder = async (
       })
       .returning();
 
-    // Insert items
+    // Add order items
     for (const item of params.items) {
-      const totalCost = (parseFloat(item.unitCost) * item.quantity).toFixed(2);
+      const unitCost = item.unitCost || null;
       await db.insert(purchaseOrderItems).values({
         purchaseOrderId: order.id,
         productId: item.productId,
         quantity: item.quantity,
-        unitCost: item.unitCost,
-        totalCost,
+        unitCost: unitCost,
       });
     }
 
@@ -199,7 +214,7 @@ export const createPurchaseOrder = async (
   }
 };
 
-// Update purchase order status or details
+// Update purchase order details and items
 export const updatePurchaseOrder = async (
   id: number,
   params: PurchaseOrderParams,
@@ -220,7 +235,7 @@ export const updatePurchaseOrder = async (
       return { success: false, message: 'Purchase order not found' };
     }
 
-    // Update order main fields
+    // Update order details
     await db
       .update(purchaseOrders)
       .set({
@@ -235,25 +250,22 @@ export const updatePurchaseOrder = async (
         ),
       );
 
-    // 🔄 Delete existing items
+    // Replace order items
     await db
       .delete(purchaseOrderItems)
       .where(eq(purchaseOrderItems.purchaseOrderId, id));
 
-    // 🆕 Insert new items
     for (const item of params.items) {
-      const totalCost = (parseFloat(item.unitCost) * item.quantity).toFixed(2);
-
+      const unitCost = item.unitCost || null;
       await db.insert(purchaseOrderItems).values({
         purchaseOrderId: id,
         productId: item.productId,
         quantity: item.quantity,
-        unitCost: item.unitCost,
-        totalCost,
+        unitCost: unitCost,
       });
     }
 
-    revalidatePath('/inventory/purchase-order'); // adjust to match your route
+    revalidatePath('/inventory/purchase-order');
     return { success: true };
   } catch (error) {
     console.error('Error updating purchase order:', error);
@@ -261,13 +273,14 @@ export const updatePurchaseOrder = async (
   }
 };
 
-// Update only the status of a purchase order
+// Update purchase order status
 export const updatePurchaseOrderStatus = async (
   id: number,
   status:
     | 'DRAFT'
     | 'EXPORTED'
     | 'SUBMITTED'
+    | 'CONFIRMED'
     | 'PARTIALLY_RECEIVED'
     | 'RECEIVED'
     | 'CANCELLED',
@@ -283,9 +296,11 @@ export const updatePurchaseOrderStatus = async (
           eq(purchaseOrders.pharmacyId, pharmacyId),
         ),
       );
+
     if (!existing.length) {
       return { success: false, message: 'Purchase order not found' };
     }
+
     await db
       .update(purchaseOrders)
       .set({ status })
@@ -295,7 +310,10 @@ export const updatePurchaseOrderStatus = async (
           eq(purchaseOrders.pharmacyId, pharmacyId),
         ),
       );
+
     revalidatePath('/purchase-orders');
+    revalidatePath(`/inventory/purchase-order/${id}`);
+    revalidatePath('/inventory/purchase-order');
     return { success: true };
   } catch (error) {
     console.error('Error updating purchase order status:', error);
@@ -303,7 +321,7 @@ export const updatePurchaseOrderStatus = async (
   }
 };
 
-// Delete a purchase order
+// Delete purchase order and its items
 export const deletePurchaseOrder = async (id: number, pharmacyId: number) => {
   try {
     const existing = await db
@@ -315,11 +333,12 @@ export const deletePurchaseOrder = async (id: number, pharmacyId: number) => {
           eq(purchaseOrders.pharmacyId, pharmacyId),
         ),
       );
+
     if (!existing.length) {
       return { success: false, message: 'Purchase order not found' };
     }
 
-    // Delete items first
+    // Delete items first due to foreign key constraint
     await db
       .delete(purchaseOrderItems)
       .where(eq(purchaseOrderItems.purchaseOrderId, id));
@@ -334,9 +353,340 @@ export const deletePurchaseOrder = async (id: number, pharmacyId: number) => {
       );
 
     revalidatePath('/purchase-orders');
-    return { success: true, message: 'Purchase order deleted successfully' };
+    return { success: true, message: 'Purchase order deleted' };
   } catch (error) {
     console.error('Error deleting purchase order:', error);
     return { success: false, message: 'Failed to delete purchase order' };
+  }
+};
+
+// Confirm purchase order with supplier pricing and availability
+export const confirmPurchaseOrder = async (
+  id: number,
+  pharmacyId: number,
+  confirmedItems: Record<number, { unitCost: string; available: boolean }>,
+) => {
+  try {
+    // Filter to available items only
+    const availableItemsOnly = Object.fromEntries(
+      Object.entries(confirmedItems).filter(([, item]) => item.available),
+    );
+
+    const validation = purchaseOrderConfirmationSchema.safeParse({
+      confirmedItems: availableItemsOnly,
+    });
+
+    if (!validation.success) {
+      return {
+        success: false,
+        message: validation.error.issues[0]?.message || 'Validation failed',
+      };
+    }
+
+    const existing = await db
+      .select()
+      .from(purchaseOrders)
+      .where(
+        and(
+          eq(purchaseOrders.id, id),
+          eq(purchaseOrders.pharmacyId, pharmacyId),
+        ),
+      );
+
+    if (!existing.length) {
+      return { success: false, message: 'Purchase order not found' };
+    }
+
+    let confirmedTotalCost = 0;
+
+    // Update items with confirmed pricing and remove unavailable items
+    for (const [itemId, itemData] of Object.entries(confirmedItems)) {
+      const itemIdNum = parseInt(itemId);
+
+      if (itemData.available) {
+        const quantityResult = await db
+          .select({ quantity: purchaseOrderItems.quantity })
+          .from(purchaseOrderItems)
+          .where(eq(purchaseOrderItems.id, itemIdNum))
+          .limit(1);
+
+        const quantity = quantityResult[0]?.quantity || 0;
+        const itemTotal = parseFloat(itemData.unitCost) * quantity;
+        confirmedTotalCost += itemTotal;
+
+        await db
+          .update(purchaseOrderItems)
+          .set({ unitCost: itemData.unitCost })
+          .where(eq(purchaseOrderItems.id, itemIdNum));
+      } else {
+        // Remove unavailable items
+        await db
+          .delete(purchaseOrderItems)
+          .where(eq(purchaseOrderItems.id, itemIdNum));
+      }
+    }
+
+    // Update order status and total cost
+    await db
+      .update(purchaseOrders)
+      .set({
+        status: 'CONFIRMED',
+        totalCost: confirmedTotalCost.toFixed(2),
+      })
+      .where(
+        and(
+          eq(purchaseOrders.id, id),
+          eq(purchaseOrders.pharmacyId, pharmacyId),
+        ),
+      );
+
+    revalidatePath('/inventory/purchase-order');
+    return {
+      success: true,
+      message: 'Purchase order confirmed with supplier',
+    };
+  } catch (error) {
+    console.error('Error confirming purchase order:', error);
+    return { success: false, message: 'Failed to confirm purchase order' };
+  }
+};
+
+// Update received quantities for order items (documentation only)
+export const updateReceivedQuantities = async (
+  orderId: number,
+  pharmacyId: number,
+  receivedItems: Record<number, number>,
+) => {
+  try {
+    const orderExists = await db
+      .select()
+      .from(purchaseOrders)
+      .where(
+        and(
+          eq(purchaseOrders.id, orderId),
+          eq(purchaseOrders.pharmacyId, pharmacyId),
+        ),
+      );
+
+    if (!orderExists.length) {
+      return { success: false, message: 'Purchase order not found' };
+    }
+
+    // Update received quantities
+    for (const [itemId, receivedQty] of Object.entries(receivedItems)) {
+      if (receivedQty > 0) {
+        await db
+          .update(purchaseOrderItems)
+          .set({ receivedQuantity: receivedQty })
+          .where(eq(purchaseOrderItems.id, parseInt(itemId)));
+      }
+    }
+
+    // Determine order status based on received quantities
+    const allItems = await db
+      .select({
+        quantity: purchaseOrderItems.quantity,
+        receivedQuantity: purchaseOrderItems.receivedQuantity,
+      })
+      .from(purchaseOrderItems)
+      .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+
+    const allFullyReceived = allItems.every(
+      (item) => item.receivedQuantity >= item.quantity,
+    );
+    const anyPartiallyReceived = allItems.some(
+      (item) =>
+        item.receivedQuantity > 0 && item.receivedQuantity < item.quantity,
+    );
+
+    const newStatus = allFullyReceived
+      ? 'RECEIVED'
+      : anyPartiallyReceived
+      ? 'PARTIALLY_RECEIVED'
+      : 'CONFIRMED';
+
+    await db
+      .update(purchaseOrders)
+      .set({ status: newStatus })
+      .where(
+        and(
+          eq(purchaseOrders.id, orderId),
+          eq(purchaseOrders.pharmacyId, pharmacyId),
+        ),
+      );
+
+    revalidatePath('/inventory/purchase-order');
+    return {
+      success: true,
+      message: 'Received quantities updated',
+    };
+  } catch (error) {
+    console.error('Error updating received quantities:', error);
+    return { success: false, message: 'Failed to update received quantities' };
+  }
+};
+
+// Mark all items as received - documentation only by default
+export const receiveAllItems = async (
+  orderId: number,
+  pharmacyId: number,
+  updateInventory: boolean = false,
+) => {
+  try {
+    const orderItems = await db
+      .select({
+        id: purchaseOrderItems.id,
+        productId: purchaseOrderItems.productId,
+        quantity: purchaseOrderItems.quantity,
+        receivedQuantity: purchaseOrderItems.receivedQuantity,
+        unitCost: purchaseOrderItems.unitCost,
+      })
+      .from(purchaseOrderItems)
+      .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+
+    if (!orderItems.length) {
+      return { success: false, message: 'No items found for this order' };
+    }
+
+    await db.transaction(async (tx) => {
+      // Mark all items as fully received
+      for (const item of orderItems) {
+        await tx
+          .update(purchaseOrderItems)
+          .set({ receivedQuantity: item.quantity })
+          .where(eq(purchaseOrderItems.id, item.id));
+
+        // Optional inventory update (disabled by default for manual control)
+        if (updateInventory) {
+          const quantityToAdd = item.quantity - item.receivedQuantity;
+          if (quantityToAdd > 0) {
+            await tx
+              .update(products)
+              .set({
+                quantity: sql`${products.quantity} + ${quantityToAdd}`,
+                costPrice: item.unitCost || products.costPrice,
+              })
+              .where(
+                and(
+                  eq(products.id, item.productId),
+                  eq(products.pharmacyId, pharmacyId),
+                ),
+              );
+          }
+        }
+      }
+
+      // Update order status
+      await tx
+        .update(purchaseOrders)
+        .set({ status: 'RECEIVED' })
+        .where(
+          and(
+            eq(purchaseOrders.id, orderId),
+            eq(purchaseOrders.pharmacyId, pharmacyId),
+          ),
+        );
+    });
+
+    revalidatePath('/inventory/purchase-order');
+    revalidatePath('/products');
+    return { success: true, message: 'All items marked as received' };
+  } catch (error) {
+    console.error('Error receiving all items:', error);
+    return { success: false, message: 'Failed to mark items as received' };
+  }
+};
+
+// Record partial item receipts - documentation only by default
+export const partiallyReceiveItems = async (
+  orderId: number,
+  pharmacyId: number,
+  receivedItems: Record<number, number>,
+  updateInventory: boolean = false,
+) => {
+  try {
+    await db.transaction(async (tx) => {
+      // Update received quantities for documentation
+      for (const [itemId, receivedQty] of Object.entries(receivedItems)) {
+        if (receivedQty > 0) {
+          const itemIdNum = parseInt(itemId);
+
+          const [currentItem] = await tx
+            .select({
+              productId: purchaseOrderItems.productId,
+              receivedQuantity: purchaseOrderItems.receivedQuantity,
+              unitCost: purchaseOrderItems.unitCost,
+            })
+            .from(purchaseOrderItems)
+            .where(eq(purchaseOrderItems.id, itemIdNum));
+
+          if (currentItem) {
+            // Update received quantity
+            await tx
+              .update(purchaseOrderItems)
+              .set({ receivedQuantity: receivedQty })
+              .where(eq(purchaseOrderItems.id, itemIdNum));
+
+            // Optional inventory update (disabled by default for manual control)
+            if (updateInventory) {
+              const quantityToAdd = receivedQty - currentItem.receivedQuantity;
+              if (quantityToAdd > 0) {
+                await tx
+                  .update(products)
+                  .set({
+                    quantity: sql`${products.quantity} + ${quantityToAdd}`,
+                    costPrice: currentItem.unitCost || products.costPrice,
+                  })
+                  .where(
+                    and(
+                      eq(products.id, currentItem.productId),
+                      eq(products.pharmacyId, pharmacyId),
+                    ),
+                  );
+              }
+            }
+          }
+        }
+      }
+
+      // Determine order status based on received quantities
+      const allItems = await tx
+        .select({
+          quantity: purchaseOrderItems.quantity,
+          receivedQuantity: purchaseOrderItems.receivedQuantity,
+        })
+        .from(purchaseOrderItems)
+        .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+
+      const allFullyReceived = allItems.every(
+        (item) => item.receivedQuantity >= item.quantity,
+      );
+      const anyPartiallyReceived = allItems.some(
+        (item) => item.receivedQuantity > 0,
+      );
+
+      const newStatus = allFullyReceived
+        ? 'RECEIVED'
+        : anyPartiallyReceived
+        ? 'PARTIALLY_RECEIVED'
+        : 'CONFIRMED';
+
+      await tx
+        .update(purchaseOrders)
+        .set({ status: newStatus })
+        .where(
+          and(
+            eq(purchaseOrders.id, orderId),
+            eq(purchaseOrders.pharmacyId, pharmacyId),
+          ),
+        );
+    });
+
+    revalidatePath('/inventory/purchase-order');
+    revalidatePath('/products');
+    return { success: true, message: 'Receipt quantities updated' };
+  } catch (error) {
+    console.error('Error updating received items:', error);
+    return { success: false, message: 'Failed to update receipt quantities' };
   }
 };

@@ -36,11 +36,22 @@ import { DataTableViewOptions } from '@/components/DataTableViewOptions';
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  searchConfig?: {
+    enabled: boolean;
+    placeholder?: string;
+    searchableColumns?: string[]; // Column keys to search in
+    globalFilter?: boolean; // Use global filter vs column-specific filter
+  };
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  searchConfig = {
+    enabled: true,
+    placeholder: 'Search...',
+    globalFilter: false,
+  },
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -48,6 +59,7 @@ export function DataTable<TData, TValue>({
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
+  const [globalFilter, setGlobalFilter] = React.useState('');
 
   const table = useReactTable({
     data,
@@ -59,24 +71,39 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: 'includesString',
     state: {
       sorting,
       columnFilters,
       columnVisibility,
+      globalFilter,
     },
   });
+
+  const searchValue = searchConfig.globalFilter
+    ? globalFilter
+    : (table.getColumn('name')?.getFilterValue() as string) ?? '';
+
+  const setSearchValue = (value: string) => {
+    if (searchConfig.globalFilter) {
+      setGlobalFilter(value);
+    } else {
+      table.getColumn('name')?.setFilterValue(value);
+    }
+  };
 
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
-        <Input
-          placeholder="Seach by name..."
-          value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-          onChange={(event) =>
-            table.getColumn('name')?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        />
+        {searchConfig.enabled && (
+          <Input
+            placeholder={searchConfig.placeholder || 'Search...'}
+            value={searchValue}
+            onChange={(event) => setSearchValue(event.target.value)}
+            className="max-w-sm"
+          />
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <DataTableViewOptions table={table} />

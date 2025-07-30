@@ -13,7 +13,16 @@ const Page = async () => {
         <SupplierForm />
       </div>
       <div className="bg-white rounded-lg shadow border">
-        <DataTable columns={columns} data={suppliers} />
+        <DataTable
+          columns={columns}
+          data={suppliers}
+          searchConfig={{
+            enabled: true,
+            placeholder: 'Search by supplier name, contact person...',
+            globalFilter: true,
+            searchableColumns: ['name', 'contactPerson'],
+          }}
+        />
       </div>
     </div>
   );

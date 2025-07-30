@@ -51,6 +51,7 @@ export const PURCHASE_ORDER_STATUS_ENUM = pgEnum('purchase_order_status', [
   'DRAFT',
   'EXPORTED',
   'SUBMITTED',
+  'CONFIRMED',
   'PARTIALLY_RECEIVED',
   'RECEIVED',
   'CANCELLED',
@@ -112,7 +113,7 @@ export const products = pgTable('products', {
   name: varchar('name', { length: 100 }).notNull(),
   genericName: varchar('generic_name', { length: 100 }),
   categoryId: integer('category_id').references(() => categories.id),
-  barcode: varchar('barcode', { length: 50 }).unique(),
+  barcode: varchar('barcode', { length: 50 }),
   lotNumber: varchar('lot_number', { length: 50 }).notNull(),
   brandName: varchar('brand_name', { length: 100 }),
   dosageForm: DOSAGE_FORM_ENUM('dosage_form').notNull(),
@@ -191,7 +192,7 @@ export const activityLogs = pgTable('activity_logs', {
   userId: uuid('user_id')
     .references(() => users.id)
     .notNull(),
-  action: varchar('action', { length: 100 }).notNull(), // 'SALE', 'STOCK_UPDATE', etc.
+  action: varchar('action', { length: 100 }).notNull(),
   details: text('details'),
   pharmacyId: integer('pharmacy_id')
     .notNull()
@@ -231,10 +232,12 @@ export const purchaseOrders = pgTable('purchase_orders', {
   orderDate: date('order_date').notNull(),
   status: PURCHASE_ORDER_STATUS_ENUM('status').notNull().default('DRAFT'),
   notes: text('notes'),
+  totalCost: decimal('total_cost', { precision: 10, scale: 2 }).default('0.00'), // Only set after confirmation
   pharmacyId: integer('pharmacy_id')
     .notNull()
     .references(() => pharmacies.id),
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 export const purchaseOrderItems = pgTable('purchase_order_items', {
@@ -247,6 +250,5 @@ export const purchaseOrderItems = pgTable('purchase_order_items', {
     .notNull(),
   quantity: integer('quantity').notNull(),
   receivedQuantity: integer('received_quantity').default(0).notNull(),
-  unitCost: decimal('unit_cost', { precision: 10, scale: 2 }).notNull(),
-  totalCost: decimal('total_cost', { precision: 10, scale: 2 }).notNull(),
+  unitCost: decimal('unit_cost', { precision: 10, scale: 2 }), // NULL until confirmed, then set by supplier
 });

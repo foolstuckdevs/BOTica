@@ -11,18 +11,9 @@ import { Search, Package, CheckCircle, X, ChevronLeft } from 'lucide-react';
 import { createAdjustment } from '@/lib/actions/adjustment';
 import { adjustmentSchema } from '@/lib/validation';
 import { Button } from './ui/button';
+import { Product } from '@/types';
 
 type AdjustmentFormValues = z.infer<typeof adjustmentSchema>;
-
-interface Product {
-  id: number;
-  name: string;
-  quantity: number;
-  unit: string;
-  minStockLevel: number | null;
-  costPrice: string;
-  sellingPrice: string;
-}
 
 interface PendingAdjustment extends AdjustmentFormValues {
   productName: string;
@@ -61,8 +52,17 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
 
   const filteredProducts =
     search.length >= 2
-      ? products.filter((p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()),
+      ? products.filter(
+          (p) =>
+            p.name.toLowerCase().includes(search.toLowerCase()) ||
+            (p.brandName &&
+              p.brandName.toLowerCase().includes(search.toLowerCase())) ||
+            (p.genericName &&
+              p.genericName.toLowerCase().includes(search.toLowerCase())) ||
+            (p.lotNumber &&
+              p.lotNumber.toLowerCase().includes(search.toLowerCase())) ||
+            (p.supplierName &&
+              p.supplierName.toLowerCase().includes(search.toLowerCase())),
         )
       : [];
 
@@ -189,13 +189,13 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
         {/* Left Column - Search & Adjustment Form */}
         <div className="lg:col-span-2 space-y-6">
           {/* Search box */}
-          <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium text-gray-800">
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-medium text-gray-900">
                 Search Products
               </h2>
               {pendingAdjustments.length > 0 && (
-                <span className="text-sm text-gray-500">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {pendingAdjustments.length} pending adjustment
                   {pendingAdjustments.length !== 1 ? 's' : ''}
                 </span>
@@ -208,15 +208,15 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
               </div>
               <input
                 type="text"
-                placeholder="Search by product name (min. 2 chars)..."
+                placeholder="Search by name, brand, supplier..."
                 value={search}
                 onChange={handleSearchChange}
-                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg bg-gray-50 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
               />
               {search && (
                 <button
                   onClick={clearSearch}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label="Clear search"
                 >
                   <X className="h-5 w-5" />
@@ -225,34 +225,69 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
             </div>
 
             {isSearching && (
-              <div className="mt-4 space-y-2 max-h-72 overflow-y-auto">
+              <div className="mt-6 space-y-2 max-h-96 overflow-y-auto">
                 {filteredProducts.length > 0 ? (
                   filteredProducts.map((product) => (
                     <button
                       key={product.id}
                       onClick={() => selectProduct(product)}
-                      className="w-full border text-left p-3 rounded-lg hover:bg-gray-50"
+                      className="w-full text-left p-4 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all duration-200 group"
                     >
-                      <div className="font-medium text-gray-900">
-                        {product.name}
-                      </div>
-                      <div className="flex items-center text-xs gap-2 mt-1 text-gray-600">
-                        <span>
-                          {product.unit} • Stock: {product.quantity}
-                        </span>
-                        {product.minStockLevel && (
-                          <span className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
-                            Min: {product.minStockLevel}
-                          </span>
-                        )}
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <p className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                              {product.name}
+                            </p>
+                            {product.brandName && (
+                              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
+                                {product.brandName}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-3 text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Package className="w-3 h-3" />
+                              {product.quantity} {product.unit}
+                            </span>
+                            {product.lotNumber && (
+                              <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono">
+                                {product.lotNumber}
+                              </span>
+                            )}
+                            {product.expiryDate && (
+                              <span className="text-amber-600 text-xs">
+                                Exp:{' '}
+                                {new Date(
+                                  product.expiryDate,
+                                ).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          {product.minStockLevel && (
+                            <div className="text-xs bg-orange-50 text-orange-700 px-2 py-1 rounded-full border border-orange-200">
+                              Min: {product.minStockLevel}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </button>
                   ))
                 ) : (
-                  <div className="text-center py-6 text-gray-500">
-                    <Search className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                    <p>No products found for {search}</p>
-                    <p className="text-xs mt-1">Try a different search term</p>
+                  <div className="text-center py-12 text-gray-500">
+                    <Search className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p className="font-medium">No products found</p>
+                    <p className="text-sm mt-1">
+                      Try searching by name, brand, batch number, or supplier
+                    </p>
                   </div>
                 )}
               </div>

@@ -60,6 +60,7 @@ export function ProductsPageClient({
       const matchesSupplier =
         filters.supplierId === 'all' ||
         String(product.supplierId) === filters.supplierId;
+
       return matchesStatus && matchesCategory && matchesSupplier;
     });
   }, [products, filters]);
@@ -78,7 +79,22 @@ export function ProductsPageClient({
         </Button>
       </div>
       <div className="bg-white rounded-lg shadow border">
-        <DataTable columns={columns} data={filteredProducts} />
+        <DataTable
+          columns={columns}
+          data={filteredProducts}
+          searchConfig={{
+            enabled: true,
+            placeholder: 'Search by name, brand, lot number...',
+            globalFilter: true,
+            searchableColumns: [
+              'name',
+              'brandName',
+              'genericName',
+              'lotNumber',
+              'supplierName',
+            ],
+          }}
+        />
       </div>
     </div>
   );

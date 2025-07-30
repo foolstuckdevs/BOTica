@@ -68,15 +68,31 @@ const ProductForm = ({
       barcode: product.barcode || '',
       lotNumber: product.lotNumber || '',
       brandName: product.brandName || '',
-      dosageForm: product.dosageForm || 'TABLET',
+      dosageForm:
+        (product.dosageForm as
+          | 'TABLET'
+          | 'CAPSULE'
+          | 'SYRUP'
+          | 'SUSPENSION'
+          | 'LOZENGE'
+          | 'INJECTION'
+          | 'CREAM'
+          | 'OINTMENT') || 'TABLET',
       expiryDate: product.expiryDate
         ? new Date(product.expiryDate)
         : new Date(),
       quantity: product.quantity || 1,
       costPrice: product.costPrice || '',
       sellingPrice: product.sellingPrice || '',
-      minStockLevel: product.minStockLevel || undefined,
-      unit: product.unit || 'PIECE',
+      minStockLevel: product.minStockLevel || 10,
+      unit:
+        (product.unit as
+          | 'PIECE'
+          | 'BOTTLE'
+          | 'BOX'
+          | 'VIAL'
+          | 'SACHET'
+          | 'TUBE') || 'PIECE',
       supplierId: product.supplierId || undefined,
       imageUrl: product.imageUrl || '',
     },

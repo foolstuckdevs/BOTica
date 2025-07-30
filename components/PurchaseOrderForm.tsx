@@ -28,11 +28,10 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { ChevronLeft } from 'lucide-react';
-import { formatCurrency } from '@/lib/helpers/formatCurrency';
 
 type PurchaseOrderFormValues = z.infer<typeof purchaseOrderSchema>;
 
-interface Props {
+interface PurchaseOrderFormProps {
   type?: 'create' | 'update';
   suppliers: Supplier[];
   products: Product[];
@@ -44,7 +43,7 @@ const PurchaseOrderForm = ({
   suppliers,
   products,
   initialValues,
-}: Props) => {
+}: PurchaseOrderFormProps) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
@@ -67,8 +66,11 @@ const PurchaseOrderForm = ({
 
   const filteredProducts =
     search.length >= 2
-      ? products.filter((p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()),
+      ? products.filter(
+          (p) =>
+            p.name.toLowerCase().includes(search.toLowerCase()) ||
+            (p.brandName &&
+              p.brandName.toLowerCase().includes(search.toLowerCase())),
         )
       : [];
 
@@ -81,7 +83,6 @@ const PurchaseOrderForm = ({
     append({
       productId: product.id,
       quantity: 1,
-      unitCost: product.costPrice,
     });
 
     setSearch('');
@@ -145,34 +146,37 @@ const PurchaseOrderForm = ({
     }
   };
 
-  // Calculate total order cost from current form values
-  const total = fields.reduce(
-    (sum, item, idx) =>
-      sum +
-      Number(form.watch(`items.${idx}.quantity`) || 1) *
-        parseFloat(form.watch(`items.${idx}.unitCost`) || '0'),
-    0,
-  );
-
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-8 py-6">
+    <div className="max-w-6xl mx-auto px-4 md:px-8 py-6">
+      {/* Header Navigation */}
       <Button
         variant="ghost"
         onClick={() => router.push('/inventory/purchase-order')}
-        className="group flex items-center gap-2 rounded-full text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+        className="group flex items-center gap-2 rounded-full text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors mb-6"
       >
         <ChevronLeft className="w-4 h-4 group-hover:translate-x-[-2px] transition-transform" />
         <span>Back to Purchase Orders</span>
       </Button>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">
-          {type === 'create' ? 'Create' : 'Edit'} Purchase Order
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {type === 'create'
-            ? 'Select a supplier, add products, and submit your order.'
-            : 'Update the purchase order details and items.'}
-        </p>
+
+      {/* Page Header */}
+      <div className="mb-8 border-b border-gray-200 pb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {type === 'create' ? 'Create New' : 'Edit'} Purchase Order
+            </h1>
+            <p className="text-gray-600 mt-1">
+              {type === 'create'
+                ? 'Select a supplier and add products for your order.'
+                : 'Update the purchase order details and items.'}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-blue-600">
+              {fields.length} items
+            </div>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -255,7 +259,7 @@ const PurchaseOrderForm = ({
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
             <Input
-              placeholder="Search products..."
+              placeholder="Search by product name or brand..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full"
@@ -265,6 +269,8 @@ const PurchaseOrderForm = ({
               <div className="mt-2 border rounded-lg bg-white max-h-60 overflow-y-auto">
                 {filteredProducts.length > 0 ? (
                   filteredProducts.map((product) => {
+                    // For batch tracking: Only consider as "already added" if it's the exact same product
+                    // (same ID, which means same brand, lot, etc.)
                     const alreadyAdded = fields.some(
                       (item) => item.productId === product.id,
                     );
@@ -272,23 +278,58 @@ const PurchaseOrderForm = ({
                     return (
                       <div
                         key={product.id}
-                        className={`flex justify-between items-center px-4 py-2 hover:bg-gray-50 cursor-pointer ${
+                        className={`flex justify-between items-center px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 ${
                           alreadyAdded ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                         onClick={() => {
                           if (!alreadyAdded) handleAddProduct(product);
                         }}
                       >
-                        <div>
-                          <p className="font-medium">{product.name}</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs text-gray-500">
-                              {product.unit} • Stock: {product.quantity}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-gray-900">
+                              {product.name}
                             </p>
-                            <span className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
-                              Min: {product.minStockLevel}
-                            </span>
+                            {product.brandName && (
+                              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                                {product.brandName}
+                              </span>
+                            )}
                           </div>
+
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                            <span>
+                              {product.unit} • Stock: {product.quantity}
+                            </span>
+                            {product.lotNumber && (
+                              <span className="bg-gray-50 px-2 py-0.5 rounded">
+                                Lot: {product.lotNumber}
+                              </span>
+                            )}
+                            {product.expiryDate && (
+                              <span className="text-amber-600">
+                                Exp:{' '}
+                                {new Date(
+                                  product.expiryDate,
+                                ).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
+                            Min: {product.minStockLevel}
+                          </div>
+                          {alreadyAdded && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              Already added
+                            </p>
+                          )}
                         </div>
                       </div>
                     );
@@ -304,28 +345,22 @@ const PurchaseOrderForm = ({
             {itemError && (
               <p className="text-sm text-red-500 mt-2">{itemError}</p>
             )}
-
-            {itemError && <p className="text-sm text-red-500">{itemError}</p>}
           </CardContent>
         </Card>
 
         {/* Order Items Table */}
         {fields.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle>Order Items</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="pt-6">
               <table className="w-full text-sm border">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="px-3 py-2 text-left">Product</th>
+                    <th className="px-3 py-2 text-left">Brand</th>
                     <th className="px-3 py-2 text-left">Qty</th>
                     <th className="px-3 py-2 text-left">Unit</th>
                     <th className="px-3 py-2 text-left">Stock</th>
-                    <th className="px-3 py-2 text-left">Unit Cost</th>
-                    <th className="px-3 py-2 text-left">Total</th>
-                    <th />
+                    <th className="px-3 py-2 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -335,7 +370,18 @@ const PurchaseOrderForm = ({
                     );
                     return (
                       <tr key={item.id} className="border-b">
-                        <td className="px-3 py-2">{product?.name}</td>
+                        <td className="px-3 py-2">
+                          <p className="font-medium">{product?.name}</p>
+                        </td>
+                        <td className="px-3 py-2">
+                          {product?.brandName ? (
+                            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                              {product.brandName}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2">
                           <Input
                             type="number"
@@ -350,32 +396,26 @@ const PurchaseOrderForm = ({
                             className="w-20"
                           />
                         </td>
-                        <td className="px-3 py-2">{product?.unit}</td>
-                        <td className="px-3 py-2">{product?.quantity}</td>
+                        <td className="px-3 py-2">{product?.unit || 'N/A'}</td>
                         <td className="px-3 py-2">
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={form.watch(`items.${idx}.unitCost`) || ''}
-                            onChange={(e) =>
-                              form.setValue(
-                                `items.${idx}.unitCost`,
-                                e.target.value,
-                              )
-                            }
-                            className="w-24"
-                          />
+                          <span
+                            className={`${
+                              (product?.quantity || 0) <=
+                              (product?.minStockLevel || 0)
+                                ? 'text-red-600 font-medium'
+                                : 'text-gray-900'
+                            }`}
+                          >
+                            {product?.quantity || 0}
+                          </span>
+                          {(product?.quantity || 0) <=
+                            (product?.minStockLevel || 0) && (
+                            <span className="text-xs text-red-600 ml-1">
+                              LOW
+                            </span>
+                          )}
                         </td>
-                        <td className="px-3 py-2">
-                          {(
-                            Number(form.watch(`items.${idx}.quantity`) || 1) *
-                            parseFloat(
-                              form.watch(`items.${idx}.unitCost`) || '0',
-                            )
-                          ).toFixed(2)}
-                        </td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2 text-center">
                           <Button
                             type="button"
                             variant="destructive"
@@ -391,12 +431,6 @@ const PurchaseOrderForm = ({
                 </tbody>
               </table>
               {/* Total Cost */}
-              <div className="mt-4 flex justify-end items-center gap-4">
-                <span className="font-medium text-gray-700">Total Cost:</span>
-                <span className="text-lg font-semibold">
-                  {formatCurrency(total)}
-                </span>
-              </div>
             </CardContent>
           </Card>
         )}

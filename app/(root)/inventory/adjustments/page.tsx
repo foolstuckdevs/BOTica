@@ -18,7 +18,16 @@ const Page = async () => {
         </Button>
       </div>
       <div className="bg-white rounded-lg shadow border">
-        <DataTable columns={columns} data={result} />
+        <DataTable
+          columns={columns}
+          data={result}
+          searchConfig={{
+            enabled: true,
+            placeholder: 'Search by name, brand, batch...',
+            globalFilter: true,
+            searchableColumns: ['name', 'brandName', 'batchNumber'],
+          }}
+        />
       </div>
     </div>
   );

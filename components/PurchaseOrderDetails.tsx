@@ -1,27 +1,44 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableHeader,
   TableBody,
   TableRow,
   TableCell,
+  TableHead,
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
 import { Supplier, Product, PurchaseOrder, PurchaseOrderItem } from '@/types';
-import { Button } from './ui/button';
-import { updatePurchaseOrderStatus } from '@/lib/actions/purchase-order';
+import {
+  updatePurchaseOrderStatus,
+  receiveAllItems,
+  partiallyReceiveItems,
+} from '@/lib/actions/purchase-order';
+import { PurchaseOrderConfirmDialog } from '@/components/PurchaseOrderConfirmDialog';
+import PartiallyReceivedDialog from '@/components/PartiallyReceivedDialog';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
-import { FileDown, FileSpreadsheet } from 'lucide-react';
+import {
+  ChevronLeft,
+  Edit,
+  FileText,
+  FileSpreadsheet,
+  Send,
+  CheckCircle2,
+  Package,
+  AlertCircle,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import Link from 'next/link';
 
 interface PurchaseOrderDetailsProps {
   order: PurchaseOrder & {
     items: PurchaseOrderItem[];
     userName?: string;
-    totalCost?: number;
   };
   supplier?: Supplier;
   products?: Product[];
@@ -35,10 +52,56 @@ const InfoBlock = ({
   value: React.ReactNode;
 }) => (
   <div className="space-y-1">
-    <p className="text-xs text-muted-foreground">{label}</p>
-    <p className="text-sm font-medium text-foreground">{value}</p>
+    <p className="text-xs text-gray-500">{label}</p>
+    <p className="text-sm font-medium text-gray-900">{value}</p>
   </div>
 );
+
+const statusConfig = {
+  DRAFT: {
+    label: 'Draft',
+    color: 'bg-gray-100 text-gray-800',
+    icon: <FileText className="w-3 h-3" />,
+    description: 'Ready to export and send to supplier',
+  },
+  EXPORTED: {
+    label: 'Exported',
+    color: 'bg-blue-100 text-blue-800',
+    icon: <Send className="w-3 h-3" />,
+    description: 'Exported - submit to supplier for confirmation',
+  },
+  SUBMITTED: {
+    label: 'Submitted',
+    color: 'bg-purple-100 text-purple-800',
+    icon: <Send className="w-3 h-3" />,
+    description: 'Awaiting supplier confirmation and pricing',
+  },
+  CONFIRMED: {
+    label: 'Confirmed',
+    color: 'bg-indigo-100 text-indigo-800',
+    icon: <CheckCircle2 className="w-3 h-3" />,
+    description: 'Confirmed by supplier - ready for delivery',
+  },
+  PARTIALLY_RECEIVED: {
+    label: 'Partially Received',
+    color: 'bg-amber-100 text-amber-800',
+    icon: <Package className="w-3 h-3" />,
+    description: 'Some items delivered - add products to inventory as received',
+  },
+  RECEIVED: {
+    label: 'Completed',
+    color: 'bg-emerald-100 text-emerald-800',
+    icon: <CheckCircle2 className="w-3 h-3" />,
+    description:
+      'Order complete - add all received products to inventory based on supplier delivery receipt.',
+  },
+  CANCELLED: {
+    label: 'Cancelled',
+    color: 'bg-red-100 text-red-800',
+    icon: <AlertCircle className="w-3 h-3" />,
+    description: 'Order cancelled',
+  },
+};
 
 const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
   order,
@@ -46,208 +109,578 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
   products,
 }) => {
   const router = useRouter();
-  const totalCost = order.totalCost!;
-  const statusOptions = [
-    'DRAFT',
-    'EXPORTED',
-    'SUBMITTED',
-    'PARTIALLY_RECEIVED',
-    'RECEIVED',
-    'CANCELLED',
-  ];
-  const [status, setStatus] = React.useState<PurchaseOrder['status']>(
-    order.status,
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [showPartialDialog, setShowPartialDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [receivedItems, setReceivedItems] = useState<Record<number, number>>(
+    () => {
+      const initialReceived: Record<number, number> = {};
+      order.items.forEach((item) => {
+        initialReceived[item.id] = item.receivedQuantity || 0;
+      });
+      return initialReceived;
+    },
   );
-  const [statusError, setStatusError] = React.useState('');
-  const [isSaving, setIsSaving] = React.useState(false);
 
-  async function handleStatusSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setIsSaving(true);
-    setStatusError('');
+  const statusInfo =
+    statusConfig[order.status as keyof typeof statusConfig] ||
+    statusConfig.DRAFT;
+  const totalCost = parseFloat(order.totalCost || '0');
+  const formattedDate = new Date(order.orderDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  const getAvailableActions = () => {
+    const actions = [];
+
+    if (order.status === 'DRAFT') {
+      actions.push(
+        {
+          label: 'Export Purchase Order',
+          icon: <FileText className="w-4 h-4" />,
+          variant: 'default' as const,
+          onClick: async () => {
+            if (!isUpdating) {
+              setIsUpdating(true);
+              const result = await updatePurchaseOrderStatus(
+                order.id,
+                'EXPORTED',
+                order.pharmacyId,
+              );
+              if (result.success) {
+                window.location.reload();
+              } else {
+                toast.error(result.message || 'Failed to update status');
+              }
+              setIsUpdating(false);
+            }
+          },
+          disabled: isUpdating,
+        },
+        {
+          label: 'Mark as Submitted',
+          icon: <Send className="w-4 h-4" />,
+          variant: 'outline' as const,
+          onClick: () => handleStatusUpdate('SUBMITTED'),
+          disabled: isUpdating,
+        },
+        {
+          label: 'Cancel Order',
+          icon: <AlertCircle className="w-4 h-4" />,
+          variant: 'destructive' as const,
+          onClick: () => handleStatusUpdate('CANCELLED'),
+          disabled: isUpdating,
+        },
+      );
+    }
+
+    if (order.status === 'EXPORTED') {
+      actions.push(
+        {
+          label: 'Mark as Submitted',
+          icon: <Send className="w-4 h-4" />,
+          variant: 'default' as const,
+          onClick: () => handleStatusUpdate('SUBMITTED'),
+          disabled: isUpdating,
+        },
+        {
+          label: 'Cancel Order',
+          icon: <AlertCircle className="w-4 h-4" />,
+          variant: 'destructive' as const,
+          onClick: () => handleStatusUpdate('CANCELLED'),
+          disabled: isUpdating,
+        },
+      );
+    }
+
+    if (order.status === 'SUBMITTED') {
+      actions.push(
+        {
+          label: 'Confirm Order',
+          icon: <CheckCircle2 className="w-4 h-4" />,
+          variant: 'default' as const,
+          onClick: () => setShowConfirmDialog(true),
+        },
+        {
+          label: 'Cancel Order',
+          icon: <AlertCircle className="w-4 h-4" />,
+          variant: 'destructive' as const,
+          onClick: () => handleStatusUpdate('CANCELLED'),
+          disabled: isUpdating,
+        },
+      );
+    }
+
+    if (order.status === 'CONFIRMED') {
+      actions.push(
+        {
+          label: 'Partially Received',
+          icon: <Package className="w-4 h-4" />,
+          variant: 'default' as const,
+          onClick: () => setShowPartialDialog(true),
+        },
+        {
+          label: 'All Items Received',
+          icon: <CheckCircle2 className="w-4 h-4" />,
+          variant: 'outline' as const,
+          onClick: () => handleReceiveAllItems(),
+        },
+        {
+          label: 'Cancel Order',
+          icon: <AlertCircle className="w-4 h-4" />,
+          variant: 'destructive' as const,
+          onClick: () => handleStatusUpdate('CANCELLED'),
+          disabled: isUpdating,
+        },
+      );
+    }
+
+    if (order.status === 'PARTIALLY_RECEIVED') {
+      actions.push({
+        label: 'All Items Received',
+        icon: <CheckCircle2 className="w-4 h-4" />,
+        variant: 'default' as const,
+        onClick: () => handleReceiveAllItems(),
+      });
+    }
+
+    return actions;
+  };
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    setIsUpdating(true);
     try {
       const result = await updatePurchaseOrderStatus(
         order.id,
-        status,
+        newStatus as PurchaseOrder['status'],
         order.pharmacyId,
       );
-      if (!result.success) {
-        setStatusError(result.message || 'Failed to update status');
+      if (result.success) {
+        router.refresh();
       } else {
-        setStatusError('');
-        router.push('/inventory/purchase-order');
+        toast.error(result.message || 'Failed to update status');
       }
     } catch {
-      setStatusError('Failed to update status');
+      toast.error('Failed to update status');
     } finally {
-      setIsSaving(false);
+      setIsUpdating(false);
     }
-  }
+  };
 
-  // Export handlers
-  const handleExportPDF = () => {
-    window.print();
+  const handlePartialReceipt = async () => {
+    setIsUpdating(true);
+    try {
+      const result = await partiallyReceiveItems(
+        order.id,
+        order.pharmacyId,
+        receivedItems,
+        false, // Documentation only - manual inventory update required
+      );
+      if (result.success) {
+        toast.success(
+          `${result.message}. Add received products with lot numbers and expiry dates to inventory.`,
+        );
+
+        // Update order items to reflect changes
+        order.items.forEach((item) => {
+          if (receivedItems[item.id] !== undefined) {
+            item.receivedQuantity = receivedItems[item.id];
+          }
+        });
+
+        setShowPartialDialog(false);
+
+        // Refresh to get the latest data from server
+        setTimeout(() => {
+          router.refresh();
+        }, 100);
+      } else {
+        toast.error(result.message || 'Failed to receive items');
+      }
+    } catch {
+      toast.error('Failed to receive items');
+    } finally {
+      setIsUpdating(false);
+    }
   };
-  const handleExportExcel = () => {
-    // TODO: Implement Excel export logic
-    alert('Excel export not implemented yet.');
+
+  const handleReceiveAllItems = async () => {
+    setIsUpdating(true);
+    try {
+      const result = await receiveAllItems(
+        order.id,
+        order.pharmacyId,
+        false, // Documentation only - manual inventory update required
+      );
+      if (result.success) {
+        toast.success(
+          `${result.message}. Add all received products to inventory.`,
+        );
+
+        // Update local state to show all items as received
+        const updatedReceivedItems: Record<number, number> = {};
+        order.items.forEach((item) => {
+          item.receivedQuantity = item.quantity;
+          updatedReceivedItems[item.id] = item.quantity;
+        });
+        setReceivedItems(updatedReceivedItems);
+
+        // Refresh to get the latest data from server
+        setTimeout(() => {
+          router.refresh();
+        }, 100);
+      } else {
+        toast.error(result.message || 'Failed to receive all items');
+      }
+    } catch {
+      toast.error('Failed to receive all items');
+    } finally {
+      setIsUpdating(false);
+    }
   };
+
+  const updateReceivedQuantity = (itemId: number, quantity: number) => {
+    setReceivedItems((prev) => ({
+      ...prev,
+      [itemId]: Math.max(
+        0,
+        Math.min(
+          quantity,
+          order.items.find((i) => i.id === itemId)?.quantity || 0,
+        ),
+      ),
+    }));
+  };
+
+  const availableActions = getAvailableActions();
+  const showCostColumns = [
+    'CONFIRMED',
+    'PARTIALLY_RECEIVED',
+    'RECEIVED',
+  ].includes(order.status);
+  const showReceivedColumns = [
+    'CONFIRMED',
+    'PARTIALLY_RECEIVED',
+    'RECEIVED',
+  ].includes(order.status);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="container mx-auto px-4 py-6 space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
         <Button
           variant="ghost"
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary hover:bg-accent"
+          className="w-fit gap-2 text-gray-600 hover:text-gray-900"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>Back to purchase orders</span>
+          Back to orders
         </Button>
-        <div className="flex gap-2">
+
+        <div className="flex flex-wrap gap-2 justify-end">
           <Button
             variant="outline"
             size="sm"
-            onClick={handleExportPDF}
-            className="flex items-center gap-1"
+            onClick={() => window.print()}
+            className="gap-2 bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
           >
-            <FileDown className="w-4 h-4" /> PDF
+            <FileText className="w-4 h-4" />
+            Export PDF
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={handleExportExcel}
-            className="flex items-center gap-1"
+            className="gap-2 bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
           >
-            <FileSpreadsheet className="w-4 h-4" /> Excel
+            <FileSpreadsheet className="w-4 h-4" />
+            Export Excel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="gap-2 bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+          >
+            <Link href={`/inventory/purchase-order/${order.id}/edit`}>
+              <Edit className="w-4 h-4" />
+              Edit
+            </Link>
           </Button>
         </div>
       </div>
-      <Card className="border border-border shadow-sm">
-        <CardHeader className="pb-4 border-b">
-          <CardTitle className="text-xl font-semibold text-foreground">
-            Purchase Order
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 mt-4">
-          <section className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <InfoBlock label="Order Number" value={order.orderNumber} />
-            <InfoBlock
-              label="Order Date"
-              value={new Date(order.orderDate).toLocaleDateString()}
-            />
-            <InfoBlock
-              label="Supplier"
-              value={
-                supplier?.name ||
-                order.supplierName ||
-                `Supplier #${order.supplierId}`
-              }
-            />
-            <form onSubmit={handleStatusSubmit} className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Status</label>
-              <div className="flex gap-2 items-center">
-                <select
-                  value={status}
-                  onChange={(e) =>
-                    setStatus(e.target.value as PurchaseOrder['status'])
-                  }
-                  className="border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  disabled={isSaving}
-                >
-                  {statusOptions.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  size="sm"
-                  variant="default"
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4"
-                >
-                  {isSaving ? 'Saving...' : 'Save'}
-                </Button>
+
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left Column */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Order Header */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <CardTitle className="text-xl font-medium text-gray-900">
+                      PO #{order.orderNumber}
+                    </CardTitle>
+                    <Badge
+                      variant="outline"
+                      className={`${statusInfo.color} border-0`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {statusInfo.icon}
+                        {statusInfo.label}
+                      </div>
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Created on {formattedDate}
+                  </p>
+                </div>
               </div>
-              {statusError && (
-                <p className="text-xs text-red-500 mt-1">{statusError}</p>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <InfoBlock
+                label="Supplier"
+                value={
+                  supplier?.name ||
+                  order.supplierName ||
+                  `Supplier #${order.supplierId}`
+                }
+              />
+              <InfoBlock
+                label="Total Items"
+                value={`${order.totalItems || 0} items (${
+                  order.totalQuantity || 0
+                } qty)`}
+              />
+              {order.notes && <InfoBlock label="Notes" value={order.notes} />}
+            </CardContent>
+          </Card>
+
+          {/* Order Items */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-lg font-medium text-gray-900">
+                  Order Items
+                </CardTitle>
+                <span className="text-sm text-gray-500">
+                  {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-lg border border-gray-100">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-gray-100">
+                      <TableHead className="text-gray-600 font-medium w-1/3">
+                        Product
+                      </TableHead>
+                      <TableHead className="text-gray-600 font-medium w-1/6">
+                        Brand
+                      </TableHead>
+                      <TableHead className="text-right text-gray-600 font-medium w-1/6">
+                        Quantity
+                      </TableHead>
+                      {showReceivedColumns && (
+                        <TableHead className="text-right text-gray-600 font-medium w-1/6">
+                          Received
+                        </TableHead>
+                      )}
+                      <TableHead className="text-right text-gray-600 font-medium w-1/6">
+                        Unit
+                      </TableHead>
+                      {showCostColumns && (
+                        <>
+                          <TableHead className="text-right text-gray-600 font-medium w-1/6">
+                            Unit Cost
+                          </TableHead>
+                          <TableHead className="text-right text-gray-600 font-medium w-1/6">
+                            Total
+                          </TableHead>
+                        </>
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {order.items.map((item) => {
+                      const product = products?.find(
+                        (p) => p.id === item.productId,
+                      );
+                      const unitCost = parseFloat(item.unitCost || '0');
+                      const total = unitCost * item.quantity;
+                      const receivedQty = receivedItems[item.id] || 0;
+
+                      return (
+                        <TableRow key={item.id} className="border-gray-100">
+                          <TableCell className="font-medium text-gray-900">
+                            {product?.name ||
+                              item.productName ||
+                              `Product #${item.productId}`}
+                          </TableCell>
+                          <TableCell className="text-gray-700">
+                            {product?.brandName ? (
+                              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                                {product.brandName}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-gray-700">
+                            {item.quantity}
+                          </TableCell>
+                          {showReceivedColumns && (
+                            <TableCell className="text-right">
+                              <span
+                                className={`font-medium ${
+                                  receivedQty >= item.quantity
+                                    ? 'text-green-600'
+                                    : receivedQty > 0
+                                    ? 'text-amber-600'
+                                    : 'text-gray-500'
+                                }`}
+                              >
+                                {receivedQty}
+                              </span>
+                              <span className="text-gray-400 text-sm ml-1">
+                                / {item.quantity}
+                              </span>
+                            </TableCell>
+                          )}
+                          <TableCell className="text-right text-gray-500">
+                            {product?.unit || item.productUnit || '—'}
+                          </TableCell>
+                          {showCostColumns && (
+                            <>
+                              <TableCell className="text-right text-gray-700">
+                                {formatCurrency(unitCost)}
+                              </TableCell>
+                              <TableCell className="text-right font-medium text-gray-900">
+                                {formatCurrency(total)}
+                              </TableCell>
+                            </>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-4">
+          {/* Order Status Card */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-medium text-gray-900">
+                Order Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">
+                  {statusInfo.description}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Actions Card */}
+          {availableActions.length > 0 && (
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-medium text-gray-900">
+                  Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-2 pt-0">
+                {availableActions.map((action, index) => (
+                  <Button
+                    key={index}
+                    variant={action.variant}
+                    size="sm"
+                    className={`w-full justify-start gap-2 ${
+                      action.variant === 'default'
+                        ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                        : action.variant === 'outline'
+                        ? 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                        : action.variant === 'destructive'
+                        ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                        : ''
+                    }`}
+                    onClick={action.onClick}
+                    disabled={isUpdating}
+                  >
+                    {action.icon}
+                    {action.label}
+                  </Button>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Summary Card */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-medium text-gray-900">
+                Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Items:</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {order.totalItems}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Quantity:</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {order.totalQuantity}
+                </span>
+              </div>
+              {showCostColumns && (
+                <>
+                  <div className="border-t border-gray-100 pt-3"></div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-900">
+                      Total:
+                    </span>
+                    <span className="font-semibold text-blue-600">
+                      {formatCurrency(totalCost)}
+                    </span>
+                  </div>
+                </>
               )}
-            </form>
-            {statusError && (
-              <p className="text-xs text-red-500">{statusError}</p>
-            )}
-            {order.notes && <InfoBlock label="Notes" value={order.notes} />}
-          </section>
-          <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground">
-              Ordered Items
-            </h3>
-            <div className="overflow-x-auto rounded-md border border-border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableCell className="font-medium text-sm">
-                      Product
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-sm">
-                      Qty
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-sm">
-                      Unit
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-sm">
-                      Unit Cost
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-sm">
-                      Total
-                    </TableCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {order.items.map((item) => {
-                    const product = products?.find(
-                      (p) => p.id === item.productId,
-                    );
-                    const unitCost = parseFloat(item.unitCost);
-                    const total = unitCost * item.quantity;
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          {product?.name ||
-                            item.productName ||
-                            `#${item.productId}`}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {item.quantity}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {product?.unit || item.productUnit || '—'}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(unitCost)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(total)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </section>
-          <section className="flex justify-end pt-2 border-t">
-            <div className="text-sm text-muted-foreground space-y-1 text-right">
-              <p className="text-xs uppercase">Total Order Cost</p>
-              <p className="text-xl font-semibold text-foreground">
-                {formatCurrency(totalCost)}
-              </p>
-            </div>
-          </section>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <PartiallyReceivedDialog
+        open={showPartialDialog}
+        onOpenChange={setShowPartialDialog}
+        order={order}
+        products={products}
+        receivedItems={receivedItems}
+        updateReceivedQuantity={updateReceivedQuantity}
+        onConfirm={handlePartialReceipt}
+        isUpdating={isUpdating}
+      />
+
+      <PurchaseOrderConfirmDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        order={order}
+        products={products}
+      />
     </div>
   );
 };
