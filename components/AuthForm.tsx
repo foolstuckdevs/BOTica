@@ -41,6 +41,7 @@ import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 
 interface Props<T extends FieldValues> {
   type: 'SIGN_IN' | 'SIGN_UP';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   schema: ZodType<T, any, any>;
   defaultValues: T;
   onSubmit: (

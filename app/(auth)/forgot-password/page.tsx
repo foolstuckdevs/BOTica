@@ -45,10 +45,12 @@ const ForgotPasswordPage = () => {
 
       // In a real app, you would call your password reset API here
       // await resetPassword(data.email);
-      console.log('Reset password for:', data.email);
 
+      // Use data.email to show which email will receive the reset
       setIsEmailSent(true);
-      toast.success('Password reset email sent! Check your inbox.');
+      toast.success(
+        `Password reset email sent to ${data.email}! Check your inbox.`,
+      );
     } catch {
       toast.error('Failed to send reset email. Please try again.');
     } finally {

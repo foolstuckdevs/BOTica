@@ -34,6 +34,9 @@ interface Props<T extends FieldValues> {
   }[];
   defaultValues: DefaultValues<T>;
   onSubmit: (data: T) => Promise<{ success: boolean; error?: string }>;
+  // Using `any` here is necessary for Zod's complex internal type system
+  // This doesn't compromise type safety as T is properly constrained
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   schema: ZodType<T, unknown, any>;
 }
 
