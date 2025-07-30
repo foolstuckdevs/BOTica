@@ -86,13 +86,14 @@ const statusConfig = {
     label: 'Partially Received',
     color: 'bg-amber-100 text-amber-800',
     icon: <Package className="w-3 h-3" />,
-    description: 'Some items delivered - add products to inventory',
+    description: 'Some items delivered - add products to inventory as received',
   },
   RECEIVED: {
     label: 'Completed',
     color: 'bg-emerald-100 text-emerald-800',
     icon: <CheckCircle2 className="w-3 h-3" />,
-    description: 'All items received - add products to inventory',
+    description:
+      'Order complete - add all received products to inventory based on supplier delivery receipt.',
   },
   CANCELLED: {
     label: 'Cancelled',
@@ -353,40 +354,6 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
     }));
   };
 
-  const handleAddToInventory = (item: PurchaseOrderItem, product?: Product) => {
-    // Create URL search params to pre-populate the add product form
-    const params = new URLSearchParams({
-      // Pre-fill form with purchase order item data
-      name: product?.name || item.productName || '',
-      quantity: (receivedItems[item.id] || 0).toString(),
-      unitCost: item.unitCost || '',
-      supplierId: order.supplierId.toString(),
-
-      // Enhanced pre-filling for better UX
-      genericName: product?.genericName || '',
-      // brandName: NOT pre-filled - different brands are separate products
-      dosageForm: product?.dosageForm || 'TABLET',
-      unit: product?.unit || item.productUnit || 'PIECE',
-      categoryId: product?.categoryId?.toString() || '',
-      minStockLevel: product?.minStockLevel?.toString() || '10',
-      // barcode: NOT pre-filled - different brands have different barcodes
-
-      // Calculate suggested selling price (cost + 20% markup)
-      sellingPrice: item.unitCost
-        ? (parseFloat(item.unitCost) * 1.2).toFixed(2)
-        : product?.sellingPrice || '',
-
-      // Add context about the purchase order
-      fromPurchaseOrder: order.id.toString(),
-      purchaseOrderItem: item.id.toString(),
-      orderDate: order.orderDate,
-      supplierName: order.supplierName || '',
-    });
-
-    // Navigate to add product form with pre-populated data
-    router.push(`/inventory/products/new?${params.toString()}`);
-  };
-
   const availableActions = getAvailableActions();
   const showCostColumns = [
     'CONFIRMED',
@@ -617,68 +584,11 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              {['PARTIALLY_RECEIVED', 'RECEIVED'].includes(order.status) ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-600">
-                    Add received products to inventory.
-                  </p>
-
-                  {/* Inventory Actions */}
-                  {order.items.filter(
-                    (item) => (receivedItems[item.id] || 0) > 0,
-                  ).length > 0 && (
-                    <div className="space-y-2">
-                      {order.items
-                        .filter((item) => (receivedItems[item.id] || 0) > 0)
-                        .map((item) => {
-                          const product = products?.find(
-                            (p) => p.id === item.productId,
-                          );
-                          const receivedQty = receivedItems[item.id] || 0;
-
-                          return (
-                            <div
-                              key={item.id}
-                              className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
-                            >
-                              <div className="flex-1">
-                                <p className="text-sm font-medium text-gray-900">
-                                  {product?.name ||
-                                    item.productName ||
-                                    `Product #${item.productId}`}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {receivedQty}{' '}
-                                  {product?.unit || item.productUnit || 'items'}{' '}
-                                  received
-                                </p>
-                              </div>
-                              <Button
-                                size="sm"
-                                className="h-8 px-4 text-xs bg-blue-600 hover:bg-blue-700 text-white"
-                                onClick={() =>
-                                  handleAddToInventory(item, product)
-                                }
-                                title={`Add ${receivedQty} ${
-                                  product?.unit || item.productUnit || 'items'
-                                } to inventory`}
-                              >
-                                <Package className="w-3 h-3 mr-1" />
-                                Add to Inventory
-                              </Button>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
-                    {statusInfo.description}
-                  </p>
-                </div>
-              )}
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">
+                  {statusInfo.description}
+                </p>
+              </div>
             </CardContent>
           </Card>
 

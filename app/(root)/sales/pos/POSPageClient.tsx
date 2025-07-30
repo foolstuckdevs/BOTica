@@ -31,10 +31,18 @@ export default function POSPage({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  // Filter products based on search term
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  // Filter products based on search term (name, brand, lot number)
+  const filteredProducts = products.filter((product) => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      product.name.toLowerCase().includes(searchLower) ||
+      (product.brandName &&
+        product.brandName.toLowerCase().includes(searchLower)) ||
+      product.lotNumber.toLowerCase().includes(searchLower) ||
+      (product.genericName &&
+        product.genericName.toLowerCase().includes(searchLower))
+    );
+  });
 
   // Calculate totals
   const totalAmount = cart.reduce(
@@ -61,7 +69,11 @@ export default function POSPage({
         return [
           ...prevCart,
           {
-            ...product,
+            id: product.id,
+            name: product.name,
+            brandName: product.brandName,
+            lotNumber: product.lotNumber,
+            expiryDate: product.expiryDate,
             quantity: 1,
             unitPrice: parseFloat(product.sellingPrice),
           },
@@ -130,23 +142,34 @@ export default function POSPage({
       );
       if (result.success && result.data) {
         toast.success('Sale processed successfully');
-        const printSuccess = await PrintUtility.printDynamicReceipt(
-          {
-            invoiceNumber: result.data.invoiceNumber,
-            createdAt: result.data.createdAt,
-            totalAmount: result.data.totalAmount,
-            discount: discountAmount,
-            amountReceived: cashReceived,
-            changeDue: Math.max(0, change),
-          },
-          cart.map((item) => ({
-            ...item,
-            unitPrice: parseFloat(item.unitPrice.toString()),
-          })),
-          pharmacyInfo,
-        );
-        if (!printSuccess) {
-          toast.warning('Receipt printed with issues - sale was processed');
+        if (pharmacyInfo) {
+          const printSuccess = await PrintUtility.printDynamicReceipt(
+            {
+              id: 0, // Placeholder ID since this is for printing
+              invoiceNumber: result.data.invoiceNumber,
+              createdAt: result.data.createdAt || new Date(),
+              totalAmount: result.data.totalAmount,
+              discount: discountAmount.toString(),
+              paymentMethod: 'CASH' as const,
+              amountReceived: cashReceived,
+              changeDue: Math.max(0, change),
+              user: {
+                fullName: session?.user?.name || 'Unknown User',
+              },
+              items: [], // Will be passed separately as second parameter
+            },
+            cart.map((item) => ({
+              id: item.id,
+              productName: item.name,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice.toString(),
+              subtotal: (item.unitPrice * item.quantity).toString(),
+            })),
+            pharmacyInfo,
+          );
+          if (!printSuccess) {
+            toast.warning('Receipt printed with issues - sale was processed');
+          }
         }
         setCart([]);
         setCashReceived(0);
@@ -170,12 +193,25 @@ export default function POSPage({
       <div className="lg:col-span-3">
         <div className="mb-4">
           <Input
-            placeholder="Search products..."
+            placeholder="Search by name, brand, lot number, or generic name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="bg-white"
           />
         </div>
+
+        {/* Product Summary */}
+        {searchTerm && filteredProducts.length > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm text-blue-800">
+              Found {filteredProducts.length} products
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              🟢 Good • 🟡 Soon to Expire • 🔴 Sell First
+            </p>
+          </div>
+        )}
+
         {filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredProducts.map((product) => (

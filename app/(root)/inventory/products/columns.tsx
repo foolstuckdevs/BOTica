@@ -78,7 +78,7 @@ export const columns: ColumnDef<Product>[] = [
   {
     accessorKey: 'lotNumber',
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Lot Number" />
+      <DataTableColumnHeader column={column} title="Batch" />
     ),
     cell: ({ row }) => {
       const lotNumber = (row.original as Product).lotNumber;

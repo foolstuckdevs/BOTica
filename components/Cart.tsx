@@ -3,10 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import React from 'react';
 import type { Product } from '@/types';
+import { getExpiryUrgency } from '@/lib/helpers/fefo-utils';
 
 export interface CartItem {
   id: number;
   name: string;
+  brandName?: string | null;
+  lotNumber: string;
+  expiryDate: string;
   unitPrice: number;
   quantity: number;
 }
@@ -46,12 +50,58 @@ export const Cart: React.FC<CartProps> = ({
           cart.map((item) => {
             const product = products.find((p) => p.id === item.id);
             const maxQuantity = product?.quantity || 1;
+            const urgency = getExpiryUrgency(item.expiryDate);
+
             return (
               <div key={item.id} className="border-b pb-3 group">
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium truncate">{item.name}</h4>
-                    <div className="text-sm text-gray-500">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-medium truncate">{item.name}</h4>
+                    </div>
+                    {product && (
+                      <div className="text-xs text-gray-600 mt-1 space-y-0.5">
+                        {product.brandName && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-blue-600 font-medium">
+                              Brand:
+                            </span>
+                            <span>{product.brandName}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <span className="text-amber-600 font-medium">
+                            Lot:
+                          </span>
+                          <span>{product.lotNumber}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span
+                            className={`font-medium ${
+                              urgency.level === 'expiring_soon'
+                                ? 'text-red-600'
+                                : urgency.level === 'moderately_close'
+                                ? 'text-yellow-600'
+                                : 'text-green-600'
+                            }`}
+                          >
+                            Expires in:
+                          </span>
+                          <span
+                            className={
+                              urgency.level === 'expiring_soon'
+                                ? 'text-red-600 font-medium'
+                                : urgency.level === 'moderately_close'
+                                ? 'text-yellow-600 font-medium'
+                                : 'text-gray-600'
+                            }
+                          >
+                            {urgency.days} days
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-sm text-gray-500 mt-1">
                       ₱{item.unitPrice.toFixed(2)} × {item.quantity}
                       {maxQuantity > 0 && (
                         <span className="text-xs text-gray-400 ml-2">
