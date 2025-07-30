@@ -69,24 +69,49 @@ const ProductForm = ({
   const preFilledSupplierId =
     urlParams?.get('supplierId') || product.supplierId || undefined;
 
+  // Enhanced pre-filling from purchase orders
+  const preFilledGenericName =
+    urlParams?.get('genericName') || product.genericName || '';
+  const preFilledDosageForm =
+    urlParams?.get('dosageForm') || product.dosageForm || 'TABLET';
+  const preFilledUnit = urlParams?.get('unit') || product.unit || 'PIECE';
+  const preFilledCategoryId =
+    urlParams?.get('categoryId') || product.categoryId || undefined;
+  const preFilledMinStockLevel =
+    urlParams?.get('minStockLevel') || product.minStockLevel || 10;
+
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: preFilledName,
-      genericName: product.genericName || '',
-      categoryId: product.categoryId || undefined,
-      barcode: product.barcode || '',
+      genericName: preFilledGenericName,
+      categoryId: preFilledCategoryId ? Number(preFilledCategoryId) : undefined,
+      barcode: product.barcode || '', // Only pre-fill for existing products, not from purchase orders
       lotNumber: product.lotNumber || '',
-      brandName: product.brandName || '',
-      dosageForm: product.dosageForm || 'TABLET',
+      brandName: product.brandName || '', // Only pre-fill for existing products, not from purchase orders
+      dosageForm: preFilledDosageForm as
+        | 'TABLET'
+        | 'CAPSULE'
+        | 'SYRUP'
+        | 'SUSPENSION'
+        | 'LOZENGE'
+        | 'INJECTION'
+        | 'CREAM'
+        | 'OINTMENT',
       expiryDate: product.expiryDate
         ? new Date(product.expiryDate)
         : new Date(),
       quantity: Number(preFilledQuantity) || 1,
       costPrice: preFilledUnitCost,
-      sellingPrice: product.sellingPrice || '',
-      minStockLevel: product.minStockLevel || undefined,
-      unit: product.unit || 'PIECE',
+      sellingPrice: product.sellingPrice || '', // Only pre-fill for existing products
+      minStockLevel: Number(preFilledMinStockLevel) || 10,
+      unit: preFilledUnit as
+        | 'PIECE'
+        | 'BOTTLE'
+        | 'BOX'
+        | 'VIAL'
+        | 'SACHET'
+        | 'TUBE',
       supplierId: preFilledSupplierId ? Number(preFilledSupplierId) : undefined,
       imageUrl: product.imageUrl || '',
     },

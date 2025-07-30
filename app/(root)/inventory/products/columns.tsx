@@ -52,7 +52,49 @@ export const columns: ColumnDef<Product>[] = [
         </p>
       </div>
     ),
-    size: 200,
+    size: 180,
+  },
+  {
+    accessorKey: 'brandName',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Brand" />
+    ),
+    cell: ({ row }) => {
+      const brandName = (row.original as Product).brandName;
+      return (
+        <div className="text-sm">
+          {brandName ? (
+            <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
+              {brandName}
+            </span>
+          ) : (
+            <span className="text-gray-400 text-xs">—</span>
+          )}
+        </div>
+      );
+    },
+    size: 120,
+  },
+  {
+    accessorKey: 'lotNumber',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Lot Number" />
+    ),
+    cell: ({ row }) => {
+      const lotNumber = (row.original as Product).lotNumber;
+      return (
+        <div className="text-sm">
+          {lotNumber ? (
+            <span className="bg-gray-50 text-gray-700 px-2 py-1 rounded text-xs font-mono">
+              {lotNumber}
+            </span>
+          ) : (
+            <span className="text-gray-400 text-xs">—</span>
+          )}
+        </div>
+      );
+    },
+    size: 120,
   },
   {
     accessorKey: 'quantity',
@@ -61,7 +103,9 @@ export const columns: ColumnDef<Product>[] = [
     ),
     cell: ({ row }) => {
       const quantity = parseFloat(row.getValue('quantity'));
-      const isLow = quantity <= 5;
+      const unit = (row.original as Product).unit;
+      const minStockLevel = (row.original as Product).minStockLevel;
+      const isLow = minStockLevel ? quantity <= minStockLevel : quantity <= 5;
       const isOut = quantity === 0;
 
       return (
@@ -75,20 +119,16 @@ export const columns: ColumnDef<Product>[] = [
                 : 'text-gray-900'
             }`}
           >
-            {isOut
-              ? 'Out of stock'
-              : `${quantity} unit${quantity > 1 ? 's' : ''}`}
+            {isOut ? '0' : quantity} {unit?.toLowerCase() || 'pcs'}
           </span>
-          {isOut && (
-            <span className="text-xs text-red-500">Restock needed</span>
-          )}
+          {isOut && <span className="text-xs text-red-500">Out of stock</span>}
           {!isOut && isLow && (
             <span className="text-xs text-amber-500">Low stock</span>
           )}
         </div>
       );
     },
-    size: 120,
+    size: 100,
   },
   {
     accessorKey: 'expiryDate',
@@ -123,6 +163,25 @@ export const columns: ColumnDef<Product>[] = [
           {isExpired && <span className="text-xs text-red-500">Expired</span>}
           {isNearExpiry && !isExpired && (
             <span className="text-xs text-amber-500">Expires soon</span>
+          )}
+        </div>
+      );
+    },
+    size: 110,
+  },
+  {
+    accessorKey: 'supplierName',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Supplier" />
+    ),
+    cell: ({ row }) => {
+      const supplierName = (row.original as Product).supplierName;
+      return (
+        <div className="text-sm text-gray-700">
+          {supplierName ? (
+            <span className="truncate">{supplierName}</span>
+          ) : (
+            <span className="text-gray-400">—</span>
           )}
         </div>
       );

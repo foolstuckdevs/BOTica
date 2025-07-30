@@ -120,6 +120,12 @@ export interface Adjustment {
   id: number;
   productId: number;
   name: string;
+  brandName?: string | null;
+  genericName?: string | null;
+  lotNumber?: string | null;
+  unit?: string | null;
+  supplierName?: string | null;
+  expiryDate?: string | null;
   quantityChange: number;
   reason: 'DAMAGED' | 'EXPIRED' | 'LOST' | 'THEFT' | 'CORRECTION' | 'RESTOCK';
   createdAt: string | Date;

@@ -82,18 +82,26 @@ export const createProduct = async (
   params: ProductParams & { pharmacyId: number },
 ) => {
   try {
-    const existingProduct = await db
-      .select()
-      .from(products)
-      .where(
-        and(
-          eq(products.name, params.name),
-          eq(products.pharmacyId, params.pharmacyId),
-        ),
-      );
+    // For batch tracking: Allow same barcode with different lot numbers
+    // Only check for duplicate barcode + lot combination if both are provided
+    if (params.barcode && params.lotNumber) {
+      const existingProduct = await db
+        .select()
+        .from(products)
+        .where(
+          and(
+            eq(products.barcode, params.barcode),
+            eq(products.lotNumber, params.lotNumber),
+            eq(products.pharmacyId, params.pharmacyId),
+          ),
+        );
 
-    if (existingProduct.length > 0) {
-      return { success: false, message: 'Product already exists' };
+      if (existingProduct.length > 0) {
+        return {
+          success: false,
+          message: 'This lot number already exists for this product',
+        };
+      }
     }
 
     const newProduct = await db.insert(products).values(params).returning();

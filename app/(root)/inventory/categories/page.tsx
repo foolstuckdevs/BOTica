@@ -14,7 +14,16 @@ const Page = async () => {
         <CategoryForm />
       </div>
       <div className="bg-white rounded-lg shadow border">
-        <DataTable columns={columns} data={result} />
+        <DataTable
+          columns={columns}
+          data={result}
+          searchConfig={{
+            enabled: true,
+            placeholder: 'Search by category name...',
+            globalFilter: true,
+            searchableColumns: ['name'],
+          }}
+        />
       </div>
     </div>
   );

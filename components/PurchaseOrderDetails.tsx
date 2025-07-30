@@ -361,9 +361,26 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
       quantity: (receivedItems[item.id] || 0).toString(),
       unitCost: item.unitCost || '',
       supplierId: order.supplierId.toString(),
+
+      // Enhanced pre-filling for better UX
+      genericName: product?.genericName || '',
+      // brandName: NOT pre-filled - different brands are separate products
+      dosageForm: product?.dosageForm || 'TABLET',
+      unit: product?.unit || item.productUnit || 'PIECE',
+      categoryId: product?.categoryId?.toString() || '',
+      minStockLevel: product?.minStockLevel?.toString() || '10',
+      // barcode: NOT pre-filled - different brands have different barcodes
+
+      // Calculate suggested selling price (cost + 20% markup)
+      sellingPrice: item.unitCost
+        ? (parseFloat(item.unitCost) * 1.2).toFixed(2)
+        : product?.sellingPrice || '',
+
       // Add context about the purchase order
       fromPurchaseOrder: order.id.toString(),
       purchaseOrderItem: item.id.toString(),
+      orderDate: order.orderDate,
+      supplierName: order.supplierName || '',
     });
 
     // Navigate to add product form with pre-populated data
@@ -492,26 +509,29 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
                 <Table>
                   <TableHeader>
                     <TableRow className="border-gray-100">
-                      <TableHead className="text-gray-600 font-medium">
+                      <TableHead className="text-gray-600 font-medium w-1/3">
                         Product
                       </TableHead>
-                      <TableHead className="text-right text-gray-600 font-medium">
+                      <TableHead className="text-gray-600 font-medium w-1/6">
+                        Brand
+                      </TableHead>
+                      <TableHead className="text-right text-gray-600 font-medium w-1/6">
                         Quantity
                       </TableHead>
                       {showReceivedColumns && (
-                        <TableHead className="text-right text-gray-600 font-medium">
+                        <TableHead className="text-right text-gray-600 font-medium w-1/6">
                           Received
                         </TableHead>
                       )}
-                      <TableHead className="text-right text-gray-600 font-medium">
+                      <TableHead className="text-right text-gray-600 font-medium w-1/6">
                         Unit
                       </TableHead>
                       {showCostColumns && (
                         <>
-                          <TableHead className="text-right text-gray-600 font-medium">
+                          <TableHead className="text-right text-gray-600 font-medium w-1/6">
                             Unit Cost
                           </TableHead>
-                          <TableHead className="text-right text-gray-600 font-medium">
+                          <TableHead className="text-right text-gray-600 font-medium w-1/6">
                             Total
                           </TableHead>
                         </>
@@ -533,6 +553,15 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
                             {product?.name ||
                               item.productName ||
                               `Product #${item.productId}`}
+                          </TableCell>
+                          <TableCell className="text-gray-700">
+                            {product?.brandName ? (
+                              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                                {product.brandName}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-right text-gray-700">
                             {item.quantity}

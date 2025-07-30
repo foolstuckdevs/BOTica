@@ -113,7 +113,7 @@ export const products = pgTable('products', {
   name: varchar('name', { length: 100 }).notNull(),
   genericName: varchar('generic_name', { length: 100 }),
   categoryId: integer('category_id').references(() => categories.id),
-  barcode: varchar('barcode', { length: 50 }).unique(),
+  barcode: varchar('barcode', { length: 50 }),
   lotNumber: varchar('lot_number', { length: 50 }).notNull(),
   brandName: varchar('brand_name', { length: 100 }),
   dosageForm: DOSAGE_FORM_ENUM('dosage_form').notNull(),

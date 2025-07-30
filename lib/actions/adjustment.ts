@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { inventoryAdjustments, products } from '@/database/schema';
+import { inventoryAdjustments, products, suppliers } from '@/database/schema';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { Adjustment } from '@/types';
@@ -20,10 +20,17 @@ export const getAdjustments = async (pharmacyId: number) => {
         notes: inventoryAdjustments.notes,
         createdAt: inventoryAdjustments.createdAt,
         name: products.name,
+        brandName: products.brandName,
+        genericName: products.genericName,
+        lotNumber: products.lotNumber,
+        unit: products.unit,
         currentStock: products.quantity,
+        supplierName: suppliers.name,
+        expiryDate: products.expiryDate,
       })
       .from(inventoryAdjustments)
       .innerJoin(products, eq(inventoryAdjustments.productId, products.id))
+      .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
       .where(eq(inventoryAdjustments.pharmacyId, pharmacyId));
 
     return result as Adjustment[];

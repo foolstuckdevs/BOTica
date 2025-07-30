@@ -66,8 +66,11 @@ const PurchaseOrderForm = ({
 
   const filteredProducts =
     search.length >= 2
-      ? products.filter((p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()),
+      ? products.filter(
+          (p) =>
+            p.name.toLowerCase().includes(search.toLowerCase()) ||
+            (p.brandName &&
+              p.brandName.toLowerCase().includes(search.toLowerCase())),
         )
       : [];
 
@@ -172,7 +175,6 @@ const PurchaseOrderForm = ({
             <div className="text-2xl font-bold text-blue-600">
               {fields.length} items
             </div>
-            <p className="text-sm text-gray-500">Order Summary</p>
           </div>
         </div>
       </div>
@@ -257,7 +259,7 @@ const PurchaseOrderForm = ({
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
             <Input
-              placeholder="Search products..."
+              placeholder="Search by product name or brand..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full"
@@ -267,6 +269,8 @@ const PurchaseOrderForm = ({
               <div className="mt-2 border rounded-lg bg-white max-h-60 overflow-y-auto">
                 {filteredProducts.length > 0 ? (
                   filteredProducts.map((product) => {
+                    // For batch tracking: Only consider as "already added" if it's the exact same product
+                    // (same ID, which means same brand, lot, etc.)
                     const alreadyAdded = fields.some(
                       (item) => item.productId === product.id,
                     );
@@ -274,23 +278,58 @@ const PurchaseOrderForm = ({
                     return (
                       <div
                         key={product.id}
-                        className={`flex justify-between items-center px-4 py-2 hover:bg-gray-50 cursor-pointer ${
+                        className={`flex justify-between items-center px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 ${
                           alreadyAdded ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                         onClick={() => {
                           if (!alreadyAdded) handleAddProduct(product);
                         }}
                       >
-                        <div>
-                          <p className="font-medium">{product.name}</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs text-gray-500">
-                              {product.unit} • Stock: {product.quantity}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium text-gray-900">
+                              {product.name}
                             </p>
-                            <span className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
-                              Min: {product.minStockLevel}
-                            </span>
+                            {product.brandName && (
+                              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                                {product.brandName}
+                              </span>
+                            )}
                           </div>
+
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                            <span>
+                              {product.unit} • Stock: {product.quantity}
+                            </span>
+                            {product.lotNumber && (
+                              <span className="bg-gray-50 px-2 py-0.5 rounded">
+                                Lot: {product.lotNumber}
+                              </span>
+                            )}
+                            {product.expiryDate && (
+                              <span className="text-amber-600">
+                                Exp:{' '}
+                                {new Date(
+                                  product.expiryDate,
+                                ).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
+                            Min: {product.minStockLevel}
+                          </div>
+                          {alreadyAdded && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              Already added
+                            </p>
+                          )}
                         </div>
                       </div>
                     );
@@ -306,26 +345,22 @@ const PurchaseOrderForm = ({
             {itemError && (
               <p className="text-sm text-red-500 mt-2">{itemError}</p>
             )}
-
-            {itemError && <p className="text-sm text-red-500">{itemError}</p>}
           </CardContent>
         </Card>
 
         {/* Order Items Table */}
         {fields.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle>Order Items</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className="pt-6">
               <table className="w-full text-sm border">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="px-3 py-2 text-left">Product</th>
+                    <th className="px-3 py-2 text-left">Brand</th>
                     <th className="px-3 py-2 text-left">Qty</th>
                     <th className="px-3 py-2 text-left">Unit</th>
                     <th className="px-3 py-2 text-left">Stock</th>
-                    <th />
+                    <th className="px-3 py-2 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -335,7 +370,18 @@ const PurchaseOrderForm = ({
                     );
                     return (
                       <tr key={item.id} className="border-b">
-                        <td className="px-3 py-2">{product?.name}</td>
+                        <td className="px-3 py-2">
+                          <p className="font-medium">{product?.name}</p>
+                        </td>
+                        <td className="px-3 py-2">
+                          {product?.brandName ? (
+                            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                              {product.brandName}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2">
                           <Input
                             type="number"
@@ -350,9 +396,26 @@ const PurchaseOrderForm = ({
                             className="w-20"
                           />
                         </td>
-                        <td className="px-3 py-2">{product?.unit}</td>
-                        <td className="px-3 py-2">{product?.quantity}</td>
+                        <td className="px-3 py-2">{product?.unit || 'N/A'}</td>
                         <td className="px-3 py-2">
+                          <span
+                            className={`${
+                              (product?.quantity || 0) <=
+                              (product?.minStockLevel || 0)
+                                ? 'text-red-600 font-medium'
+                                : 'text-gray-900'
+                            }`}
+                          >
+                            {product?.quantity || 0}
+                          </span>
+                          {(product?.quantity || 0) <=
+                            (product?.minStockLevel || 0) && (
+                            <span className="text-xs text-red-600 ml-1">
+                              LOW
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-center">
                           <Button
                             type="button"
                             variant="destructive"
