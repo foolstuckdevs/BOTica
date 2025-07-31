@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'; // needed for Supabase file handling
+
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadImageToSupabase } from '@/lib/utils';
 
@@ -10,7 +12,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
@@ -19,8 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: 'File size too large. Maximum size is 5MB.' },
