@@ -4,7 +4,7 @@ import { db } from '@/database/drizzle';
 import { sales, saleItems, products, categories } from '@/database/schema';
 import { eq, and, gte, lte, sum, count, sql, desc } from 'drizzle-orm';
 
-export type PeriodType = 'today' | 'yesterday' | 'week' | 'month';
+export type PeriodType = 'today' | 'yesterday' | 'week' | 'month' | 'quarter';
 
 export interface SalesOverviewData {
   totalSales: number;
@@ -28,6 +28,19 @@ export interface ProductPerformanceData {
   quantity: number;
   revenue: number;
   profit: number;
+}
+
+export interface BatchProfitData {
+  id: string;
+  productName: string;
+  batch: string;
+  expiry: string;
+  qtySold: number;
+  qtyRemaining?: number; // Optional for backward compatibility
+  cost: number;
+  revenue: number;
+  profit: number;
+  margin: number;
 }
 
 // Helper function to get date ranges for different periods
@@ -137,6 +150,54 @@ const getDateRanges = (period: PeriodType) => {
       previousEnd = new Date(
         now.getFullYear(),
         now.getMonth(),
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
+      break;
+
+    case 'quarter':
+      // Current quarter
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      currentStart = new Date(
+        now.getFullYear(),
+        currentQuarter * 3,
+        1,
+        0,
+        0,
+        0,
+        0,
+      );
+      currentEnd = new Date(
+        now.getFullYear(),
+        currentQuarter * 3 + 3,
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
+
+      // Previous quarter
+      const prevQuarter = currentQuarter - 1;
+      const prevYear =
+        prevQuarter < 0 ? now.getFullYear() - 1 : now.getFullYear();
+      const adjustedPrevQuarter = prevQuarter < 0 ? 3 : prevQuarter;
+
+      previousStart = new Date(
+        prevYear,
+        adjustedPrevQuarter * 3,
+        1,
+        0,
+        0,
+        0,
+        0,
+      );
+      previousEnd = new Date(
+        prevYear,
+        adjustedPrevQuarter * 3 + 3,
         0,
         23,
         59,
@@ -347,3 +408,109 @@ export const getProductPerformance = async (
     return [];
   }
 };
+
+// Batch Profit Functions
+export async function getBatchProfitData(
+  pharmacyId: number,
+  period: PeriodType = 'month',
+): Promise<BatchProfitData[]> {
+  try {
+    const { currentStart: startDate, currentEnd: endDate } =
+      getDateRanges(period);
+
+    // Query to get batch profit data
+    const result = await db
+      .select({
+        productId: products.id,
+        productName: products.name,
+        batch: products.lotNumber,
+        expiry: products.expiryDate,
+        costPrice: products.costPrice,
+        sellingPrice: products.sellingPrice,
+        currentQuantity: products.quantity,
+        qtySold: sum(saleItems.quantity),
+        totalRevenue: sum(saleItems.subtotal),
+      })
+      .from(saleItems)
+      .innerJoin(products, eq(saleItems.productId, products.id))
+      .innerJoin(sales, eq(saleItems.saleId, sales.id))
+      .where(
+        and(
+          eq(products.pharmacyId, pharmacyId),
+          gte(sales.createdAt, startDate),
+          lte(sales.createdAt, endDate),
+        ),
+      )
+      .groupBy(
+        products.id,
+        products.name,
+        products.lotNumber,
+        products.expiryDate,
+        products.costPrice,
+        products.sellingPrice,
+        products.quantity,
+      )
+      .orderBy(desc(sum(saleItems.subtotal)));
+
+    // Transform the data to match our interface
+    const batchData: BatchProfitData[] = result.map((row) => {
+      const qtySold = Number(row.qtySold) || 0;
+      const revenue = Number(row.totalRevenue) || 0;
+      const costPrice = Number(row.costPrice) || 0;
+      const cost = qtySold * costPrice;
+      const profit = revenue - cost;
+      const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+      return {
+        id: `${row.productId}-${row.batch}`,
+        productName: row.productName,
+        batch: row.batch || 'N/A',
+        expiry: row.expiry || 'N/A',
+        qtySold,
+        qtyRemaining: Number(row.currentQuantity) || 0,
+        cost,
+        revenue,
+        profit,
+        margin,
+      };
+    });
+
+    return batchData;
+  } catch (error) {
+    console.error('Error fetching batch profit data:', error);
+    return [];
+  }
+}
+
+export async function getBatchProfitSummary(
+  pharmacyId: number,
+  period: PeriodType = 'month',
+) {
+  try {
+    const batchData = await getBatchProfitData(pharmacyId, period);
+
+    const summary = {
+      totalRevenue: batchData.reduce((sum, item) => sum + item.revenue, 0),
+      totalCost: batchData.reduce((sum, item) => sum + item.cost, 0),
+      totalProfit: batchData.reduce((sum, item) => sum + item.profit, 0),
+      totalBatches: batchData.length,
+      avgMargin: 0,
+    };
+
+    summary.avgMargin =
+      summary.totalRevenue > 0
+        ? (summary.totalProfit / summary.totalRevenue) * 100
+        : 0;
+
+    return summary;
+  } catch (error) {
+    console.error('Error fetching batch profit summary:', error);
+    return {
+      totalRevenue: 0,
+      totalCost: 0,
+      totalProfit: 0,
+      totalBatches: 0,
+      avgMargin: 0,
+    };
+  }
+}

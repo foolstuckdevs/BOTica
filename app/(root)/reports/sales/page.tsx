@@ -1,14 +1,13 @@
 import { SalesReportHeader } from '@/components/SalesReportHeader';
 import { SalesReportOverview } from '@/components/SalesReportOverview';
-
-import { SalesTableWithFilters } from '@/components/SalesTableWithFilters';
+import { BatchProfitTable } from '@/components/BatchProfitTable';
 import React from 'react';
-import { SalesTrendChart } from '@/components/SalesTrendChart';
 import { ProductPerformanceTable } from '@/components/ProductPerformanceTable';
 import {
   getSalesOverview,
   getSalesComparison,
   getProductPerformance,
+  getBatchProfitData,
 } from '@/lib/actions/sales-reports';
 
 const page = async () => {
@@ -25,6 +24,7 @@ const page = async () => {
       todayProducts,
       weekProducts,
       monthProducts,
+      batchProfitData,
     ] = await Promise.all([
       getSalesOverview(pharmacyId, 'today'),
       getSalesOverview(pharmacyId, 'yesterday'),
@@ -34,6 +34,7 @@ const page = async () => {
       getProductPerformance(pharmacyId, 'today'),
       getProductPerformance(pharmacyId, 'week'),
       getProductPerformance(pharmacyId, 'month'),
+      getBatchProfitData(pharmacyId, 'month'),
     ]);
 
     const salesData = {
@@ -55,8 +56,7 @@ const page = async () => {
         <SalesReportHeader />
         <SalesReportOverview salesData={salesData} />
         <ProductPerformanceTable productData={productData} />
-        <SalesTableWithFilters />
-        <SalesTrendChart />
+        <BatchProfitTable batchData={batchProfitData} loading={false} />
       </div>
     );
   } catch (error) {
@@ -130,9 +130,8 @@ const page = async () => {
         {/* Product Performance Analysis */}
         <ProductPerformanceTable productData={fallbackProductData} />
 
-        {/* Detailed Transaction History with Filters */}
-        <SalesTableWithFilters />
-        <SalesTrendChart />
+        {/* Batch Profit Analysis */}
+        <BatchProfitTable batchData={[]} loading={false} />
       </div>
     );
   }
