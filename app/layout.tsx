@@ -4,6 +4,7 @@ import './globals.css';
 import { SessionProvider } from 'next-auth/react';
 import { Toaster } from 'sonner';
 import { auth } from '@/auth';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -36,6 +37,7 @@ export default async function RootLayout({
           {children}
           <Toaster />
         </SessionProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
