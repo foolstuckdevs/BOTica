@@ -75,20 +75,35 @@ const AuthForm = <T extends FieldValues>({
       if (result.success) {
         toast.success(
           isSignIn
-            ? 'Welcome back to BOTica! Redirecting to dashboard...'
-            : 'Account created successfully! Welcome to BOTica!',
+            ? 'Welcome back to BOTica!'
+            : 'Account created successfully!',
           {
             description: isSignIn
-              ? 'Your pharmacy management dashboard is ready'
-              : 'Start managing your pharmacy efficiently',
+              ? 'Redirecting to your dashboard...'
+              : 'You can now start managing your pharmacy.',
           },
         );
 
         setTimeout(() => router.push('/'), 1500);
       } else {
-        toast.error(result.error || 'An error occurred. Please try again.');
+        // Handle specific error cases
+        const errorMessage =
+          result.error || 'An error occurred. Please try again.';
+
+        if (errorMessage.includes('Invalid email or password')) {
+          toast.error('Invalid email or password', {
+            description: 'Please check your credentials and try again.',
+          });
+        } else if (errorMessage.includes('User already exists')) {
+          toast.error('Account already exists', {
+            description: 'Try signing in instead or use a different email.',
+          });
+        } else {
+          toast.error(errorMessage);
+        }
       }
-    } catch {
+    } catch (error) {
+      console.error('Auth form error:', error);
       toast.error('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);

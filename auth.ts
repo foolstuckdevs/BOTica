@@ -82,40 +82,58 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   providers: [
     CredentialsProvider({
+      name: 'credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            console.log('Missing credentials');
+            return null;
+          }
+
+          const user = await db
+            .select({
+              id: users.id,
+              fullName: users.fullName,
+              email: users.email,
+              passwordHash: users.password,
+              role: users.role,
+              pharmacyId: users.pharmacyId,
+            })
+            .from(users)
+            .where(eq(users.email, credentials.email.toString()))
+            .limit(1);
+
+          if (user.length === 0) {
+            console.log('User not found:', credentials.email);
+            return null;
+          }
+
+          const isPasswordValid = await compare(
+            credentials.password.toString(),
+            user[0].passwordHash,
+          );
+
+          if (!isPasswordValid) {
+            console.log('Invalid password for user:', credentials.email);
+            return null;
+          }
+
+          console.log('User authenticated successfully:', user[0].email);
+          return {
+            id: user[0].id.toString(),
+            email: user[0].email,
+            name: user[0].fullName,
+            role: user[0].role,
+            pharmacyId: user[0].pharmacyId,
+          } as User & { pharmacyId: number };
+        } catch (error) {
+          console.error('Error during authentication:', error);
           return null;
         }
-
-        const user = await db
-          .select({
-            id: users.id,
-            fullName: users.fullName,
-            email: users.email,
-            passwordHash: users.password,
-            role: users.role,
-            pharmacyId: users.pharmacyId,
-          })
-          .from(users)
-          .where(eq(users.email, credentials.email.toString()))
-          .limit(1);
-
-        if (user.length === 0) return null;
-
-        const isPasswordValid = await compare(
-          credentials.password.toString(),
-          user[0].passwordHash,
-        );
-
-        if (!isPasswordValid) return null;
-
-        return {
-          id: user[0].id.toString(),
-          email: user[0].email,
-          name: user[0].fullName,
-          role: user[0].role,
-          pharmacyId: user[0].pharmacyId,
-        } as User & { pharmacyId: number };
       },
     }),
   ],
@@ -128,7 +146,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id as string;
         token.name = user.name;
         token.role = user.role;
-        token.pharmacyId = (user as any).pharmacyId;
+        token.pharmacyId = (user as User & { pharmacyId: number }).pharmacyId;
       }
       return token;
     },

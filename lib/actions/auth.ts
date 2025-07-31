@@ -14,6 +14,31 @@ export const signInWithCredentials = async (
   const { email, password } = params;
 
   try {
+    // First verify user exists and password is correct manually
+    const userRecord = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        password: users.password,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (userRecord.length === 0) {
+      return { success: false, error: 'Invalid email or password' };
+    }
+
+    // Verify password
+    const { compare } = await import('bcryptjs');
+    const isPasswordValid = await compare(password, userRecord[0].password);
+
+    if (!isPasswordValid) {
+      return { success: false, error: 'Invalid email or password' };
+    }
+
+    // Now proceed with NextAuth signIn
     const result = await signIn('credentials', {
       email,
       password,
@@ -21,18 +46,14 @@ export const signInWithCredentials = async (
     });
 
     if (result?.error) {
-      return { success: false, error: result.error };
+      console.log('NextAuth signIn error:', result.error);
+      return { success: false, error: 'Authentication failed' };
     }
 
-    const user = await db
-      .select({ role: users.role })
-      .from(users)
-      .where(eq(users.email, email));
-
-    return { success: true, role: user[0].role };
+    return { success: true, role: userRecord[0].role };
   } catch (error) {
     console.log(error, 'Signin error');
-    return { success: false, error: 'Signin error' };
+    return { success: false, error: 'An error occurred during sign in' };
   }
 };
 
