@@ -81,6 +81,21 @@ export interface Product {
   pharmacyId?: number;
 }
 
+export interface ProductPOS {
+  // Core sales essentials
+  id: number;
+  name: string;
+  sellingPrice: string;
+  quantity: number;
+  // Batch/expiry tracking (FEFO)
+  lotNumber: string;
+  expiryDate: string;
+  // Enhanced UX
+  imageUrl: string | null;
+  unit: UnitType;
+  brandName: string | null;
+}
+
 export type ProductStockSummary = {
   id: number;
   quantity: number;

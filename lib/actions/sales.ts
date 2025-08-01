@@ -7,46 +7,6 @@ import { eq, and, gte } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 // Get all products for POS
-// export const getAllProductsPOS = async (
-//   pharmacyId: number,
-//   page: number = 1,
-//   pageSize: number = 20,
-// ) => {
-//   try {
-//     const offset = (page - 1) * pageSize;
-//     // Use UTC date string for DB comparison
-//     const today = new Date();
-//     const todayStr = today.toISOString().slice(0, 10); // 'YYYY-MM-DD'
-
-//     const result = await db
-//       .select({
-//         id: products.id,
-//         name: products.name,
-//         barcode: products.barcode,
-//         sellingPrice: products.sellingPrice,
-//         quantity: products.quantity,
-//         expiryDate: products.expiryDate,
-//         lotNumber: products.lotNumber,
-//         brandName: products.brandName,
-//         genericName: products.genericName,
-//       })
-//       .from(products)
-//       .where(
-//         and(
-//           eq(products.pharmacyId, pharmacyId),
-//           gte(products.expiryDate, todayStr), // Exclude expired products
-//         ),
-//       )
-//       .orderBy(products.name)
-//       .limit(pageSize)
-//       .offset(offset);
-
-//     return result;
-//   } catch (error) {
-//     console.error('Error fetching POS products:', error);
-//     return [];
-//   }
-// };
 
 export const getAllProductsPOS = async (pharmacyId: number) => {
   try {
@@ -55,15 +15,18 @@ export const getAllProductsPOS = async (pharmacyId: number) => {
 
     const result = await db
       .select({
+        // Core sales essentials
         id: products.id,
         name: products.name,
-        barcode: products.barcode,
         sellingPrice: products.sellingPrice,
         quantity: products.quantity,
-        expiryDate: products.expiryDate,
+        // Batch/expiry tracking (FEFO)
         lotNumber: products.lotNumber,
+        expiryDate: products.expiryDate,
+        // Enhanced UX
+        imageUrl: products.imageUrl,
+        unit: products.unit,
         brandName: products.brandName,
-        genericName: products.genericName,
       })
       .from(products)
       .orderBy(products.name, products.expiryDate)

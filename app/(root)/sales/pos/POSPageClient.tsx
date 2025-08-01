@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input';
 import { ProductCard } from '@/components/ProductCard';
 import { Cart, CartItem } from '@/components/Cart';
 import { PaymentModal } from '@/components/PaymentModal';
-import type { Pharmacy, Product } from '@/types';
+import { Search, Package } from 'lucide-react';
+import type { Pharmacy, ProductPOS } from '@/types';
 import { processSale } from '@/lib/actions/sales';
 import { PrintUtility } from '@/lib/PrintUtility';
 
 interface POSPageProps {
-  products: Product[];
+  products: ProductPOS[];
   pharmacyInfo: Pharmacy | null;
   pharmacyId: number;
 }
@@ -23,7 +24,7 @@ export default function POSPage({
   pharmacyId,
 }: POSPageProps) {
   const { data: session } = useSession();
-  const [products] = useState<Product[]>(initialProducts);
+  const [products] = useState<ProductPOS[]>(initialProducts);
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountPercentage, setDiscountPercentage] = useState(0);
@@ -40,9 +41,7 @@ export default function POSPage({
         (product.brandName &&
           product.brandName.toLowerCase().includes(searchLower)) ||
         (product.lotNumber &&
-          product.lotNumber.toLowerCase().includes(searchLower)) ||
-        (product.genericName &&
-          product.genericName.toLowerCase().includes(searchLower))
+          product.lotNumber.toLowerCase().includes(searchLower))
       );
     })
     .sort((a, b) => {
@@ -68,7 +67,7 @@ export default function POSPage({
   const change = cashReceived - discountedTotal;
 
   // Cart functions
-  const handleAddToCart = (product: Product) => {
+  const handleAddToCart = (product: ProductPOS) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
@@ -202,62 +201,97 @@ export default function POSPage({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      {/* Product Grid */}
-      <div className="lg:col-span-3">
-        <div className="mb-4">
-          <Input
-            placeholder="Search by name, brand, lot number, or generic name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-white"
-          />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Product Grid */}
+          <div className="lg:col-span-3 space-y-4">
+            {/* Enhanced Search Section */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Search className="w-5 h-5 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Search Products</h2>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input
+                  placeholder="Search by name, brand, or lot number..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-12 bg-gray-50 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base"
+                />
+              </div>
+            </div>
+
+            {/* Product Summary */}
+            {searchTerm && filteredProducts.length > 0 && (
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200 shadow-sm p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <Package className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-blue-800 font-medium">
+                      Found {filteredProducts.length} products
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      🟢 Good • 🟡 Soon to Expire • 🔴 Sell First
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Products Grid */}
+            {filteredProducts.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {filteredProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onAddToCart={() => handleAddToCart(product)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+                <div className="text-center text-gray-500">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Search className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-medium mb-2 text-gray-900">
+                    {searchTerm ? 'No products found' : 'Start searching for products'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {searchTerm 
+                      ? 'Try adjusting your search terms or browse all products'
+                      : 'Enter a product name, brand, or lot number to begin'
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Cart Section */}
+          <div className="lg:col-span-1">
+            <Cart
+              cart={cart}
+              products={products}
+              discountPercentage={discountPercentage}
+              isProcessing={isProcessing}
+              totalAmount={totalAmount}
+              discountAmount={discountAmount}
+              discountedTotal={discountedTotal}
+              onRemoveFromCart={handleRemoveFromCart}
+              onQuantityChange={handleQuantityChange}
+              onDiscountChange={handleDiscountChange}
+              onCheckout={handleCheckout}
+            />
+          </div>
         </div>
-
-        {/* Product Summary */}
-        {searchTerm && filteredProducts.length > 0 && (
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">
-              Found {filteredProducts.length} products
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              🟢 Good • 🟡 Soon to Expire • 🔴 Sell First
-            </p>
-          </div>
-        )}
-
-        {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onAddToCart={() => handleAddToCart(product)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            No products found
-          </div>
-        )}
       </div>
-      {/* Cart Section */}
-      <div className="lg:col-span-1">
-        <Cart
-          cart={cart}
-          products={products}
-          discountPercentage={discountPercentage}
-          isProcessing={isProcessing}
-          totalAmount={totalAmount}
-          discountAmount={discountAmount}
-          discountedTotal={discountedTotal}
-          onRemoveFromCart={handleRemoveFromCart}
-          onQuantityChange={handleQuantityChange}
-          onDiscountChange={handleDiscountChange}
-          onCheckout={handleCheckout}
-        />
-      </div>
+
       {/* Payment Modal */}
       <PaymentModal
         show={showPaymentModal}
