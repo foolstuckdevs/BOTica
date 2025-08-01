@@ -50,20 +50,39 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
 
   const quantityChange = watch('quantityChange') || 0;
 
+  const searchLower = search.toLowerCase();
   const filteredProducts =
     search.length >= 2
-      ? products.filter(
-          (p) =>
-            p.name.toLowerCase().includes(search.toLowerCase()) ||
-            (p.brandName &&
-              p.brandName.toLowerCase().includes(search.toLowerCase())) ||
-            (p.genericName &&
-              p.genericName.toLowerCase().includes(search.toLowerCase())) ||
-            (p.lotNumber &&
-              p.lotNumber.toLowerCase().includes(search.toLowerCase())) ||
-            (p.supplierName &&
-              p.supplierName.toLowerCase().includes(search.toLowerCase())),
-        )
+      ? products
+          .filter((p) => {
+            return (
+              p.name.toLowerCase().includes(searchLower) ||
+              (p.brandName &&
+                p.brandName.toLowerCase().includes(searchLower)) ||
+              (p.genericName &&
+                p.genericName.toLowerCase().includes(searchLower)) ||
+              (p.lotNumber &&
+                p.lotNumber.toLowerCase().includes(searchLower)) ||
+              (p.supplierName &&
+                p.supplierName.toLowerCase().includes(searchLower))
+            );
+          })
+          .sort((a, b) => {
+            // Step 1: Prioritize exact/startsWith name matches
+            const aNameMatch = a.name.toLowerCase().startsWith(searchLower)
+              ? 0
+              : 1;
+            const bNameMatch = b.name.toLowerCase().startsWith(searchLower)
+              ? 0
+              : 1;
+
+            if (aNameMatch !== bNameMatch) return aNameMatch - bNameMatch;
+
+            // Step 2: Sort by soonest expiry (FEFO - First Expired, First Out)
+            const aExpiry = new Date(a.expiryDate).getTime();
+            const bExpiry = new Date(b.expiryDate).getTime();
+            return aExpiry - bExpiry;
+          })
       : [];
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,7 +227,7 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
               </div>
               <input
                 type="text"
-                placeholder="Search by name, brand, supplier..."
+                placeholder="Search by name, brand, lot number, or generic name..."
                 value={search}
                 onChange={handleSearchChange}
                 className="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
@@ -388,12 +407,10 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
                   >
                     <option value="">Select adjustment reason</option>
                     {[
-                      { value: 'DAMAGED', label: 'Damaged Goods' },
-                      { value: 'EXPIRED', label: 'Expired Products' },
-                      { value: 'LOST', label: 'Lost Inventory' },
-                      { value: 'THEFT', label: 'Theft' },
-                      { value: 'CORRECTION', label: 'Stock Correction' },
-                      { value: 'RESTOCK', label: 'Restock' },
+                      { value: 'DAMAGED', label: 'Damaged Product' },
+                      { value: 'EXPIRED', label: 'Expired Product' },
+                      { value: 'LOST_OR_STOLEN', label: 'Lost or Stolen' },
+                      { value: 'STOCK_CORRECTION', label: 'Stock Correction' },
                     ].map((r) => (
                       <option key={r.value} value={r.value}>
                         {r.label}

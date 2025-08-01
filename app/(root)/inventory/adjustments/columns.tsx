@@ -104,10 +104,21 @@ export const columns: ColumnDef<Adjustment>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Reason" />
     ),
-    cell: ({ getValue }) => (
-      <span className="text-sm">{getValue<string>()}</span>
-    ),
-    size: 100,
+    cell: ({ getValue }) => {
+      const reason = getValue<string>();
+      const reasonLabels = {
+        DAMAGED: 'Damaged',
+        EXPIRED: 'Expired',
+        LOST_OR_STOLEN: 'Lost/Stolen',
+        STOCK_CORRECTION: 'Stock Correction',
+      };
+      return (
+        <span className="text-sm">
+          {reasonLabels[reason as keyof typeof reasonLabels] || reason}
+        </span>
+      );
+    },
+    size: 120,
   },
   {
     accessorKey: 'createdAt',

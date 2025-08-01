@@ -127,7 +127,7 @@ export interface Adjustment {
   supplierName?: string | null;
   expiryDate?: string | null;
   quantityChange: number;
-  reason: 'DAMAGED' | 'EXPIRED' | 'LOST' | 'THEFT' | 'CORRECTION' | 'RESTOCK';
+  reason: 'DAMAGED' | 'EXPIRED' | 'LOST_OR_STOLEN' | 'STOCK_CORRECTION';
   createdAt: string | Date;
   currentStock?: number;
   pharmacyId?: number;

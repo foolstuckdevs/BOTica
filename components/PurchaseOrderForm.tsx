@@ -35,7 +35,7 @@ interface PurchaseOrderFormProps {
   type?: 'create' | 'update';
   suppliers: Supplier[];
   products: Product[];
-  initialValues?: PurchaseOrderFormValues & { id?: number };
+  initialValues?: PurchaseOrderFormValues & { id?: number; status?: string };
 }
 
 const PurchaseOrderForm = ({
@@ -48,6 +48,15 @@ const PurchaseOrderForm = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [itemError, setItemError] = useState('');
+
+  // Check if the purchase order is in a final state (not editable)
+  const isReadOnly =
+    type === 'update' &&
+    initialValues?.status &&
+    (initialValues.status === 'CONFIRMED' ||
+      initialValues.status === 'PARTIALLY_RECEIVED' ||
+      initialValues.status === 'RECEIVED' ||
+      initialValues.status === 'CANCELLED');
 
   const form = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(purchaseOrderSchema),
@@ -90,6 +99,11 @@ const PurchaseOrderForm = ({
   };
 
   const onSubmit = async (values: PurchaseOrderFormValues) => {
+    if (isReadOnly) {
+      toast.error('Cannot edit purchase order in current status');
+      return;
+    }
+
     if (fields.length === 0) {
       setItemError('Add at least one product');
       return;
@@ -163,13 +177,32 @@ const PurchaseOrderForm = ({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              {type === 'create' ? 'Create New' : 'Edit'} Purchase Order
+              {type === 'create' ? 'Create New' : isReadOnly ? 'View' : 'Edit'}{' '}
+              Purchase Order
             </h1>
             <p className="text-gray-600 mt-1">
               {type === 'create'
                 ? 'Select a supplier and add products for your order.'
+                : isReadOnly
+                ? 'This purchase order cannot be edited due to its current status.'
                 : 'Update the purchase order details and items.'}
             </p>
+            {isReadOnly && (
+              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  <strong>Status:</strong> {initialValues?.status} - This order
+                  is read-only and cannot be modified.
+                  {initialValues?.status === 'CONFIRMED' &&
+                    ' Order has been confirmed by supplier.'}
+                  {initialValues?.status === 'PARTIALLY_RECEIVED' &&
+                    ' Inventory changes have been recorded.'}
+                  {initialValues?.status === 'RECEIVED' &&
+                    ' Order is complete and finalized.'}
+                  {initialValues?.status === 'CANCELLED' &&
+                    ' Order has been cancelled.'}
+                </p>
+              </div>
+            )}
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-blue-600">
@@ -192,6 +225,7 @@ const PurchaseOrderForm = ({
                 Supplier <span className="text-red-500">*</span>
               </label>
               <Select
+                disabled={!!isReadOnly}
                 onValueChange={(val) =>
                   form.setValue('supplierId', Number(val))
                 }
@@ -225,6 +259,7 @@ const PurchaseOrderForm = ({
                 Order Date <span className="text-red-500">*</span>
               </label>
               <Calendar
+                disabled={!!isReadOnly}
                 selected={
                   form.watch('orderDate')
                     ? new Date(form.watch('orderDate'))
@@ -247,106 +282,112 @@ const PurchaseOrderForm = ({
             {/* Notes */}
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">Notes</label>
-              <Input {...form.register('notes')} placeholder="Optional notes" />
+              <Input
+                {...form.register('notes')}
+                placeholder="Optional notes"
+                disabled={!!isReadOnly}
+              />
             </div>
           </CardContent>
         </Card>
 
         {/* Product Search */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Add Products</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4 space-y-3">
-            <Input
-              placeholder="Search by product name or brand..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full"
-            />
+        {!isReadOnly && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Add Products</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              <Input
+                placeholder="Search by product name or brand..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full"
+              />
 
-            {search.length >= 2 && (
-              <div className="mt-2 border rounded-lg bg-white max-h-60 overflow-y-auto">
-                {filteredProducts.length > 0 ? (
-                  filteredProducts.map((product) => {
-                    // For batch tracking: Only consider as "already added" if it's the exact same product
-                    // (same ID, which means same brand, lot, etc.)
-                    const alreadyAdded = fields.some(
-                      (item) => item.productId === product.id,
-                    );
+              {search.length >= 2 && (
+                <div className="mt-2 border rounded-lg bg-white max-h-60 overflow-y-auto">
+                  {filteredProducts.length > 0 ? (
+                    filteredProducts.map((product) => {
+                      // For batch tracking: Only consider as "already added" if it's the exact same product
+                      // (same ID, which means same brand, lot, etc.)
+                      const alreadyAdded = fields.some(
+                        (item) => item.productId === product.id,
+                      );
 
-                    return (
-                      <div
-                        key={product.id}
-                        className={`flex justify-between items-center px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 ${
-                          alreadyAdded ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                        onClick={() => {
-                          if (!alreadyAdded) handleAddProduct(product);
-                        }}
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium text-gray-900">
-                              {product.name}
-                            </p>
-                            {product.brandName && (
-                              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-                                {product.brandName}
+                      return (
+                        <div
+                          key={product.id}
+                          className={`flex justify-between items-center px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 ${
+                            alreadyAdded ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                          onClick={() => {
+                            if (!alreadyAdded) handleAddProduct(product);
+                          }}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-gray-900">
+                                {product.name}
+                              </p>
+                              {product.brandName && (
+                                <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
+                                  {product.brandName}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3 text-xs text-gray-500">
+                              <span>
+                                {product.unit} • Stock: {product.quantity}
                               </span>
-                            )}
+                              {product.lotNumber && (
+                                <span className="bg-gray-50 px-2 py-0.5 rounded">
+                                  Lot: {product.lotNumber}
+                                </span>
+                              )}
+                              {product.expiryDate && (
+                                <span className="text-amber-600">
+                                  Exp:{' '}
+                                  {new Date(
+                                    product.expiryDate,
+                                  ).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                  })}
+                                </span>
+                              )}
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-3 text-xs text-gray-500">
-                            <span>
-                              {product.unit} • Stock: {product.quantity}
-                            </span>
-                            {product.lotNumber && (
-                              <span className="bg-gray-50 px-2 py-0.5 rounded">
-                                Lot: {product.lotNumber}
-                              </span>
-                            )}
-                            {product.expiryDate && (
-                              <span className="text-amber-600">
-                                Exp:{' '}
-                                {new Date(
-                                  product.expiryDate,
-                                ).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
-                                })}
-                              </span>
+                          <div className="text-right">
+                            <div className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
+                              Min: {product.minStockLevel}
+                            </div>
+                            {alreadyAdded && (
+                              <p className="text-xs text-gray-400 mt-1">
+                                Already added
+                              </p>
                             )}
                           </div>
                         </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-4 text-sm text-gray-500">
+                      No matching products found
+                    </div>
+                  )}
+                </div>
+              )}
 
-                        <div className="text-right">
-                          <div className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
-                            Min: {product.minStockLevel}
-                          </div>
-                          {alreadyAdded && (
-                            <p className="text-xs text-gray-400 mt-1">
-                              Already added
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-4 text-sm text-gray-500">
-                    No matching products found
-                  </div>
-                )}
-              </div>
-            )}
-
-            {itemError && (
-              <p className="text-sm text-red-500 mt-2">{itemError}</p>
-            )}
-          </CardContent>
-        </Card>
+              {itemError && (
+                <p className="text-sm text-red-500 mt-2">{itemError}</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Order Items Table */}
         {fields.length > 0 && (
@@ -386,6 +427,7 @@ const PurchaseOrderForm = ({
                           <Input
                             type="number"
                             min={1}
+                            disabled={!!isReadOnly}
                             value={form.watch(`items.${idx}.quantity`) || 1}
                             onChange={(e) =>
                               form.setValue(
@@ -416,14 +458,18 @@ const PurchaseOrderForm = ({
                           )}
                         </td>
                         <td className="px-3 py-2 text-center">
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => remove(idx)}
-                          >
-                            Remove
-                          </Button>
+                          {!isReadOnly ? (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => remove(idx)}
+                            >
+                              Remove
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -443,17 +489,19 @@ const PurchaseOrderForm = ({
             disabled={isSubmitting}
             onClick={() => router.push('/inventory/purchase-order')}
           >
-            Cancel
+            {isReadOnly ? 'Back' : 'Cancel'}
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting
-              ? type === 'create'
-                ? 'Creating...'
-                : 'Updating...'
-              : type === 'create'
-              ? 'Create Purchase Order'
-              : 'Update Purchase Order'}
-          </Button>
+          {!isReadOnly && (
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting
+                ? type === 'create'
+                  ? 'Creating...'
+                  : 'Updating...'
+                : type === 'create'
+                ? 'Create Purchase Order'
+                : 'Update Purchase Order'}
+            </Button>
+          )}
         </div>
       </form>
     </div>

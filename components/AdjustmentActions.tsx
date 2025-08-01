@@ -9,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { Adjustment } from '@/types';
 import { format } from 'date-fns';
 
@@ -58,19 +57,14 @@ const Section = ({
 const AdjustmentActions = ({ adjustment }: { adjustment: Adjustment }) => {
   const [viewOpen, setViewOpen] = useState(false);
 
-  const getReasonBadgeColor = (reason: string) => {
-    const colors = {
-      DAMAGED: 'bg-red-50 text-red-700 border-red-200',
-      EXPIRED: 'bg-amber-50 text-amber-700 border-amber-200',
-      LOST: 'bg-gray-50 text-gray-700 border-gray-200',
-      THEFT: 'bg-red-50 text-red-700 border-red-200',
-      CORRECTION: 'bg-blue-50 text-blue-700 border-blue-200',
-      RESTOCK: 'bg-green-50 text-green-700 border-green-200',
+  const getReasonLabel = (reason: string) => {
+    const labels = {
+      DAMAGED: 'Damaged Product',
+      EXPIRED: 'Expired Product',
+      LOST_OR_STOLEN: 'Lost or Stolen',
+      STOCK_CORRECTION: 'Stock Correction',
     };
-    return (
-      colors[reason as keyof typeof colors] ||
-      'bg-gray-50 text-gray-700 border-gray-200'
-    );
+    return labels[reason as keyof typeof labels] || reason;
   };
 
   return (
@@ -144,13 +138,22 @@ const AdjustmentActions = ({ adjustment }: { adjustment: Adjustment }) => {
                 </div>
                 <div className="space-y-1">
                   <Label>Reason</Label>
-                  <Badge
-                    className={`${getReasonBadgeColor(
-                      adjustment.reason,
-                    )} border`}
-                  >
-                    {adjustment.reason}
-                  </Badge>
+                  <Value>
+                    <span
+                      className={`font-medium ${
+                        adjustment.reason === 'DAMAGED' ||
+                        adjustment.reason === 'LOST_OR_STOLEN'
+                          ? 'text-red-600'
+                          : adjustment.reason === 'EXPIRED'
+                          ? 'text-amber-600'
+                          : adjustment.reason === 'STOCK_CORRECTION'
+                          ? 'text-blue-600'
+                          : 'text-gray-600'
+                      }`}
+                    >
+                      {getReasonLabel(adjustment.reason)}
+                    </span>
+                  </Value>
                 </div>
                 {adjustment.currentStock !== undefined && (
                   <InfoBlock

@@ -36,7 +36,7 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
       })
       .from(purchaseOrders)
       .leftJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
-      .orderBy(desc(purchaseOrders.orderDate))
+      .orderBy(desc(purchaseOrders.createdAt))
       .where(eq(purchaseOrders.pharmacyId, pharmacyId));
 
     const results = await Promise.all(
@@ -234,6 +234,20 @@ export const updatePurchaseOrder = async (
 
     if (!existing.length) {
       return { success: false, message: 'Purchase order not found' };
+    }
+
+    // Check if the purchase order is in a final state and cannot be edited
+    const currentStatus = existing[0].status;
+    if (
+      currentStatus === 'CONFIRMED' ||
+      currentStatus === 'PARTIALLY_RECEIVED' ||
+      currentStatus === 'RECEIVED' ||
+      currentStatus === 'CANCELLED'
+    ) {
+      return {
+        success: false,
+        message: `Editing not allowed. Purchase order is already marked as '${currentStatus}'.`,
+      };
     }
 
     // Update order details

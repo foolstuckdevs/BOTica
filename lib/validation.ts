@@ -89,14 +89,7 @@ export const adjustmentSchema = z.object({
       message: 'Quantity change cannot be 0',
     }),
 
-  reason: z.enum([
-    'DAMAGED',
-    'EXPIRED',
-    'LOST',
-    'THEFT',
-    'CORRECTION',
-    'RESTOCK',
-  ]),
+  reason: z.enum(['DAMAGED', 'EXPIRED', 'LOST_OR_STOLEN', 'STOCK_CORRECTION']),
 
   notes: z.string().max(255, 'Notes must be under 255 characters').optional(),
 });

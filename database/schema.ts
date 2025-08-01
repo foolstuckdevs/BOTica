@@ -42,11 +42,10 @@ export const NOTIFICATION_TYPE_ENUM = pgEnum('notification_type', [
 export const ADJUSTMENT_REASON_ENUM = pgEnum('adjustment_reason', [
   'DAMAGED',
   'EXPIRED',
-  'LOST',
-  'THEFT',
-  'CORRECTION',
-  'RESTOCK',
+  'LOST_OR_STOLEN',
+  'STOCK_CORRECTION',
 ]);
+
 export const PURCHASE_ORDER_STATUS_ENUM = pgEnum('purchase_order_status', [
   'DRAFT',
   'EXPORTED',
