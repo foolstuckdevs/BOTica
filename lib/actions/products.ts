@@ -2,9 +2,56 @@
 
 import { db } from '@/database/drizzle';
 import { eq, and } from 'drizzle-orm';
-import { categories, products, suppliers } from '@/database/schema';
+import { categories, products, suppliers, saleItems } from '@/database/schema';
 import { ProductParams } from '@/types';
 import { revalidatePath } from 'next/cache';
+
+// Lazy loading: page (1-based), pageSize
+// export const getProducts = async (
+//   pharmacyId: number,
+//   page = 1,
+//   pageSize = 20,
+// ) => {
+//   try {
+//     const offset = (page - 1) * pageSize;
+
+//     const result = await db
+//       .select({
+//         id: products.id,
+//         name: products.name,
+//         genericName: products.genericName,
+//         categoryId: products.categoryId,
+//         categoryName: categories.name,
+//         barcode: products.barcode,
+//         lotNumber: products.lotNumber,
+//         expiryDate: products.expiryDate,
+//         quantity: products.quantity,
+//         costPrice: products.costPrice,
+//         sellingPrice: products.sellingPrice,
+//         minStockLevel: products.minStockLevel,
+//         unit: products.unit,
+//         supplierId: products.supplierId,
+//         supplierName: suppliers.name,
+//         imageUrl: products.imageUrl,
+//         createdAt: products.createdAt,
+//         updatedAt: products.updatedAt,
+//         brandName: products.brandName,
+//         dosageForm: products.dosageForm,
+//       })
+//       .from(products)
+//       .leftJoin(categories, eq(products.categoryId, categories.id))
+//       .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
+//       .where(eq(products.pharmacyId, pharmacyId))
+//       .orderBy(products.name)
+//       .limit(pageSize)
+//       .offset(offset);
+
+//     return result;
+//   } catch (error) {
+//     console.error('Error fetching all products:', error);
+//     return [];
+//   }
+// };
 
 export const getProducts = async (pharmacyId: number) => {
   try {
@@ -34,28 +81,10 @@ export const getProducts = async (pharmacyId: number) => {
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
       .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
+      .orderBy(products.name)
       .where(eq(products.pharmacyId, pharmacyId));
 
-    // FEFO Implementation: Sort by expiry date (earliest first), then by product name
-    // Filter out expired products for safety and regulatory compliance
-    const activeProducts = result.filter((product) => {
-      const today = new Date();
-      const expiryDate = new Date(product.expiryDate);
-      return expiryDate >= today; // Only show products that haven't expired
-    });
-
-    return activeProducts.sort((a, b) => {
-      // First sort by expiry date (FEFO)
-      const expiryA = new Date(a.expiryDate);
-      const expiryB = new Date(b.expiryDate);
-
-      if (expiryA.getTime() !== expiryB.getTime()) {
-        return expiryA.getTime() - expiryB.getTime();
-      }
-
-      // Then sort by product name for consistent grouping
-      return a.name.localeCompare(b.name);
-    });
+    return result;
   } catch (error) {
     console.error('Error fetching products:', error);
     return [];
@@ -144,7 +173,7 @@ export const createProduct = async (
   params: ProductParams & { pharmacyId: number },
 ) => {
   try {
-    // For batch tracking: Allow same barcode with different lot numbers
+    // For batch tracking: Allow same barcode with different batch/lot numbers
     // Only check for duplicate barcode + lot combination if both are provided
     if (params.barcode && params.lotNumber) {
       const existingProduct = await db
@@ -161,7 +190,7 @@ export const createProduct = async (
       if (existingProduct.length > 0) {
         return {
           success: false,
-          message: 'This lot number already exists for this product',
+          message: 'A product with this barcode and lot number already exists.',
         };
       }
     }
@@ -189,44 +218,75 @@ export const updateProduct = async (
   pharmacyId: number,
 ) => {
   try {
-    const existingProduct = await db
+    const existingProductArr = await db
       .select()
       .from(products)
       .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
 
-    if (existingProduct.length === 0) {
+    if (existingProductArr.length === 0) {
       return { success: false, message: 'Product not found' };
     }
+    const existingProduct = existingProductArr[0];
 
-    // For updates, we don't need to check name uniqueness since multiple products
-    // can have the same name with different brands, lots, or batches in pharmacy systems
-    // Only check for barcode + lot number combination if both are being updated
-    if (params.barcode && params.lotNumber) {
-      const existingProduct = await db
+    // Prevent changing lot number if product is in use
+    if (params.lotNumber && params.lotNumber !== existingProduct.lotNumber) {
+      const isInUse = await db
         .select()
-        .from(products)
-        .where(
-          and(
-            eq(products.barcode, params.barcode),
-            eq(products.lotNumber, params.lotNumber),
-            eq(products.pharmacyId, pharmacyId),
-          ),
-        );
-
-      if (existingProduct.length > 0 && existingProduct[0].id !== id) {
+        .from(saleItems)
+        .where(eq(saleItems.productId, id));
+      if (isInUse.length > 0) {
         return {
           success: false,
-          message: 'This lot number already exists for this product',
+          message:
+            "This product has existing records - lot number can't be changed",
         };
       }
     }
 
-    if (params.imageUrl === '' && existingProduct[0].imageUrl) {
-      const { deleteImageFromSupabase } = await import('@/lib/utils');
-      await deleteImageFromSupabase(existingProduct[0].imageUrl!);
+    // Only check for duplicate barcode+lot if either is being changed
+    const willUpdateBarcode =
+      typeof params.barcode === 'string' &&
+      params.barcode !== existingProduct.barcode;
+    const willUpdateLot =
+      typeof params.lotNumber === 'string' &&
+      params.lotNumber !== existingProduct.lotNumber;
+    if (willUpdateBarcode || willUpdateLot) {
+      const newBarcode =
+        typeof params.barcode === 'string'
+          ? params.barcode
+          : existingProduct.barcode;
+      const newLot =
+        typeof params.lotNumber === 'string'
+          ? params.lotNumber
+          : existingProduct.lotNumber;
+      if (typeof newBarcode === 'string' && typeof newLot === 'string') {
+        const duplicate = await db
+          .select()
+          .from(products)
+          .where(
+            and(
+              eq(products.barcode, newBarcode),
+              eq(products.lotNumber, newLot),
+              eq(products.pharmacyId, pharmacyId),
+            ),
+          );
+        if (duplicate.length > 0 && duplicate[0].id !== id) {
+          return {
+            success: false,
+            message:
+              'A product with this barcode and lot number already exists in your pharmacy records.',
+          };
+        }
+      }
     }
 
-    const updatedProduct = await db
+    // Handle image deletion if imageUrl is set to empty string
+    if (params.imageUrl === '' && existingProduct.imageUrl) {
+      const { deleteImageFromSupabase } = await import('@/lib/utils');
+      await deleteImageFromSupabase(existingProduct.imageUrl);
+    }
+
+    const updatedProductArr = await db
       .update(products)
       .set(params)
       .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)))
@@ -236,7 +296,7 @@ export const updateProduct = async (
 
     return {
       success: true,
-      data: JSON.parse(JSON.stringify(updatedProduct[0])),
+      data: JSON.parse(JSON.stringify(updatedProductArr[0])),
     };
   } catch (error) {
     console.error('Error updating product:', error);

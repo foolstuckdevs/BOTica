@@ -31,18 +31,32 @@ export default function POSPage({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  // Filter products based on search term (name, brand, lot number)
-  const filteredProducts = products.filter((product) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      product.name.toLowerCase().includes(searchLower) ||
-      (product.brandName &&
-        product.brandName.toLowerCase().includes(searchLower)) ||
-      product.lotNumber.toLowerCase().includes(searchLower) ||
-      (product.genericName &&
-        product.genericName.toLowerCase().includes(searchLower))
-    );
-  });
+  const searchLower = searchTerm.toLowerCase();
+  // Filter products based on search term
+  const filteredProducts = products
+    .filter((product) => {
+      return (
+        product.name.toLowerCase().includes(searchLower) ||
+        (product.brandName &&
+          product.brandName.toLowerCase().includes(searchLower)) ||
+        (product.lotNumber &&
+          product.lotNumber.toLowerCase().includes(searchLower)) ||
+        (product.genericName &&
+          product.genericName.toLowerCase().includes(searchLower))
+      );
+    })
+    .sort((a, b) => {
+      // Step 1: Prioritize exact/startsWith name matches
+      const aNameMatch = a.name.toLowerCase().startsWith(searchLower) ? 0 : 1;
+      const bNameMatch = b.name.toLowerCase().startsWith(searchLower) ? 0 : 1;
+
+      if (aNameMatch !== bNameMatch) return aNameMatch - bNameMatch;
+
+      // Step 2: Sort by soonest expiry (FEFO)
+      const aExpiry = new Date(a.expiryDate).getTime();
+      const bExpiry = new Date(b.expiryDate).getTime();
+      return aExpiry - bExpiry;
+    });
 
   // Calculate totals
   const totalAmount = cart.reduce(

@@ -138,7 +138,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
     if (order.status === 'DRAFT') {
       actions.push(
         {
-          label: 'Export Purchase Order',
+          label: 'Export PO',
           icon: <FileText className="w-4 h-4" />,
           variant: 'default' as const,
           onClick: async () => {
@@ -280,7 +280,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
       );
       if (result.success) {
         toast.success(
-          `${result.message}. Add received products with lot numbers and expiry dates to inventory.`,
+          `${result.message}. partial items received. Add received stock to inventory manually..`,
         );
 
         // Update order items to reflect changes
@@ -376,7 +376,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
           className="w-fit gap-2 text-gray-600 hover:text-gray-900"
         >
           <ChevronLeft className="w-4 h-4" />
-          Back to orders
+          Back to purchase orders
         </Button>
 
         <div className="flex flex-wrap gap-2 justify-end">

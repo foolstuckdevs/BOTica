@@ -84,7 +84,8 @@ export function ProductsPageClient({
           data={filteredProducts}
           searchConfig={{
             enabled: true,
-            placeholder: 'Search by name, brand, lot number...',
+            placeholder:
+              'Search products by name, brand, batch, or supplier...',
             globalFilter: true,
             searchableColumns: [
               'name',

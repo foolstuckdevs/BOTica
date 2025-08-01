@@ -14,6 +14,7 @@ export const getSuppliers = async (pharmacyId: number) => {
     return await db
       .select()
       .from(suppliers)
+      .orderBy(suppliers.name)
       .where(eq(suppliers.pharmacyId, pharmacyId));
   } catch (error) {
     console.error('Error fetching suppliers:', error);

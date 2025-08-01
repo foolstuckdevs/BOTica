@@ -2,7 +2,7 @@
 
 import { db } from '@/database/drizzle';
 import { inventoryAdjustments, products, suppliers } from '@/database/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { Adjustment } from '@/types';
 
@@ -31,7 +31,8 @@ export const getAdjustments = async (pharmacyId: number) => {
       .from(inventoryAdjustments)
       .innerJoin(products, eq(inventoryAdjustments.productId, products.id))
       .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
-      .where(eq(inventoryAdjustments.pharmacyId, pharmacyId));
+      .where(eq(inventoryAdjustments.pharmacyId, pharmacyId))
+      .orderBy(desc(inventoryAdjustments.createdAt));
 
     return result as Adjustment[];
   } catch (error) {

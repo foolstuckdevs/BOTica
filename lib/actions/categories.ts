@@ -14,6 +14,7 @@ export async function getCategories(pharmacyId: number) {
     const result = await db
       .select()
       .from(categories)
+      .orderBy(categories.name)
       .where(eq(categories.pharmacyId, pharmacyId));
 
     return result;

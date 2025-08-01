@@ -8,7 +8,7 @@ import {
   users,
   products,
 } from '@/database/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { PurchaseOrderParams } from '@/types';
 import {
@@ -36,6 +36,7 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
       })
       .from(purchaseOrders)
       .leftJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
+      .orderBy(desc(purchaseOrders.orderDate))
       .where(eq(purchaseOrders.pharmacyId, pharmacyId));
 
     const results = await Promise.all(

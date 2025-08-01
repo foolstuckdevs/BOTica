@@ -421,8 +421,8 @@ const ProductForm = ({
                               placeholder="e.g., LOT2025-001"
                               {...field}
                               className="w-full"
-                              readOnly={type === 'update'}
-                              disabled={type === 'update'}
+                              readOnly={false}
+                              disabled={false}
                             />
                           </div>
                         </FormControl>
