@@ -13,7 +13,11 @@ const Page = async ({ params }: { params: Promise<{ id: string }> }) => {
     throw new Error('Unauthorized: session missing. Check auth middleware.');
   }
 
-  const pharmacyId = session.user.pharmacyId || 1;
+  if (!session.user.pharmacyId) {
+    throw new Error('Unauthorized: user not assigned to any pharmacy.');
+  }
+
+  const pharmacyId = session.user.pharmacyId;
 
   const { id } = await params; //
   const product = await getProductById(Number(id), pharmacyId);
@@ -30,6 +34,7 @@ const Page = async ({ params }: { params: Promise<{ id: string }> }) => {
       {...product}
       categories={categories}
       suppliers={suppliers}
+      pharmacyId={pharmacyId}
     />
   );
 };

@@ -47,12 +47,14 @@ interface Props extends Partial<Product> {
   type?: 'create' | 'update';
   categories: Category[];
   suppliers: Supplier[];
+  pharmacyId: number;
 }
 
 const ProductForm = ({
   type = 'create',
   categories,
   suppliers,
+  pharmacyId,
   ...product
 }: Props) => {
   const router = useRouter();
@@ -102,7 +104,6 @@ const ProductForm = ({
     try {
       setIsSubmitting(true);
 
-      const pharmacyId = 1;
       let imageUrl = values.imageUrl || '';
 
       if (selectedImageFile) {

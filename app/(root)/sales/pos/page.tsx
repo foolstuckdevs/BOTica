@@ -11,8 +11,12 @@ const page = async () => {
     throw new Error('Unauthorized: session missing. Check auth middleware.');
   }
 
+  if (!session.user.pharmacyId) {
+    throw new Error('Unauthorized: user not assigned to any pharmacy.');
+  }
+
   // Get pharmacy ID from authenticated user session
-  const pharmacyId = session.user.pharmacyId || 1;
+  const pharmacyId = session.user.pharmacyId;
   const products: ProductPOS[] = await getAllProductsPOS(pharmacyId);
   const pharmacyInfo = await getPharmacy(pharmacyId);
 

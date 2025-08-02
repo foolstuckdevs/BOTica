@@ -12,7 +12,11 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
     throw new Error('Unauthorized: session missing. Check auth middleware.');
   }
 
-  const pharmacyId = session.user.pharmacyId || 1;
+  if (!session.user.pharmacyId) {
+    throw new Error('Unauthorized: user not assigned to any pharmacy.');
+  }
+
+  const pharmacyId = session.user.pharmacyId;
   const orderId = Number(id);
 
   const [order, suppliers, products] = await Promise.all([
@@ -48,6 +52,7 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
       suppliers={suppliers}
       products={products}
       userId={session.user.id}
+      pharmacyId={pharmacyId}
     />
   );
 };

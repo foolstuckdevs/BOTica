@@ -5,7 +5,7 @@
 export interface Pharmacy {
   id: number;
   name: string;
-  address?: string;
+  address?: string | null;
   phone?: string;
   createdAt?: string | Date;
 }
@@ -14,6 +14,24 @@ export interface AuthCredentials {
   fullName: string;
   email: string;
   password: string;
+}
+
+export interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  role: 'Admin' | 'Pharmacist';
+  pharmacyId: number;
+  createdAt: Date | null;
+}
+
+export interface StaffMember {
+  id: string;
+  fullName: string;
+  email: string;
+  role: 'Admin' | 'Pharmacist';
+  isActive: boolean;
+  createdAt: Date | null;
 }
 
 // =============================================================================

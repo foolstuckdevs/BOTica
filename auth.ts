@@ -102,6 +102,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               passwordHash: users.password,
               role: users.role,
               pharmacyId: users.pharmacyId,
+              isActive: users.isActive,
             })
             .from(users)
             .where(eq(users.email, credentials.email.toString()))
@@ -109,6 +110,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           if (user.length === 0) {
             console.log('User not found:', credentials.email);
+            return null;
+          }
+
+          // Check if user account is active
+          if (user[0].isActive === false) {
+            console.log('Account is deactivated:', credentials.email);
             return null;
           }
 

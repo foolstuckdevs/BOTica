@@ -10,6 +10,9 @@ export * from './common';
 // User/Authentication schemas
 export * from './user';
 
+// Staff management schemas
+export * from './staff';
+
 // Product schemas
 export * from './product';
 

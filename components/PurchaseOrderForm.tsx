@@ -36,6 +36,7 @@ interface PurchaseOrderFormProps {
   products: Product[];
   initialValues?: PurchaseOrderFormValues & { id?: number; status?: string };
   userId: string; // Pass userId from server component
+  pharmacyId: number; // Pass pharmacyId from server component
 }
 
 const PurchaseOrderForm = ({
@@ -44,6 +45,7 @@ const PurchaseOrderForm = ({
   products,
   initialValues,
   userId,
+  pharmacyId,
 }: PurchaseOrderFormProps) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -117,8 +119,6 @@ const PurchaseOrderForm = ({
         toast.error('You must be logged in.');
         return;
       }
-
-      const pharmacyId = 1; // TODO: replace with dynamic value from session later
 
       const payload = {
         ...values,

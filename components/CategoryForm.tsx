@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,6 +33,7 @@ import { Loader2, Plus } from 'lucide-react';
 
 const CategoryForm = () => {
   const router = useRouter();
+  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -44,8 +46,13 @@ const CategoryForm = () => {
   });
 
   const onSubmit = async (data: z.infer<typeof categorySchema>) => {
+    if (!session?.user?.pharmacyId) {
+      toast.error('Unauthorized: user not assigned to any pharmacy');
+      return;
+    }
+
     setIsLoading(true);
-    const pharmacyId = 1;
+    const pharmacyId = session.user.pharmacyId;
 
     const result = await createCategory({ ...data, pharmacyId });
 

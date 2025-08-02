@@ -9,8 +9,18 @@ export default async function AdjustmentPage() {
     throw new Error('Unauthorized: session missing. Check auth middleware.');
   }
 
-  const pharmacyId = 1;
+  if (!session.user.pharmacyId) {
+    throw new Error('Unauthorized: user not assigned to any pharmacy.');
+  }
+
+  const pharmacyId = session.user.pharmacyId;
   const products = await getProducts(pharmacyId);
 
-  return <AdjustmentForm products={products} userId={session.user.id} />;
+  return (
+    <AdjustmentForm
+      products={products}
+      userId={session.user.id}
+      pharmacyId={pharmacyId}
+    />
+  );
 }

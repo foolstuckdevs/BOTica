@@ -48,7 +48,8 @@ import { signInSchema } from '@/lib/validations/user';
 ### User Schemas (`user.ts`)
 
 - `signInSchema` - Login validation
-- `signUpSchema` - Registration validation
+- `userSchema` - Admin user creation validation
+- `updateUserSchema` - User update validation
 
 ### Product Schemas (`product.ts`)
 

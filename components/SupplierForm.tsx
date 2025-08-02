@@ -3,6 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useSession } from 'next-auth/react';
 import { supplierSchema } from '@/lib/validations';
 import { createSupplier } from '@/lib/actions/suppliers';
 import { useRouter } from 'next/navigation';
@@ -31,6 +32,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 const SupplierForm = () => {
   const router = useRouter();
+  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,8 +48,13 @@ const SupplierForm = () => {
   });
 
   const onSubmit = async (data: z.infer<typeof supplierSchema>) => {
+    if (!session?.user?.pharmacyId) {
+      toast.error('Unauthorized: user not assigned to any pharmacy');
+      return;
+    }
+
     setIsLoading(true);
-    const pharmacyId = 1; // TODO: replace with session-based pharmacyId
+    const pharmacyId = session.user.pharmacyId;
     const result = await createSupplier({ ...data, pharmacyId });
 
     if (result.success) {

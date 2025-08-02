@@ -24,9 +24,14 @@ interface PendingAdjustment extends AdjustmentFormValues {
 interface AdjustmentFormProps {
   products: Product[];
   userId: string; // Pass userId from server component
+  pharmacyId: number; // Pass pharmacyId from server component
 }
 
-const AdjustmentForm = ({ products, userId }: AdjustmentFormProps) => {
+const AdjustmentForm = ({
+  products,
+  userId,
+  pharmacyId,
+}: AdjustmentFormProps) => {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -118,8 +123,6 @@ const AdjustmentForm = ({ products, userId }: AdjustmentFormProps) => {
   };
 
   const submitAllAdjustments = async () => {
-    const pharmacyId = 1;
-
     if (pendingAdjustments.length === 0) return;
 
     try {

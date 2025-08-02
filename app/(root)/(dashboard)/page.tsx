@@ -19,7 +19,11 @@ const Page = async () => {
     throw new Error('Unauthorized: session missing. Check auth middleware.');
   }
 
-  const pharmacyId = session.user.pharmacyId || 1; // Default to pharmacy 1 if not set
+  if (!session.user.pharmacyId) {
+    throw new Error('Unauthorized: user not assigned to any pharmacy.');
+  }
+
+  const pharmacyId = session.user.pharmacyId;
 
   const [productStats, salesComparison, topSellingProducts, lowStockProducts] =
     await Promise.all([

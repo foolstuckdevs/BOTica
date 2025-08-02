@@ -4,12 +4,21 @@ import { NextResponse } from 'next/server';
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isAuthenticated = !!req.auth;
+  const userRole = req.auth?.user?.role;
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/sign-in', '/sign-up', '/forgot-password'];
+  const publicRoutes = ['/sign-in', '/forgot-password'];
+
+  // Admin-only routes that require Admin role
+  const adminOnlyRoutes = ['/settings/manage-staff'];
 
   // Check if current path is a public route
   const isPublicRoute = publicRoutes.some((route) =>
+    pathname.startsWith(route),
+  );
+
+  // Check if current path is an admin-only route
+  const isAdminOnlyRoute = adminOnlyRoutes.some((route) =>
     pathname.startsWith(route),
   );
 
@@ -20,6 +29,11 @@ export default auth((req) => {
   // If trying to access protected route without authentication
   if (isProtectedRoute && !isAuthenticated) {
     return NextResponse.redirect(new URL('/sign-in', req.url));
+  }
+
+  // If trying to access admin-only route without admin role
+  if (isAuthenticated && isAdminOnlyRoute && userRole !== 'Admin') {
+    return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
   // If authenticated and trying to access auth pages, redirect to dashboard

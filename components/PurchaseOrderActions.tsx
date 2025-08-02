@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Eye, Pencil, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -16,9 +17,15 @@ interface PurchaseOrderActionsProps {
 
 const PurchaseOrderActions = ({ order }: PurchaseOrderActionsProps) => {
   const router = useRouter();
-  const pharmacyId = 1; // TODO: Replace with session-based pharmacyId
+  const { data: session } = useSession();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  if (!session?.user?.pharmacyId) {
+    return null; // Don't render actions if no pharmacy access
+  }
+
+  const pharmacyId = session.user.pharmacyId;
 
   const handleView = () => {
     router.push(`/inventory/purchase-order/${order.id}`);
