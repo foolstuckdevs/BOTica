@@ -5,12 +5,19 @@ import { inventoryAdjustments, products, suppliers } from '@/database/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { Adjustment } from '@/types';
+import {
+  getAdjustmentsSchema,
+  createAdjustmentSchema,
+} from '@/lib/validations';
 
 /**
  * Get all inventory adjustments
  */
 export const getAdjustments = async (pharmacyId: number) => {
   try {
+    // Validate input with Zod
+    const validatedData = getAdjustmentsSchema.parse({ pharmacyId });
+
     const result = await db
       .select({
         id: inventoryAdjustments.id,
@@ -31,7 +38,7 @@ export const getAdjustments = async (pharmacyId: number) => {
       .from(inventoryAdjustments)
       .innerJoin(products, eq(inventoryAdjustments.productId, products.id))
       .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
-      .where(eq(inventoryAdjustments.pharmacyId, pharmacyId))
+      .where(eq(inventoryAdjustments.pharmacyId, validatedData.pharmacyId))
       .orderBy(desc(inventoryAdjustments.createdAt));
 
     return result as Adjustment[];
@@ -60,19 +67,32 @@ export const createAdjustment = async ({
   notes?: string;
 }) => {
   try {
+    // Validate input with Zod
+    const validatedData = createAdjustmentSchema.parse({
+      productId,
+      quantityChange,
+      reason,
+      userId,
+      pharmacyId,
+      notes,
+    });
+
     // Fetch current product WITH pharmacyId filter
     const [product] = await db
       .select({ quantity: products.quantity })
       .from(products)
       .where(
-        and(eq(products.id, productId), eq(products.pharmacyId, pharmacyId)),
+        and(
+          eq(products.id, validatedData.productId),
+          eq(products.pharmacyId, validatedData.pharmacyId),
+        ),
       );
 
     if (!product) {
       return { success: false, message: 'Product not found' };
     }
 
-    const newQuantity = product.quantity + quantityChange;
+    const newQuantity = product.quantity + validatedData.quantityChange;
 
     // Prevent negative stock
     if (newQuantity < 0) {
@@ -84,12 +104,12 @@ export const createAdjustment = async ({
 
     // Insert adjustment with pharmacyId
     await db.insert(inventoryAdjustments).values({
-      productId,
-      userId,
-      quantityChange,
-      reason,
-      pharmacyId,
-      notes,
+      productId: validatedData.productId,
+      userId: validatedData.userId,
+      quantityChange: validatedData.quantityChange,
+      reason: validatedData.reason,
+      pharmacyId: validatedData.pharmacyId,
+      notes: validatedData.notes,
     });
 
     // Update product quantity
@@ -97,7 +117,10 @@ export const createAdjustment = async ({
       .update(products)
       .set({ quantity: newQuantity })
       .where(
-        and(eq(products.id, productId), eq(products.pharmacyId, pharmacyId)),
+        and(
+          eq(products.id, validatedData.productId),
+          eq(products.pharmacyId, validatedData.pharmacyId),
+        ),
       );
 
     revalidatePath('/products');
@@ -106,6 +129,10 @@ export const createAdjustment = async ({
     return { success: true, message: 'Inventory adjusted successfully' };
   } catch (error) {
     console.error('Error creating adjustment:', error);
-    return { success: false, message: 'Error adjusting inventory' };
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : 'Error adjusting inventory',
+    };
   }
 };

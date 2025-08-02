@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { productFormSchema } from '@/lib/validations';
 import {
   Form,
   FormControl,
@@ -14,7 +15,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import { Category, Product, Supplier } from '@/types';
-import { productSchema } from '@/lib/validation';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { ImageUpload } from './ImageUpload';
@@ -59,8 +59,8 @@ const ProductForm = ({
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<z.infer<typeof productSchema>>({
-    resolver: zodResolver(productSchema),
+  const form = useForm<z.infer<typeof productFormSchema>>({
+    resolver: zodResolver(productFormSchema),
     defaultValues: {
       name: product.name || '',
       genericName: product.genericName || '',
@@ -98,7 +98,7 @@ const ProductForm = ({
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof productSchema>) => {
+  const onSubmit = async (values: z.infer<typeof productFormSchema>) => {
     try {
       setIsSubmitting(true);
 

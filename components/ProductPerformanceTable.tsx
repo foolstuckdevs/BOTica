@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Package } from 'lucide-react';
-import { ProductPerformanceData } from '@/lib/actions/sales-reports';
+import { ProductPerformanceData } from '@/types';
 
 interface ProductPerformanceTableProps {
   productData: {

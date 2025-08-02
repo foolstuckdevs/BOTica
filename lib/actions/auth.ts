@@ -5,15 +5,18 @@ import { signIn } from '@/auth';
 import { db } from '@/database/drizzle';
 import { users } from '@/database/schema';
 import { AuthCredentials } from '@/types';
+import { signInSchema, signUpSchema } from '@/lib/validations';
 import { hash } from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 
 export const signInWithCredentials = async (
   params: Pick<AuthCredentials, 'email' | 'password'>,
 ) => {
-  const { email, password } = params;
-
   try {
+    // Validate input with Zod
+    const validatedData = signInSchema.parse(params);
+    const { email, password } = validatedData;
+
     // First verify user exists and password is correct manually
     const userRecord = await db
       .select({
@@ -52,29 +55,41 @@ export const signInWithCredentials = async (
 
     return { success: true, role: userRecord[0].role };
   } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof Error && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string }> };
+      const firstIssue = zodError.issues?.[0];
+      return {
+        success: false,
+        error: firstIssue?.message || 'Invalid input data',
+      };
+    }
+
     console.log(error, 'Signin error');
     return { success: false, error: 'An error occurred during sign in' };
   }
 };
 
 export const signUp = async (params: AuthCredentials) => {
-  const { fullName, email, password } = params;
-
-  const existingUser = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
-
-  if (existingUser.length > 0) {
-    return { success: false, error: 'User already exists' };
-  }
-
-  const hashedPassword = await hash(password, 10);
-
-  const pharmacyId = 1; // HARD CODED FOR NOW REPLACE THIS IN THE FUTURE REMEMBER
-
   try {
+    // Validate input with Zod
+    const validatedData = signUpSchema.parse(params);
+    const { fullName, email, password } = validatedData;
+
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      return { success: false, error: 'User already exists' };
+    }
+
+    const hashedPassword = await hash(password, 10);
+
+    const pharmacyId = 1; // HARD CODED FOR NOW REPLACE THIS IN THE FUTURE REMEMBER
+
     await db.insert(users).values({
       fullName,
       email,
@@ -85,7 +100,17 @@ export const signUp = async (params: AuthCredentials) => {
     await signInWithCredentials({ email, password });
     return { success: true };
   } catch (error) {
-    console.log(error, 'Singup error');
+    // Handle Zod validation errors
+    if (error instanceof Error && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string }> };
+      const firstIssue = zodError.issues?.[0];
+      return {
+        success: false,
+        error: firstIssue?.message || 'Invalid input data',
+      };
+    }
+
+    console.log(error, 'Signup error');
     return { success: false, error: 'Signup error' };
   }
 };

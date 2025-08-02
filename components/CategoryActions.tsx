@@ -9,7 +9,7 @@ import { DeleteDialog } from './DeleteDialog';
 import EditDialog from './EditDialog';
 import { Category } from '@/types';
 import { updateCategory, deleteCategory } from '@/lib/actions/categories';
-import { categorySchema } from '@/lib/validation';
+import { categorySchema } from '@/lib/validations';
 
 export function CategoryActions({ category }: { category: Category }) {
   const router = useRouter();

@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { supplierSchema } from '@/lib/validation';
+import { supplierSchema } from '@/lib/validations';
 import { createSupplier } from '@/lib/actions/suppliers';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';

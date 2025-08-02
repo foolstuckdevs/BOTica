@@ -3,9 +3,17 @@ import { columns } from './columns';
 import { DataTable } from '@/components/DataTable';
 import { getCategories } from '@/lib/actions/categories';
 import CategoryForm from '@/components/CategoryForm';
+import { auth } from '@/auth';
 
 const Page = async () => {
-  const pharmacyId = 1; // hardcoded for now get from session later
+  const session = await auth();
+
+  // Middleware ensures session exists for protected routes
+  if (!session?.user) {
+    throw new Error('Unauthorized: session missing. Check auth middleware.');
+  }
+
+  const pharmacyId = session.user.pharmacyId || 1; // Default to pharmacy 1 if not set
 
   const result = await getCategories(pharmacyId);
   return (

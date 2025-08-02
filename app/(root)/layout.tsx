@@ -2,13 +2,15 @@ import { auth } from '@/auth';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import Chatbot from '@/components/Chatbot';
-import { redirect } from 'next/navigation';
 import { ReactNode } from 'react';
 
 const Layout = async ({ children }: { children: ReactNode }) => {
   const session = await auth();
 
-  if (!session) redirect('/sign-in');
+  // Middleware ensures session exists for protected routes
+  if (!session) {
+    throw new Error('Unauthorized: session missing. Check auth middleware.');
+  }
 
   return (
     <div className="flex h-screen bg-gray-50/50 relative">

@@ -1,9 +1,17 @@
 import React from 'react';
 import { getPurchaseOrders } from '@/lib/actions/purchase-order';
 import PurchaseOrdersOverview from '@/components/PurchaseOrdersOverview';
+import { auth } from '@/auth';
 
 const Page = async () => {
-  const pharmacyId = 1; // hardcoded for now, get from session later
+  const session = await auth();
+
+  // Middleware ensures session exists for protected routes
+  if (!session?.user) {
+    throw new Error('Unauthorized: session missing. Check auth middleware.');
+  }
+
+  const pharmacyId = session.user.pharmacyId || 1;
   const purchaseOrders = await getPurchaseOrders(pharmacyId);
 
   return (

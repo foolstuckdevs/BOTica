@@ -2,10 +2,17 @@ import PurchaseOrderForm from '@/components/PurchaseOrderForm';
 import { getSuppliers } from '@/lib/actions/suppliers';
 import { getProducts } from '@/lib/actions/products';
 import { getPurchaseOrderById } from '@/lib/actions/purchase-order';
+import { auth } from '@/auth';
 
 const page = async ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params;
-  const pharmacyId = 1; // Replace with session pharmacyId later
+  const session = await auth();
+
+  if (!session?.user) {
+    throw new Error('Unauthorized: session missing. Check auth middleware.');
+  }
+
+  const pharmacyId = session.user.pharmacyId || 1;
   const orderId = Number(id);
 
   const [order, suppliers, products] = await Promise.all([
@@ -40,6 +47,7 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
       initialValues={initialData}
       suppliers={suppliers}
       products={products}
+      userId={session.user.id}
     />
   );
 };

@@ -9,7 +9,7 @@ import { DeleteDialog } from './DeleteDialog';
 import EditDialog from './EditDialog';
 import { Supplier } from '@/types';
 import { updateSupplier, deleteSupplier } from '@/lib/actions/suppliers';
-import { supplierSchema } from '@/lib/validation';
+import { supplierSchema } from '@/lib/validations';
 
 const SupplierActions = ({ supplier }: { supplier: Supplier }) => {
   const router = useRouter();

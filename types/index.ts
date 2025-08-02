@@ -1,3 +1,7 @@
+// =============================================================================
+// PHARMACY & AUTHENTICATION TYPES
+// =============================================================================
+
 export interface Pharmacy {
   id: number;
   name: string;
@@ -5,11 +9,16 @@ export interface Pharmacy {
   phone?: string;
   createdAt?: string | Date;
 }
+
 export interface AuthCredentials {
   fullName: string;
   email: string;
   password: string;
 }
+
+// =============================================================================
+// CATEGORY TYPES
+// =============================================================================
 
 export interface Category {
   id: number;
@@ -23,6 +32,10 @@ export type CategoryParams = {
   description: string;
   pharmacyId?: number;
 };
+
+// =============================================================================
+// SUPPLIER TYPES
+// =============================================================================
 
 export interface Supplier {
   id: number;
@@ -44,6 +57,10 @@ export interface SupplierParams {
   address?: string;
   pharmacyId?: number;
 }
+
+// =============================================================================
+// PRODUCT TYPES & ENUMS
+// =============================================================================
 
 export type UnitType = 'PIECE' | 'BOTTLE' | 'BOX' | 'VIAL' | 'SACHET' | 'TUBE';
 
@@ -96,22 +113,6 @@ export interface ProductPOS {
   brandName: string | null;
 }
 
-export type ProductStockSummary = {
-  id: number;
-  quantity: number;
-  minStockLevel: number;
-  expiryDate: string | null;
-};
-
-export type LowStockProduct = {
-  id: number;
-  product: string;
-  genericName: string | null;
-  currentStock: number;
-  minThreshold: number;
-  category: string;
-};
-
 export interface ProductParams {
   name: string;
   genericName?: string;
@@ -131,6 +132,26 @@ export interface ProductParams {
   pharmacyId?: number;
 }
 
+// =============================================================================
+// INVENTORY & STOCK MANAGEMENT TYPES
+// =============================================================================
+
+export type ProductStockSummary = {
+  id: number;
+  quantity: number;
+  minStockLevel: number;
+  expiryDate: string | null;
+};
+
+export type LowStockProduct = {
+  id: number;
+  product: string;
+  genericName: string | null;
+  currentStock: number;
+  minThreshold: number;
+  category: string;
+};
+
 export interface Adjustment {
   id: number;
   productId: number;
@@ -148,6 +169,10 @@ export interface Adjustment {
   pharmacyId?: number;
   notes?: string;
 }
+
+// =============================================================================
+// PURCHASE ORDER TYPES
+// =============================================================================
 
 export type PurchaseOrderStatus =
   | 'DRAFT'
@@ -202,6 +227,10 @@ export interface PurchaseOrderItem {
   productUnit?: string; // From JOIN with products table
 }
 
+// =============================================================================
+// SALES & TRANSACTION TYPES
+// =============================================================================
+
 export type PaymentMethod = 'CASH' | 'GCASH';
 
 export interface TransactionItem {
@@ -226,4 +255,47 @@ export interface Transaction {
     fullName: string;
   };
   items: TransactionItem[];
+}
+
+// =============================================================================
+// SALES REPORTS & ANALYTICS TYPES
+// =============================================================================
+
+export type PeriodType = 'today' | 'yesterday' | 'week' | 'month' | 'quarter';
+
+export interface SalesOverviewData {
+  totalSales: number;
+  totalCost: number;
+  profit: number;
+  transactions: number;
+  totalItems: number;
+}
+
+export interface SalesComparisonData {
+  current: SalesOverviewData;
+  previous: SalesOverviewData;
+  salesGrowth: number;
+  profitGrowth: number;
+  transactionGrowth: number;
+}
+
+export interface ProductPerformanceData {
+  name: string;
+  category: string;
+  quantity: number;
+  revenue: number;
+  profit: number;
+}
+
+export interface BatchProfitData {
+  id: string;
+  productName: string;
+  batch: string;
+  expiry: string;
+  qtySold: number;
+  qtyRemaining?: number; // Optional for backward compatibility
+  cost: number;
+  revenue: number;
+  profit: number;
+  margin: number;
 }

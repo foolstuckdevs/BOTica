@@ -13,30 +13,13 @@ import { QuickActionsPanel } from '@/components/QuickActionsPanel';
 
 const Page = async () => {
   const session = await auth();
-  const pharmacyId = session?.user?.pharmacyId;
 
-  const defaultSalesComparison = {
-    todaysSales: 0,
-    yesterdaysSales: 0,
-    percentageChange: 0,
-    trend: 'equal' as const,
-  };
-
-  if (!pharmacyId) {
-    return (
-      <main className="flex flex-col gap-6 py-5">
-        <SectionCards
-          productStats={[]}
-          salesComparison={defaultSalesComparison}
-        />
-        <SalesChart />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <LowStockAlerts lowStockProducts={[]} />
-          <TopSellingProducts products={[]} />
-        </div>
-      </main>
-    );
+  // Middleware ensures session exists for protected routes
+  if (!session?.user) {
+    throw new Error('Unauthorized: session missing. Check auth middleware.');
   }
+
+  const pharmacyId = session.user.pharmacyId || 1; // Default to pharmacy 1 if not set
 
   const [productStats, salesComparison, topSellingProducts, lowStockProducts] =
     await Promise.all([

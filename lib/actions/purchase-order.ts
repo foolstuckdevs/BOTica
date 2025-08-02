@@ -14,11 +14,21 @@ import { PurchaseOrderParams } from '@/types';
 import {
   purchaseOrderSchema,
   purchaseOrderConfirmationSchema,
-} from '@/lib/validation';
+  getPurchaseOrdersSchema,
+  getPurchaseOrderByIdSchema,
+  updatePurchaseOrderStatusSchema,
+  deletePurchaseOrderSchema,
+  updateReceivedQuantitiesSchema,
+  receiveAllItemsSchema,
+  partiallyReceiveItemsSchema,
+} from '@/lib/validations';
 
 // Generate purchase orders list with computed totals
 export const getPurchaseOrders = async (pharmacyId: number) => {
   try {
+    // Validate input with Zod
+    const validatedData = getPurchaseOrdersSchema.parse({ pharmacyId });
+
     const orders = await db
       .select({
         id: purchaseOrders.id,
@@ -37,7 +47,7 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
       .from(purchaseOrders)
       .leftJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
       .orderBy(desc(purchaseOrders.createdAt))
-      .where(eq(purchaseOrders.pharmacyId, pharmacyId));
+      .where(eq(purchaseOrders.pharmacyId, validatedData.pharmacyId));
 
     const results = await Promise.all(
       orders.map(async (order) => {
@@ -90,6 +100,9 @@ export const getPurchaseOrders = async (pharmacyId: number) => {
 // Get purchase order details with items
 export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
   try {
+    // Validate input with Zod
+    const validatedData = getPurchaseOrderByIdSchema.parse({ id, pharmacyId });
+
     const orderArr = await db
       .select({
         id: purchaseOrders.id,
@@ -110,8 +123,8 @@ export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
       .leftJoin(users, eq(users.id, purchaseOrders.userId))
       .where(
         and(
-          eq(purchaseOrders.id, id),
-          eq(purchaseOrders.pharmacyId, pharmacyId),
+          eq(purchaseOrders.id, validatedData.id),
+          eq(purchaseOrders.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -128,7 +141,7 @@ export const getPurchaseOrderById = async (id: number, pharmacyId: number) => {
         unitCost: purchaseOrderItems.unitCost,
       })
       .from(purchaseOrderItems)
-      .where(eq(purchaseOrderItems.purchaseOrderId, id));
+      .where(eq(purchaseOrderItems.purchaseOrderId, validatedData.id));
 
     const totalItems = itemsRaw.length;
     const totalQuantity = itemsRaw.reduce(
@@ -302,13 +315,20 @@ export const updatePurchaseOrderStatus = async (
   pharmacyId: number,
 ) => {
   try {
+    // Validate input with Zod
+    const validatedData = updatePurchaseOrderStatusSchema.parse({
+      id,
+      status,
+      pharmacyId,
+    });
+
     const existing = await db
       .select()
       .from(purchaseOrders)
       .where(
         and(
-          eq(purchaseOrders.id, id),
-          eq(purchaseOrders.pharmacyId, pharmacyId),
+          eq(purchaseOrders.id, validatedData.id),
+          eq(purchaseOrders.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -318,34 +338,41 @@ export const updatePurchaseOrderStatus = async (
 
     await db
       .update(purchaseOrders)
-      .set({ status })
+      .set({ status: validatedData.status })
       .where(
         and(
-          eq(purchaseOrders.id, id),
-          eq(purchaseOrders.pharmacyId, pharmacyId),
+          eq(purchaseOrders.id, validatedData.id),
+          eq(purchaseOrders.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
     revalidatePath('/purchase-orders');
-    revalidatePath(`/inventory/purchase-order/${id}`);
+    revalidatePath(`/inventory/purchase-order/${validatedData.id}`);
     revalidatePath('/inventory/purchase-order');
     return { success: true };
   } catch (error) {
     console.error('Error updating purchase order status:', error);
-    return { success: false, message: 'Failed to update status' };
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : 'Failed to update status',
+    };
   }
 };
 
 // Delete purchase order and its items
 export const deletePurchaseOrder = async (id: number, pharmacyId: number) => {
   try {
+    // Validate input with Zod
+    const validatedData = deletePurchaseOrderSchema.parse({ id, pharmacyId });
+
     const existing = await db
       .select()
       .from(purchaseOrders)
       .where(
         and(
-          eq(purchaseOrders.id, id),
-          eq(purchaseOrders.pharmacyId, pharmacyId),
+          eq(purchaseOrders.id, validatedData.id),
+          eq(purchaseOrders.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -356,14 +383,14 @@ export const deletePurchaseOrder = async (id: number, pharmacyId: number) => {
     // Delete items first due to foreign key constraint
     await db
       .delete(purchaseOrderItems)
-      .where(eq(purchaseOrderItems.purchaseOrderId, id));
+      .where(eq(purchaseOrderItems.purchaseOrderId, validatedData.id));
 
     await db
       .delete(purchaseOrders)
       .where(
         and(
-          eq(purchaseOrders.id, id),
-          eq(purchaseOrders.pharmacyId, pharmacyId),
+          eq(purchaseOrders.id, validatedData.id),
+          eq(purchaseOrders.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -371,7 +398,13 @@ export const deletePurchaseOrder = async (id: number, pharmacyId: number) => {
     return { success: true, message: 'Purchase order deleted' };
   } catch (error) {
     console.error('Error deleting purchase order:', error);
-    return { success: false, message: 'Failed to delete purchase order' };
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete purchase order',
+    };
   }
 };
 
@@ -473,13 +506,20 @@ export const updateReceivedQuantities = async (
   receivedItems: Record<number, number>,
 ) => {
   try {
+    // Validate input with Zod
+    const validatedData = updateReceivedQuantitiesSchema.parse({
+      orderId,
+      pharmacyId,
+      receivedItems,
+    });
+
     const orderExists = await db
       .select()
       .from(purchaseOrders)
       .where(
         and(
-          eq(purchaseOrders.id, orderId),
-          eq(purchaseOrders.pharmacyId, pharmacyId),
+          eq(purchaseOrders.id, validatedData.orderId),
+          eq(purchaseOrders.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -488,7 +528,9 @@ export const updateReceivedQuantities = async (
     }
 
     // Update received quantities
-    for (const [itemId, receivedQty] of Object.entries(receivedItems)) {
+    for (const [itemId, receivedQty] of Object.entries(
+      validatedData.receivedItems,
+    )) {
       if (receivedQty > 0) {
         await db
           .update(purchaseOrderItems)
@@ -504,7 +546,7 @@ export const updateReceivedQuantities = async (
         receivedQuantity: purchaseOrderItems.receivedQuantity,
       })
       .from(purchaseOrderItems)
-      .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+      .where(eq(purchaseOrderItems.purchaseOrderId, validatedData.orderId));
 
     const allFullyReceived = allItems.every(
       (item) => item.receivedQuantity >= item.quantity,
@@ -525,8 +567,8 @@ export const updateReceivedQuantities = async (
       .set({ status: newStatus })
       .where(
         and(
-          eq(purchaseOrders.id, orderId),
-          eq(purchaseOrders.pharmacyId, pharmacyId),
+          eq(purchaseOrders.id, validatedData.orderId),
+          eq(purchaseOrders.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -537,7 +579,13 @@ export const updateReceivedQuantities = async (
     };
   } catch (error) {
     console.error('Error updating received quantities:', error);
-    return { success: false, message: 'Failed to update received quantities' };
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Failed to update received quantities',
+    };
   }
 };
 
@@ -548,6 +596,9 @@ export const receiveAllItems = async (
   updateInventory: boolean = false,
 ) => {
   try {
+    // Validate input with Zod
+    const validatedData = receiveAllItemsSchema.parse({ orderId, pharmacyId });
+
     const orderItems = await db
       .select({
         id: purchaseOrderItems.id,
@@ -557,7 +608,7 @@ export const receiveAllItems = async (
         unitCost: purchaseOrderItems.unitCost,
       })
       .from(purchaseOrderItems)
-      .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+      .where(eq(purchaseOrderItems.purchaseOrderId, validatedData.orderId));
 
     if (!orderItems.length) {
       return { success: false, message: 'No items found for this order' };
@@ -584,7 +635,7 @@ export const receiveAllItems = async (
               .where(
                 and(
                   eq(products.id, item.productId),
-                  eq(products.pharmacyId, pharmacyId),
+                  eq(products.pharmacyId, validatedData.pharmacyId),
                 ),
               );
           }
@@ -597,8 +648,8 @@ export const receiveAllItems = async (
         .set({ status: 'RECEIVED' })
         .where(
           and(
-            eq(purchaseOrders.id, orderId),
-            eq(purchaseOrders.pharmacyId, pharmacyId),
+            eq(purchaseOrders.id, validatedData.orderId),
+            eq(purchaseOrders.pharmacyId, validatedData.pharmacyId),
           ),
         );
     });
@@ -608,7 +659,13 @@ export const receiveAllItems = async (
     return { success: true, message: 'All items marked as received' };
   } catch (error) {
     console.error('Error receiving all items:', error);
-    return { success: false, message: 'Failed to mark items as received' };
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Failed to mark items as received',
+    };
   }
 };
 
@@ -620,9 +677,18 @@ export const partiallyReceiveItems = async (
   updateInventory: boolean = false,
 ) => {
   try {
+    // Validate input with Zod
+    const validatedData = partiallyReceiveItemsSchema.parse({
+      orderId,
+      pharmacyId,
+      receivedItems,
+    });
+
     await db.transaction(async (tx) => {
       // Update received quantities for documentation
-      for (const [itemId, receivedQty] of Object.entries(receivedItems)) {
+      for (const [itemId, receivedQty] of Object.entries(
+        validatedData.receivedItems,
+      )) {
         if (receivedQty > 0) {
           const itemIdNum = parseInt(itemId);
 
@@ -655,7 +721,7 @@ export const partiallyReceiveItems = async (
                   .where(
                     and(
                       eq(products.id, currentItem.productId),
-                      eq(products.pharmacyId, pharmacyId),
+                      eq(products.pharmacyId, validatedData.pharmacyId),
                     ),
                   );
               }
@@ -671,7 +737,7 @@ export const partiallyReceiveItems = async (
           receivedQuantity: purchaseOrderItems.receivedQuantity,
         })
         .from(purchaseOrderItems)
-        .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+        .where(eq(purchaseOrderItems.purchaseOrderId, validatedData.orderId));
 
       const allFullyReceived = allItems.every(
         (item) => item.receivedQuantity >= item.quantity,
@@ -691,8 +757,8 @@ export const partiallyReceiveItems = async (
         .set({ status: newStatus })
         .where(
           and(
-            eq(purchaseOrders.id, orderId),
-            eq(purchaseOrders.pharmacyId, pharmacyId),
+            eq(purchaseOrders.id, validatedData.orderId),
+            eq(purchaseOrders.pharmacyId, validatedData.pharmacyId),
           ),
         );
     });
@@ -702,6 +768,12 @@ export const partiallyReceiveItems = async (
     return { success: true, message: 'Receipt quantities updated' };
   } catch (error) {
     console.error('Error updating received items:', error);
-    return { success: false, message: 'Failed to update receipt quantities' };
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Failed to update receipt quantities',
+    };
   }
 };

@@ -3,45 +3,20 @@
 import { db } from '@/database/drizzle';
 import { sales, saleItems, products, categories } from '@/database/schema';
 import { eq, and, gte, lte, sum, count, sql, desc } from 'drizzle-orm';
-
-export type PeriodType = 'today' | 'yesterday' | 'week' | 'month' | 'quarter';
-
-export interface SalesOverviewData {
-  totalSales: number;
-  totalCost: number;
-  profit: number;
-  transactions: number;
-  totalItems: number;
-}
-
-export interface SalesComparisonData {
-  current: SalesOverviewData;
-  previous: SalesOverviewData;
-  salesGrowth: number;
-  profitGrowth: number;
-  transactionGrowth: number;
-}
-
-export interface ProductPerformanceData {
-  name: string;
-  category: string;
-  quantity: number;
-  revenue: number;
-  profit: number;
-}
-
-export interface BatchProfitData {
-  id: string;
-  productName: string;
-  batch: string;
-  expiry: string;
-  qtySold: number;
-  qtyRemaining?: number; // Optional for backward compatibility
-  cost: number;
-  revenue: number;
-  profit: number;
-  margin: number;
-}
+import {
+  getSalesOverviewSchema,
+  getSalesReportsComparisonSchema,
+  getProductPerformanceSchema,
+  getBatchProfitDataSchema,
+  getBatchProfitSummarySchema,
+} from '@/lib/validations';
+import {
+  PeriodType,
+  SalesOverviewData,
+  SalesComparisonData,
+  ProductPerformanceData,
+  BatchProfitData,
+} from '@/types';
 
 // Helper function to get date ranges for different periods
 const getDateRanges = (period: PeriodType) => {
@@ -299,10 +274,28 @@ const getSalesDataForRange = async (
 // Main function to get sales overview for a specific period
 export const getSalesOverview = async (
   pharmacyId: number,
-  period: PeriodType,
+  period: PeriodType = 'month',
 ): Promise<SalesOverviewData> => {
-  const { currentStart, currentEnd } = getDateRanges(period);
-  return getSalesDataForRange(pharmacyId, currentStart, currentEnd);
+  try {
+    // Validate input with Zod
+    const validatedData = getSalesOverviewSchema.parse({ pharmacyId, period });
+
+    const { currentStart, currentEnd } = getDateRanges(validatedData.period);
+    return getSalesDataForRange(
+      validatedData.pharmacyId,
+      currentStart,
+      currentEnd,
+    );
+  } catch (error) {
+    console.error('Error getting sales overview:', error);
+    return {
+      totalSales: 0,
+      totalCost: 0,
+      profit: 0,
+      transactions: 0,
+      totalItems: 0,
+    };
+  }
 };
 
 // Function to get sales comparison (current vs previous period)
@@ -310,46 +303,80 @@ export const getSalesComparison = async (
   pharmacyId: number,
   period: PeriodType,
 ): Promise<SalesComparisonData> => {
-  const { currentStart, currentEnd, previousStart, previousEnd } =
-    getDateRanges(period);
+  try {
+    // Validate input with Zod
+    const validatedData = getSalesReportsComparisonSchema.parse({
+      pharmacyId,
+      period,
+    });
 
-  const [current, previous] = await Promise.all([
-    getSalesDataForRange(pharmacyId, currentStart, currentEnd),
-    getSalesDataForRange(pharmacyId, previousStart, previousEnd),
-  ]);
+    const { currentStart, currentEnd, previousStart, previousEnd } =
+      getDateRanges(validatedData.period);
 
-  // Calculate growth percentages
-  const salesGrowth =
-    previous.totalSales === 0
-      ? current.totalSales > 0
-        ? 100
-        : 0
-      : ((current.totalSales - previous.totalSales) / previous.totalSales) *
-        100;
+    const [current, previous] = await Promise.all([
+      getSalesDataForRange(validatedData.pharmacyId, currentStart, currentEnd),
+      getSalesDataForRange(
+        validatedData.pharmacyId,
+        previousStart,
+        previousEnd,
+      ),
+    ]);
 
-  const profitGrowth =
-    previous.profit === 0
-      ? current.profit > 0
-        ? 100
-        : 0
-      : ((current.profit - previous.profit) / previous.profit) * 100;
+    // Calculate growth percentages
+    const salesGrowth =
+      previous.totalSales === 0
+        ? current.totalSales > 0
+          ? 100
+          : 0
+        : ((current.totalSales - previous.totalSales) / previous.totalSales) *
+          100;
 
-  const transactionGrowth =
-    previous.transactions === 0
-      ? current.transactions > 0
-        ? 100
-        : 0
-      : ((current.transactions - previous.transactions) /
-          previous.transactions) *
-        100;
+    const profitGrowth =
+      previous.profit === 0
+        ? current.profit > 0
+          ? 100
+          : 0
+        : ((current.profit - previous.profit) / previous.profit) * 100;
 
-  return {
-    current,
-    previous,
-    salesGrowth: Number(salesGrowth.toFixed(1)),
-    profitGrowth: Number(profitGrowth.toFixed(1)),
-    transactionGrowth: Number(transactionGrowth.toFixed(1)),
-  };
+    const transactionGrowth =
+      previous.transactions === 0
+        ? current.transactions > 0
+          ? 100
+          : 0
+        : ((current.transactions - previous.transactions) /
+            previous.transactions) *
+          100;
+
+    return {
+      current,
+      previous,
+      salesGrowth: Number(salesGrowth.toFixed(1)),
+      profitGrowth: Number(profitGrowth.toFixed(1)),
+      transactionGrowth: Number(transactionGrowth.toFixed(1)),
+    };
+  } catch (error) {
+    console.error('Error getting sales comparison:', error);
+    // Return fallback data in case of error
+    return {
+      current: {
+        totalSales: 0,
+        totalCost: 0,
+        profit: 0,
+        transactions: 0,
+        totalItems: 0,
+      },
+      previous: {
+        totalSales: 0,
+        totalCost: 0,
+        profit: 0,
+        transactions: 0,
+        totalItems: 0,
+      },
+      salesGrowth: 0,
+      profitGrowth: 0,
+      transactionGrowth: 0,
+    };
+  }
 };
 
 // Get product performance data for a specific period
@@ -358,7 +385,13 @@ export const getProductPerformance = async (
   period: PeriodType,
 ): Promise<ProductPerformanceData[]> => {
   try {
-    const { currentStart, currentEnd } = getDateRanges(period);
+    // Validate input with Zod
+    const validatedData = getProductPerformanceSchema.parse({
+      pharmacyId,
+      period,
+    });
+
+    const { currentStart, currentEnd } = getDateRanges(validatedData.period);
 
     const result = await db
       .select({
@@ -375,7 +408,7 @@ export const getProductPerformance = async (
       .leftJoin(categories, eq(products.categoryId, categories.id))
       .where(
         and(
-          eq(sales.pharmacyId, pharmacyId),
+          eq(sales.pharmacyId, validatedData.pharmacyId),
           gte(sales.createdAt, currentStart),
           lte(sales.createdAt, currentEnd),
         ),
@@ -415,8 +448,15 @@ export async function getBatchProfitData(
   period: PeriodType = 'month',
 ): Promise<BatchProfitData[]> {
   try {
-    const { currentStart: startDate, currentEnd: endDate } =
-      getDateRanges(period);
+    // Validate input with Zod
+    const validatedData = getBatchProfitDataSchema.parse({
+      pharmacyId,
+      period,
+    });
+
+    const { currentStart: startDate, currentEnd: endDate } = getDateRanges(
+      validatedData.period,
+    );
 
     // Query to get batch profit data
     const result = await db
@@ -436,7 +476,7 @@ export async function getBatchProfitData(
       .innerJoin(sales, eq(saleItems.saleId, sales.id))
       .where(
         and(
-          eq(products.pharmacyId, pharmacyId),
+          eq(products.pharmacyId, validatedData.pharmacyId),
           gte(sales.createdAt, startDate),
           lte(sales.createdAt, endDate),
         ),
@@ -487,7 +527,16 @@ export async function getBatchProfitSummary(
   period: PeriodType = 'month',
 ) {
   try {
-    const batchData = await getBatchProfitData(pharmacyId, period);
+    // Validate input with Zod
+    const validatedData = getBatchProfitSummarySchema.parse({
+      pharmacyId,
+      period,
+    });
+
+    const batchData = await getBatchProfitData(
+      validatedData.pharmacyId,
+      validatedData.period,
+    );
 
     const summary = {
       totalRevenue: batchData.reduce((sum, item) => sum + item.revenue, 0),

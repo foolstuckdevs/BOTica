@@ -2,9 +2,17 @@ import { DataTable } from '@/components/DataTable';
 import { getSuppliers } from '@/lib/actions/suppliers';
 import { columns } from './columns';
 import SupplierForm from '@/components/SupplierForm';
+import { auth } from '@/auth';
 
 const Page = async () => {
-  const pharmacyId = 1;
+  const session = await auth();
+
+  // Middleware ensures session exists for protected routes
+  if (!session?.user) {
+    throw new Error('Unauthorized: session missing. Check auth middleware.');
+  }
+
+  const pharmacyId = session.user.pharmacyId || 1;
 
   const suppliers = await getSuppliers(pharmacyId);
   return (

@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
-import { categorySchema } from '@/lib/validation';
+import { categorySchema } from '@/lib/validations';
 import { createCategory } from '@/lib/actions/categories';
 import { toast } from 'sonner';
 

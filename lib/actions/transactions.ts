@@ -4,12 +4,19 @@ import { db } from '@/database/drizzle';
 import { eq, and, like, desc, inArray } from 'drizzle-orm';
 import { sales, saleItems, products, users } from '@/database/schema';
 import { Transaction } from '@/types';
+import { getTransactionsSchema } from '@/lib/validations';
 
 export const getTransactions = async (
   pharmacyId: number,
   searchTerm?: string,
 ): Promise<Transaction[]> => {
   try {
+    // Validate input with Zod
+    const validatedData = getTransactionsSchema.parse({
+      pharmacyId,
+      searchTerm,
+    });
+
     // 1. Get sales with user info
     const salesList = await db
       .select({
@@ -26,8 +33,10 @@ export const getTransactions = async (
       .leftJoin(users, eq(sales.userId, users.id))
       .where(
         and(
-          eq(sales.pharmacyId, pharmacyId),
-          searchTerm ? like(sales.invoiceNumber, `%${searchTerm}%`) : undefined,
+          eq(sales.pharmacyId, validatedData.pharmacyId),
+          validatedData.searchTerm
+            ? like(sales.invoiceNumber, `%${validatedData.searchTerm}%`)
+            : undefined,
         ),
       )
       .orderBy(desc(sales.createdAt));

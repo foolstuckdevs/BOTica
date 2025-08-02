@@ -2,10 +2,18 @@ import ProductForm from '@/components/ProductForm';
 import { getCategories } from '@/lib/actions/categories';
 import { getProductById } from '@/lib/actions/products';
 import { getSuppliers } from '@/lib/actions/suppliers';
+import { auth } from '@/auth';
 
 // params values are always strings because they come from URL parameters.
 const Page = async ({ params }: { params: Promise<{ id: string }> }) => {
-  const pharmacyId = 1;
+  const session = await auth();
+
+  // Middleware ensures session exists for protected routes
+  if (!session?.user) {
+    throw new Error('Unauthorized: session missing. Check auth middleware.');
+  }
+
+  const pharmacyId = session.user.pharmacyId || 1;
 
   const { id } = await params; //
   const product = await getProductById(Number(id), pharmacyId);
