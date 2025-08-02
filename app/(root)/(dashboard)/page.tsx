@@ -8,6 +8,7 @@ import {
   getSalesComparison,
   getTopSellingProducts,
   getLowStockProducts,
+  getChartData,
 } from '@/lib/actions/dashboard';
 import { QuickActionsPanel } from '@/components/QuickActionsPanel';
 
@@ -25,13 +26,19 @@ const Page = async () => {
 
   const pharmacyId = session.user.pharmacyId;
 
-  const [productStats, salesComparison, topSellingProducts, lowStockProducts] =
-    await Promise.all([
-      getProductStockSummaries(pharmacyId),
-      getSalesComparison(pharmacyId),
-      getTopSellingProducts(pharmacyId, 6),
-      getLowStockProducts(pharmacyId, 5),
-    ]);
+  const [
+    productStats,
+    salesComparison,
+    topSellingProducts,
+    lowStockProducts,
+    chartData,
+  ] = await Promise.all([
+    getProductStockSummaries(pharmacyId),
+    getSalesComparison(pharmacyId),
+    getTopSellingProducts(pharmacyId, 6),
+    getLowStockProducts(pharmacyId, 5),
+    getChartData(pharmacyId, 30), // Default to 30 days
+  ]);
 
   return (
     <main className="flex flex-col gap-6 py-5">
@@ -39,7 +46,7 @@ const Page = async () => {
         productStats={productStats}
         salesComparison={salesComparison}
       />
-      <SalesChart />
+      <SalesChart chartData={chartData} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LowStockAlerts lowStockProducts={lowStockProducts} />
         <TopSellingProducts products={topSellingProducts} />

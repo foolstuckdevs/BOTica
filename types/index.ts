@@ -317,3 +317,22 @@ export interface BatchProfitData {
   profit: number;
   margin: number;
 }
+
+export interface ChartDataPoint {
+  date: string;
+  sales: number;
+  purchases: number; // Cost of goods sold
+  grossProfit: number;
+  transactionCount: number;
+}
+
+export interface ChartMetrics {
+  totalSales: number;
+  totalCost: number;
+  totalProfit: number;
+  totalTransactions: number;
+  profitMargin: number;
+  avgDailySales: number;
+  avgDailyTransactions: number;
+  daysWithSales: number;
+}

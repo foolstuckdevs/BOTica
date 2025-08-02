@@ -2,13 +2,14 @@
 
 import { db } from '@/database/drizzle';
 import { products, saleItems, sales } from '@/database/schema';
-import { eq, and, gte, lte, sum, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, sum, desc, sql } from 'drizzle-orm';
 import {
   getSalesComparisonSchema,
   getProductStockSummariesSchema,
   getTopSellingProductsSchema,
   getLowStockProductsSchema,
 } from '@/lib/validations';
+import { ChartDataPoint, ChartMetrics } from '@/types';
 
 // Helper: Get total sales within a date range
 const getSalesTotalForRange = async (
@@ -43,37 +44,76 @@ export const getSalesComparison = async (
     // Validate input with Zod
     const validatedData = getSalesComparisonSchema.parse({ pharmacyId });
 
+    // Use Philippines timezone (UTC+8) to match business operations
     const now = new Date();
 
+    // Convert to Philippines time (UTC+8)
+    const philippinesOffset = 8 * 60; // 8 hours in minutes
+    const localTime = new Date(now.getTime() + philippinesOffset * 60 * 1000);
+
+    // Get today's date in Philippines timezone
     const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      0,
-      0,
-      0,
-      0,
+      Date.UTC(
+        localTime.getUTCFullYear(),
+        localTime.getUTCMonth(),
+        localTime.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
     );
-    const endOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      23,
-      59,
-      59,
-      999,
+    // Adjust back to store in UTC but represents Philippines midnight
+    startOfToday.setTime(
+      startOfToday.getTime() - philippinesOffset * 60 * 1000,
     );
 
-    const startOfYesterday = new Date(startOfToday);
-    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    const endOfToday = new Date(
+      Date.UTC(
+        localTime.getUTCFullYear(),
+        localTime.getUTCMonth(),
+        localTime.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+    // Adjust back to store in UTC but represents Philippines end of day
+    endOfToday.setTime(endOfToday.getTime() - philippinesOffset * 60 * 1000);
+
+    // Get yesterday's date in Philippines timezone
+    const yesterdayLocal = new Date(localTime);
+    yesterdayLocal.setUTCDate(yesterdayLocal.getUTCDate() - 1);
+
+    const startOfYesterday = new Date(
+      Date.UTC(
+        yesterdayLocal.getUTCFullYear(),
+        yesterdayLocal.getUTCMonth(),
+        yesterdayLocal.getUTCDate(),
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
+    startOfYesterday.setTime(
+      startOfYesterday.getTime() - philippinesOffset * 60 * 1000,
+    );
+
     const endOfYesterday = new Date(
-      startOfYesterday.getFullYear(),
-      startOfYesterday.getMonth(),
-      startOfYesterday.getDate(),
-      23,
-      59,
-      59,
-      999,
+      Date.UTC(
+        yesterdayLocal.getUTCFullYear(),
+        yesterdayLocal.getUTCMonth(),
+        yesterdayLocal.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+    endOfYesterday.setTime(
+      endOfYesterday.getTime() - philippinesOffset * 60 * 1000,
     );
 
     // Fetch both totals in parallel
@@ -148,16 +188,39 @@ export const getTopSellingProducts = async (
     });
 
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-      999,
+    // Use Philippines timezone (UTC+8) for consistent month calculation
+    const philippinesOffset = 8 * 60; // 8 hours in minutes
+    const localTime = new Date(now.getTime() + philippinesOffset * 60 * 1000);
+
+    const startOfMonth = new Date(
+      Date.UTC(
+        localTime.getUTCFullYear(),
+        localTime.getUTCMonth(),
+        1,
+        0,
+        0,
+        0,
+        0,
+      ),
     );
+    // Convert to UTC for database query
+    startOfMonth.setTime(
+      startOfMonth.getTime() - philippinesOffset * 60 * 1000,
+    );
+
+    const endOfMonth = new Date(
+      Date.UTC(
+        localTime.getUTCFullYear(),
+        localTime.getUTCMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+    // Convert to UTC for database query
+    endOfMonth.setTime(endOfMonth.getTime() - philippinesOffset * 60 * 1000);
 
     const result = await db
       .select({
@@ -245,5 +308,130 @@ export const getLowStockProducts = async (
   } catch (error) {
     console.error('Error fetching low stock products:', error);
     return [];
+  }
+};
+
+// Get daily sales data for chart
+export const getChartData = async (
+  pharmacyId: number,
+  days: number = 30,
+): Promise<ChartDataPoint[]> => {
+  try {
+    // Calculate date range in Philippines timezone (UTC+8)
+    const now = new Date();
+    const philippinesOffset = 8 * 60; // 8 hours in minutes
+    const localTime = new Date(now.getTime() + philippinesOffset * 60 * 1000);
+
+    const endDate = new Date(localTime);
+    const startDate = new Date(localTime);
+    startDate.setUTCDate(endDate.getUTCDate() - days);
+
+    // Reset to start of day in Philippines time, then convert to UTC for storage
+    startDate.setUTCHours(0, 0, 0, 0);
+    startDate.setTime(startDate.getTime() - philippinesOffset * 60 * 1000);
+
+    // Set end date to end of current day in Philippines time, then convert to UTC
+    endDate.setUTCHours(23, 59, 59, 999);
+    endDate.setTime(endDate.getTime() - philippinesOffset * 60 * 1000);
+
+    // Get daily aggregated data
+    const result = await db
+      .select({
+        date: sql<string>`DATE(${sales.createdAt})`,
+        totalSales: sum(sales.totalAmount),
+        totalCost: sum(
+          sql`CAST(${products.costPrice} AS NUMERIC) * ${saleItems.quantity}`,
+        ),
+        transactionCount: sql<number>`COUNT(DISTINCT ${sales.id})`,
+      })
+      .from(sales)
+      .innerJoin(saleItems, eq(sales.id, saleItems.saleId))
+      .innerJoin(products, eq(saleItems.productId, products.id))
+      .where(
+        and(
+          eq(sales.pharmacyId, pharmacyId),
+          gte(sales.createdAt, startDate),
+          lte(sales.createdAt, endDate),
+        ),
+      )
+      .groupBy(sql`DATE(${sales.createdAt})`)
+      .orderBy(sql`DATE(${sales.createdAt})`);
+
+    // Create array of all dates in range
+    const chartData: ChartDataPoint[] = [];
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+
+      // Find data for this date
+      const dayData = result.find((r) => r.date === dateStr);
+
+      const salesAmount = Number(dayData?.totalSales) || 0;
+      const costAmount = Number(dayData?.totalCost) || 0;
+      const transactionCount = Number(dayData?.transactionCount) || 0;
+
+      chartData.push({
+        date: dateStr,
+        sales: salesAmount,
+        purchases: costAmount,
+        grossProfit: salesAmount - costAmount,
+        transactionCount,
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return chartData;
+  } catch (error) {
+    console.error('Error fetching chart data:', error);
+    return [];
+  }
+};
+
+// Get aggregated metrics for a time period
+export const getChartMetrics = async (
+  pharmacyId: number,
+  days: number = 30,
+): Promise<ChartMetrics> => {
+  try {
+    const data = await getChartData(pharmacyId, days);
+
+    const totalSales = data.reduce((sum, d) => sum + d.sales, 0);
+    const totalCost = data.reduce((sum, d) => sum + d.purchases, 0);
+    const totalProfit = totalSales - totalCost;
+    const totalTransactions = data.reduce(
+      (sum, d) => sum + d.transactionCount,
+      0,
+    );
+    const profitMargin = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
+
+    // Calculate averages
+    const avgDailySales = data.length > 0 ? totalSales / data.length : 0;
+    const avgDailyTransactions =
+      data.length > 0 ? totalTransactions / data.length : 0;
+
+    return {
+      totalSales: Number(totalSales.toFixed(2)),
+      totalCost: Number(totalCost.toFixed(2)),
+      totalProfit: Number(totalProfit.toFixed(2)),
+      totalTransactions,
+      profitMargin: Number(profitMargin.toFixed(1)),
+      avgDailySales: Number(avgDailySales.toFixed(2)),
+      avgDailyTransactions: Number(avgDailyTransactions.toFixed(1)),
+      daysWithSales: data.filter((d) => d.sales > 0).length,
+    };
+  } catch (error) {
+    console.error('Error calculating chart metrics:', error);
+    return {
+      totalSales: 0,
+      totalCost: 0,
+      totalProfit: 0,
+      totalTransactions: 0,
+      profitMargin: 0,
+      avgDailySales: 0,
+      avgDailyTransactions: 0,
+      daysWithSales: 0,
+    };
   }
 };

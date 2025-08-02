@@ -32,10 +32,10 @@ export const QuickActionsPanel = () => {
       iconBg: 'bg-green-100',
     },
     {
-      title: 'Manage Stock',
+      title: 'Manage Categories',
       description: 'View inventory levels',
       icon: <Package className="w-5 h-5" />,
-      href: '/inventory/products',
+      href: '/inventory/categories',
       color: 'bg-orange-50 text-orange-600 hover:bg-orange-100',
       iconBg: 'bg-orange-100',
     },

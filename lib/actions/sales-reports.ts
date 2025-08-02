@@ -18,9 +18,13 @@ import {
   BatchProfitData,
 } from '@/types';
 
-// Helper function to get date ranges for different periods
+// Helper function to get date ranges for different periods using Philippines timezone (UTC+8)
 const getDateRanges = (period: PeriodType) => {
   const now = new Date();
+  // Convert to Philippines time (UTC+8)
+  const philippinesOffset = 8 * 60; // 8 hours in minutes
+  const localTime = new Date(now.getTime() + (philippinesOffset * 60 * 1000));
+  
   let currentStart: Date,
     currentEnd: Date,
     previousStart: Date,
@@ -28,157 +32,203 @@ const getDateRanges = (period: PeriodType) => {
 
   switch (period) {
     case 'today':
-      currentStart = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        0,
-        0,
-        0,
-        0,
-      );
-      currentEnd = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        23,
-        59,
-        59,
-        999,
-      );
+      // Today in Philippines timezone
+      currentStart = new Date(Date.UTC(
+        localTime.getUTCFullYear(),
+        localTime.getUTCMonth(),
+        localTime.getUTCDate(),
+        0, 0, 0, 0
+      ));
+      // Convert back to UTC for database query
+      currentStart.setTime(currentStart.getTime() - (philippinesOffset * 60 * 1000));
+      
+      currentEnd = new Date(Date.UTC(
+        localTime.getUTCFullYear(),
+        localTime.getUTCMonth(),
+        localTime.getUTCDate(),
+        23, 59, 59, 999
+      ));
+      // Convert back to UTC for database query
+      currentEnd.setTime(currentEnd.getTime() - (philippinesOffset * 60 * 1000));
 
-      previousStart = new Date(currentStart);
-      previousStart.setDate(previousStart.getDate() - 1);
-      previousEnd = new Date(currentEnd);
-      previousEnd.setDate(previousEnd.getDate() - 1);
+      // Yesterday in Philippines timezone
+      const yesterdayLocal = new Date(localTime);
+      yesterdayLocal.setUTCDate(yesterdayLocal.getUTCDate() - 1);
+      
+      previousStart = new Date(Date.UTC(
+        yesterdayLocal.getUTCFullYear(),
+        yesterdayLocal.getUTCMonth(),
+        yesterdayLocal.getUTCDate(),
+        0, 0, 0, 0
+      ));
+      previousStart.setTime(previousStart.getTime() - (philippinesOffset * 60 * 1000));
+      
+      previousEnd = new Date(Date.UTC(
+        yesterdayLocal.getUTCFullYear(),
+        yesterdayLocal.getUTCMonth(),
+        yesterdayLocal.getUTCDate(),
+        23, 59, 59, 999
+      ));
+      previousEnd.setTime(previousEnd.getTime() - (philippinesOffset * 60 * 1000));
       break;
 
     case 'yesterday':
-      // Yesterday's full day
-      currentStart = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - 1,
-        0,
-        0,
-        0,
-        0,
-      );
-      currentEnd = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - 1,
-        23,
-        59,
-        59,
-        999,
-      );
+      // Yesterday's full day in Philippines timezone
+      const yesterdayLocalTime = new Date(localTime);
+      yesterdayLocalTime.setUTCDate(yesterdayLocalTime.getUTCDate() - 1);
+      
+      currentStart = new Date(Date.UTC(
+        yesterdayLocalTime.getUTCFullYear(),
+        yesterdayLocalTime.getUTCMonth(),
+        yesterdayLocalTime.getUTCDate(),
+        0, 0, 0, 0
+      ));
+      currentStart.setTime(currentStart.getTime() - (philippinesOffset * 60 * 1000));
+      
+      currentEnd = new Date(Date.UTC(
+        yesterdayLocalTime.getUTCFullYear(),
+        yesterdayLocalTime.getUTCMonth(),
+        yesterdayLocalTime.getUTCDate(),
+        23, 59, 59, 999
+      ));
+      currentEnd.setTime(currentEnd.getTime() - (philippinesOffset * 60 * 1000));
 
-      // Previous day (day before yesterday)
-      previousStart = new Date(currentStart);
-      previousStart.setDate(previousStart.getDate() - 1);
-      previousEnd = new Date(currentEnd);
-      previousEnd.setDate(previousEnd.getDate() - 1);
+      // Day before yesterday in Philippines timezone
+      const dayBeforeYesterday = new Date(yesterdayLocalTime);
+      dayBeforeYesterday.setUTCDate(dayBeforeYesterday.getUTCDate() - 1);
+      
+      previousStart = new Date(Date.UTC(
+        dayBeforeYesterday.getUTCFullYear(),
+        dayBeforeYesterday.getUTCMonth(),
+        dayBeforeYesterday.getUTCDate(),
+        0, 0, 0, 0
+      ));
+      previousStart.setTime(previousStart.getTime() - (philippinesOffset * 60 * 1000));
+      
+      previousEnd = new Date(Date.UTC(
+        dayBeforeYesterday.getUTCFullYear(),
+        dayBeforeYesterday.getUTCMonth(),
+        dayBeforeYesterday.getUTCDate(),
+        23, 59, 59, 999
+      ));
+      previousEnd.setTime(previousEnd.getTime() - (philippinesOffset * 60 * 1000));
       break;
 
     case 'week':
-      // Current week (Monday to Sunday)
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
-      startOfWeek.setHours(0, 0, 0, 0);
+      // Current week (Monday to Sunday) in Philippines timezone
+      const startOfWeek = new Date(localTime);
+      // Get Monday of current week (0 = Sunday, 1 = Monday, etc.)
+      const dayOfWeek = startOfWeek.getUTCDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday, go back 6 days
+      startOfWeek.setUTCDate(startOfWeek.getUTCDate() + mondayOffset);
+      
+      currentStart = new Date(Date.UTC(
+        startOfWeek.getUTCFullYear(),
+        startOfWeek.getUTCMonth(),
+        startOfWeek.getUTCDate(),
+        0, 0, 0, 0
+      ));
+      currentStart.setTime(currentStart.getTime() - (philippinesOffset * 60 * 1000));
 
-      currentStart = startOfWeek;
-      currentEnd = new Date(startOfWeek);
-      currentEnd.setDate(currentEnd.getDate() + 6); // Sunday
-      currentEnd.setHours(23, 59, 59, 999);
+      currentEnd = new Date(Date.UTC(
+        startOfWeek.getUTCFullYear(),
+        startOfWeek.getUTCMonth(),
+        startOfWeek.getUTCDate() + 6, // Sunday
+        23, 59, 59, 999
+      ));
+      currentEnd.setTime(currentEnd.getTime() - (philippinesOffset * 60 * 1000));
 
       // Previous week
-      previousStart = new Date(currentStart);
-      previousStart.setDate(previousStart.getDate() - 7);
-      previousEnd = new Date(currentEnd);
-      previousEnd.setDate(previousEnd.getDate() - 7);
+      const previousWeekStart = new Date(startOfWeek);
+      previousWeekStart.setUTCDate(previousWeekStart.getUTCDate() - 7);
+      
+      previousStart = new Date(Date.UTC(
+        previousWeekStart.getUTCFullYear(),
+        previousWeekStart.getUTCMonth(),
+        previousWeekStart.getUTCDate(),
+        0, 0, 0, 0
+      ));
+      previousStart.setTime(previousStart.getTime() - (philippinesOffset * 60 * 1000));
+      
+      previousEnd = new Date(Date.UTC(
+        previousWeekStart.getUTCFullYear(),
+        previousWeekStart.getUTCMonth(),
+        previousWeekStart.getUTCDate() + 6,
+        23, 59, 59, 999
+      ));
+      previousEnd.setTime(previousEnd.getTime() - (philippinesOffset * 60 * 1000));
       break;
 
     case 'month':
-      // Current month
-      currentStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-      currentEnd = new Date(
-        now.getFullYear(),
-        now.getMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-        999,
-      );
+      // Current month in Philippines timezone
+      currentStart = new Date(Date.UTC(
+        localTime.getUTCFullYear(),
+        localTime.getUTCMonth(),
+        1, 0, 0, 0, 0
+      ));
+      currentStart.setTime(currentStart.getTime() - (philippinesOffset * 60 * 1000));
+      
+      currentEnd = new Date(Date.UTC(
+        localTime.getUTCFullYear(),
+        localTime.getUTCMonth() + 1,
+        0, 23, 59, 59, 999
+      ));
+      currentEnd.setTime(currentEnd.getTime() - (philippinesOffset * 60 * 1000));
 
-      // Previous month
-      previousStart = new Date(
-        now.getFullYear(),
-        now.getMonth() - 1,
-        1,
-        0,
-        0,
-        0,
-        0,
-      );
-      previousEnd = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        0,
-        23,
-        59,
-        59,
-        999,
-      );
+      // Previous month in Philippines timezone
+      const previousMonthLocal = new Date(localTime);
+      previousMonthLocal.setUTCMonth(previousMonthLocal.getUTCMonth() - 1);
+      
+      previousStart = new Date(Date.UTC(
+        previousMonthLocal.getUTCFullYear(),
+        previousMonthLocal.getUTCMonth(),
+        1, 0, 0, 0, 0
+      ));
+      previousStart.setTime(previousStart.getTime() - (philippinesOffset * 60 * 1000));
+      
+      previousEnd = new Date(Date.UTC(
+        previousMonthLocal.getUTCFullYear(),
+        previousMonthLocal.getUTCMonth() + 1,
+        0, 23, 59, 59, 999
+      ));
+      previousEnd.setTime(previousEnd.getTime() - (philippinesOffset * 60 * 1000));
       break;
 
     case 'quarter':
-      // Current quarter
-      const currentQuarter = Math.floor(now.getMonth() / 3);
-      currentStart = new Date(
-        now.getFullYear(),
+      // Current quarter in Philippines timezone
+      const currentQuarter = Math.floor(localTime.getUTCMonth() / 3);
+      currentStart = new Date(Date.UTC(
+        localTime.getUTCFullYear(),
         currentQuarter * 3,
-        1,
-        0,
-        0,
-        0,
-        0,
-      );
-      currentEnd = new Date(
-        now.getFullYear(),
+        1, 0, 0, 0, 0
+      ));
+      currentStart.setTime(currentStart.getTime() - (philippinesOffset * 60 * 1000));
+      
+      currentEnd = new Date(Date.UTC(
+        localTime.getUTCFullYear(),
         currentQuarter * 3 + 3,
-        0,
-        23,
-        59,
-        59,
-        999,
-      );
+        0, 23, 59, 59, 999
+      ));
+      currentEnd.setTime(currentEnd.getTime() - (philippinesOffset * 60 * 1000));
 
-      // Previous quarter
-      const prevQuarter = currentQuarter - 1;
-      const prevYear =
-        prevQuarter < 0 ? now.getFullYear() - 1 : now.getFullYear();
-      const adjustedPrevQuarter = prevQuarter < 0 ? 3 : prevQuarter;
-
-      previousStart = new Date(
-        prevYear,
-        adjustedPrevQuarter * 3,
-        1,
-        0,
-        0,
-        0,
-        0,
-      );
-      previousEnd = new Date(
-        prevYear,
-        adjustedPrevQuarter * 3 + 3,
-        0,
-        23,
-        59,
-        59,
-        999,
-      );
+      // Previous quarter in Philippines timezone
+      const previousQuarterLocal = new Date(localTime);
+      previousQuarterLocal.setUTCMonth(previousQuarterLocal.getUTCMonth() - 3);
+      const previousQuarter = Math.floor(previousQuarterLocal.getUTCMonth() / 3);
+      
+      previousStart = new Date(Date.UTC(
+        previousQuarterLocal.getUTCFullYear(),
+        previousQuarter * 3,
+        1, 0, 0, 0, 0
+      ));
+      previousStart.setTime(previousStart.getTime() - (philippinesOffset * 60 * 1000));
+      
+      previousEnd = new Date(Date.UTC(
+        previousQuarterLocal.getUTCFullYear(),
+        previousQuarter * 3 + 3,
+        0, 23, 59, 59, 999
+      ));
+      previousEnd.setTime(previousEnd.getTime() - (philippinesOffset * 60 * 1000));
       break;
 
     default:
