@@ -10,10 +10,7 @@ import {
   TrendingDown,
   Package,
 } from 'lucide-react';
-import {
-  SalesOverviewData,
-  SalesComparisonData,
-} from '@/lib/actions/sales-reports';
+import { SalesOverviewData, SalesComparisonData } from '@/types';
 
 interface SalesReportOverviewProps {
   salesData: {

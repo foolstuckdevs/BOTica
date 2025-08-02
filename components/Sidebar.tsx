@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   LayoutDashboard,
   Boxes,
@@ -19,11 +20,13 @@ import {
   Layers,
   RefreshCw,
   Pill,
+  Users,
 } from 'lucide-react';
 import React, { useState } from 'react';
 
 const Sidebar = () => {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   const [inventoryOpen, setInventoryOpen] = useState(
     pathname.startsWith('/inventory'),
@@ -31,6 +34,9 @@ const Sidebar = () => {
   const [salesOpen, setSalesOpen] = useState(pathname.startsWith('/sales'));
   const [reportsOpen, setReportsOpen] = useState(
     pathname.startsWith('/reports'),
+  );
+  const [settingsOpen, setSettingsOpen] = useState(
+    pathname.startsWith('/settings'),
   );
 
   const isActive = (path: string) => pathname === path;
@@ -228,17 +234,53 @@ const Sidebar = () => {
         </div>
 
         {/* Settings */}
-        <Link
-          href="/settings"
-          className={`${baseLinkClasses} ${
-            isActive('/settings')
-              ? submenuActiveClasses
-              : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
-          }`}
-        >
-          <Settings className="w-5 h-5" />
-          Settings
-        </Link>
+        <div className="flex flex-col">
+          <button
+            onClick={() => setSettingsOpen(!settingsOpen)}
+            className={`${baseLinkClasses} ${
+              isChildActive('/settings')
+                ? parentActiveClasses
+                : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
+            }`}
+          >
+            <Settings className="w-5 h-5" />
+            Settings
+            {settingsOpen ? (
+              <ChevronDown className="ml-auto w-4 h-4 text-gray-400" />
+            ) : (
+              <ChevronRight className="ml-auto w-4 h-4 text-gray-400" />
+            )}
+          </button>
+          {settingsOpen && (
+            <div className="flex flex-col mt-1 space-y-0.5 ml-1">
+              {[
+                // Staff Management - Admin Only
+                ...(session?.user?.role === 'Admin'
+                  ? [
+                      {
+                        href: '/settings/manage-staff',
+                        label: 'Staff Management',
+                        icon: <Users className="w-4 h-4" />,
+                      },
+                    ]
+                  : []),
+              ].map(({ href, label, icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`${submenuLinkClasses} ${
+                    isActive(href)
+                      ? submenuActiveClasses
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                  }`}
+                >
+                  {icon}
+                  {label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </nav>
     </aside>
   );

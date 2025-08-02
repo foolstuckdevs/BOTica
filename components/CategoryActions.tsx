@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,13 +10,19 @@ import { DeleteDialog } from './DeleteDialog';
 import EditDialog from './EditDialog';
 import { Category } from '@/types';
 import { updateCategory, deleteCategory } from '@/lib/actions/categories';
-import { categorySchema } from '@/lib/validation';
+import { categorySchema } from '@/lib/validations';
 
 export function CategoryActions({ category }: { category: Category }) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const pharmacyId = 1; // Replace with session-based logic later
+
+  if (!session?.user?.pharmacyId) {
+    return null; // Don't render actions if no pharmacy access
+  }
+
+  const pharmacyId = session.user.pharmacyId;
 
   const handleDelete = async () => {
     const result = await deleteCategory(category.id, pharmacyId);

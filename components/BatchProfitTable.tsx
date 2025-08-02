@@ -13,7 +13,7 @@ import {
   CheckCircle,
   Calendar,
 } from 'lucide-react';
-import { BatchProfitData } from '@/lib/actions/sales-reports';
+import { BatchProfitData } from '@/types';
 
 interface BatchProfitTableProps {
   batchData?: BatchProfitData[];

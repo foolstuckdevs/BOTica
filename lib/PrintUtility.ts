@@ -1,51 +1,113 @@
 import type { Transaction, TransactionItem, Pharmacy } from '@/types';
 
 export class PrintUtility {
+  private static isPrinting = false;
+  private static printCount = 0;
+
   static async printDynamicReceipt(
     sale: Transaction,
     items: TransactionItem[],
     pharmacy: Pharmacy,
   ): Promise<boolean> {
-    const baseLines = 20; // For headers, totals, footer
-    const itemLines = items.length * 3; // Rough estimate
-    const contentHeight = baseLines + itemLines;
-    const printContent = this.generateDynamicReceipt(
-      sale,
-      items,
-      pharmacy,
-      contentHeight,
+    this.printCount++;
+    console.log(
+      `Print attempt #${this.printCount} - isPrinting: ${this.isPrinting}`,
     );
 
-    try {
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '80mm';
-      iframe.style.height = `${contentHeight}mm`;
-      iframe.style.border = '0';
-      iframe.style.visibility = 'hidden';
-      document.body.appendChild(iframe);
+    // Prevent multiple simultaneous print calls
+    if (this.isPrinting) {
+      console.log('Print already in progress, skipping...');
+      return false;
+    }
 
-      if (iframe.contentDocument) {
-        iframe.contentDocument.open();
-        iframe.contentDocument.write(printContent);
-        iframe.contentDocument.close();
+    console.log('Starting print process...');
+    this.isPrinting = true;
+
+    try {
+      const baseLines = 25; // For headers, totals, footer
+      const itemLines = items.length * 4; // Rough estimate
+      const contentHeight = Math.max(150, baseLines + itemLines);
+
+      const printContent = this.generateDynamicReceipt(
+        sale,
+        items,
+        pharmacy,
+        contentHeight,
+      );
+
+      // Create a new window for printing instead of iframe
+      const printWindow = window.open('', '_blank', 'width=300,height=600');
+
+      if (!printWindow) {
+        this.isPrinting = false;
+        throw new Error('Could not open print window - popup blocked?');
+      }
+
+      // Disable browser extension communication to prevent proxy errors
+      try {
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+      } catch (writeError) {
+        console.error('Error writing to print window:', writeError);
+        printWindow.close();
+        this.isPrinting = false;
+        return false;
       }
 
       return new Promise((resolve) => {
-        iframe.onload = () => {
-          setTimeout(() => {
-            (iframe.contentWindow as Window).print();
+        let hasExecuted = false;
+        let timeoutId: NodeJS.Timeout | null = null;
+
+        const executePrint = () => {
+          if (hasExecuted) {
+            console.log('Print already executed, skipping...');
+            return;
+          }
+          hasExecuted = true;
+
+          // Clear any pending timeout
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
+
+          console.log('Executing print...');
+          try {
+            printWindow.print();
+            console.log('Print dialog opened');
+
+            // Close window and resolve after print dialog
             setTimeout(() => {
-              document.body.removeChild(iframe);
+              printWindow.close();
+              console.log('Print window closed');
+              this.isPrinting = false;
               resolve(true);
-            }, 1000);
-          }, 200);
+            }, 1500);
+          } catch (printError) {
+            console.error('Print execution error:', printError);
+            printWindow.close();
+            this.isPrinting = false;
+            resolve(false);
+          }
         };
+
+        // Set up onload handler
+        printWindow.onload = () => {
+          console.log('Print window loaded, executing print...');
+          executePrint();
+        };
+
+        // Set up fallback timeout only if onload hasn't fired
+        timeoutId = setTimeout(() => {
+          if (!hasExecuted) {
+            console.log('Fallback timeout triggered');
+            executePrint();
+          }
+        }, 3000);
       });
     } catch (error) {
       console.error('Print error:', error);
+      this.isPrinting = false;
       return false;
     }
   }
@@ -66,7 +128,7 @@ export class PrintUtility {
     return `<!DOCTYPE html>
 <html>
 <head>
-  <title>Receipt</title>
+  <title>Receipt - ${sale.invoiceNumber}</title>
   <style>
     @page {
       size: 80mm ${contentHeight}mm;
@@ -74,53 +136,92 @@ export class PrintUtility {
     }
     body {
       font-family: 'Courier New', monospace;
-      font-size: 12px;
+      font-size: 11px;
       width: 80mm;
       height: ${contentHeight}mm;
       margin: 0;
-      padding: 2mm;
+      padding: 3mm;
+      line-height: 1.2;
       display: flex;
       flex-direction: column;
     }
     .header {
       text-align: center;
-      margin-bottom: 2mm;
+      margin-bottom: 3mm;
       flex-shrink: 0;
+    }
+    .pharmacy-name {
+      font-weight: bold;
+      font-size: 14px;
+      margin-bottom: 1mm;
+    }
+    .pharmacy-info {
+      font-size: 10px;
+      color: #666;
     }
     .divider {
       border-top: 1px dashed #000;
+      margin: 3mm 0;
+      flex-shrink: 0;
+    }
+    .invoice-info {
+      text-align: center;
       margin: 2mm 0;
       flex-shrink: 0;
+    }
+    .invoice-number {
+      font-weight: bold;
+      font-size: 12px;
     }
     .items-container {
       flex-grow: 1;
       overflow: hidden;
     }
     .item {
-      margin: 1mm 0;
+      margin: 1.5mm 0;
+      page-break-inside: avoid;
     }
     .item-main {
       display: flex;
       justify-content: space-between;
+      font-weight: bold;
     }
     .item-details {
       display: flex;
       justify-content: space-between;
-      font-size: 10px;
-      padding-left: 5mm;
+      font-size: 9px;
+      color: #666;
+      margin-top: 0.5mm;
+      padding-left: 3mm;
     }
     .totals {
       flex-shrink: 0;
+      margin-top: 2mm;
     }
     .total-row {
       display: flex;
       justify-content: space-between;
       margin: 1mm 0;
+      padding: 0.5mm 0;
+    }
+    .total-main {
+      font-weight: bold;
+      font-size: 12px;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
+      padding: 1mm 0;
+      margin: 1mm 0;
+    }
+    .payment-info {
+      margin-top: 2mm;
+      padding-top: 1mm;
+      border-top: 1px dashed #666;
     }
     .footer {
       text-align: center;
-      margin-top: 2mm;
+      margin-top: 3mm;
       flex-shrink: 0;
+      font-size: 10px;
     }
     .bold {
       font-weight: bold;
@@ -129,16 +230,28 @@ export class PrintUtility {
 </head>
 <body>
   <div class="header">
-    <div class="bold">${pharmacy.name}</div>
-    <div>${pharmacy.address ?? ''}</div>
-    <div>${pharmacy.phone ?? ''}</div>
+    <div class="pharmacy-name">${pharmacy.name}</div>
+    <div class="pharmacy-info">${pharmacy.address ?? ''}</div>
+    <div class="pharmacy-info">${pharmacy.phone ?? ''}</div>
   </div>
 
   <div class="divider"></div>
 
-  <div class="bold" style="text-align: center;">
-    <div>INVOICE: ${sale.invoiceNumber}</div>
-    <div>${new Date(sale.createdAt).toLocaleString()}</div>
+  <div class="invoice-info">
+    <div class="invoice-number">RECEIPT #${sale.invoiceNumber}</div>
+    <div style="font-size: 10px;">${new Date(sale.createdAt).toLocaleString(
+      'en-US',
+      {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      },
+    )}</div>
+    <div style="font-size: 10px;">Cashier: ${
+      sale.user?.fullName || 'Unknown'
+    }</div>
   </div>
 
   <div class="divider"></div>
@@ -158,6 +271,9 @@ export class PrintUtility {
           <span>${item.quantity} × ₱${parseFloat(item.unitPrice).toFixed(
           2,
         )}</span>
+          <span>Subtotal: ₱${(
+            parseFloat(item.unitPrice) * item.quantity
+          ).toFixed(2)}</span>
         </div>
       </div>
     `,
@@ -177,42 +293,38 @@ export class PrintUtility {
         ? `
       <div class="total-row">
         <span>Discount:</span>
-        <span>-₱${discountAmount.toFixed(2)}</span>
+        <span style="color: #d00;">-₱${discountAmount.toFixed(2)}</span>
       </div>`
         : ''
     }
-    <div class="total-row bold">
+    <div class="total-row total-main">
       <span>TOTAL:</span>
       <span>₱${total.toFixed(2)}</span>
     </div>
-    <div class="total-row">
-      <span>Cash Received:</span>
-      <span>₱${parseFloat(sale.amountReceived?.toString() ?? '0').toFixed(
-        2,
-      )}</span>
-    </div>
-    <div class="total-row">
-      <span>Change:</span>
-      <span>₱${parseFloat(sale.changeDue?.toString() ?? '0').toFixed(2)}</span>
+    
+    <div class="payment-info">
+      <div class="total-row">
+        <span>Cash Received:</span>
+        <span>₱${parseFloat(sale.amountReceived?.toString() ?? '0').toFixed(
+          2,
+        )}</span>
+      </div>
+      <div class="total-row">
+        <span>Change:</span>
+        <span>₱${parseFloat(sale.changeDue?.toString() ?? '0').toFixed(
+          2,
+        )}</span>
+      </div>
     </div>
   </div>
 
   <div class="divider"></div>
 
   <div class="footer">
-    <div>Thank you for your purchase!</div>
-    <div class="bold">** TEMPORARY RECEIPT **</div>
-    <div>${new Date().toLocaleString()}</div>
+    <div class="bold">Thank you for your purchase!</div>
+    <div style="margin: 2mm 0;">Visit us again soon!</div>
+    <div style="font-size: 10px;">${new Date().toLocaleString()}</div>
   </div>
-
-  <script>
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => {
-        window.close();
-      }, 100);
-    }, 200);
-  </script>
 </body>
 </html>`;
   }

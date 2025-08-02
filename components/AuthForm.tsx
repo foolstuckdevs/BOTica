@@ -295,16 +295,10 @@ const AuthForm = <T extends FieldValues>({
           Continue with Google
         </Button>
 
-        {/* Sign Up/Sign In Link */}
+        {/* Admin Contact Information */}
         <div className="mt-6 text-center text-sm">
           <p className="text-gray-600 dark:text-gray-400">
-            {isSignIn ? "Don't have an account?" : 'Already have an account?'}
-            <Link
-              href={isSignIn ? '/sign-up' : '/sign-in'}
-              className="ml-1.5 text-blue-600 dark:text-blue-400 hover:underline font-medium"
-            >
-              {isSignIn ? 'Sign up free' : 'Sign in'}
-            </Link>
+            Need an account? Contact your system administrator.
           </p>
         </div>
       </div>

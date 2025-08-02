@@ -9,7 +9,6 @@ import {
   Package,
   Calendar,
   Hash,
-  AlertTriangle,
 } from 'lucide-react';
 import React from 'react';
 import type { ProductPOS } from '@/types';
@@ -93,22 +92,8 @@ export const Cart: React.FC<CartProps> = ({
                         </h4>
                       </div>
 
-                      {/* Urgency Badge and Delete Button */}
+                      {/* Delete Button Only */}
                       <div className="flex items-center gap-2">
-                        <div
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            urgency.level === 'expiring_soon'
-                              ? 'bg-red-100 text-red-700 border border-red-200'
-                              : urgency.level === 'moderately_close'
-                              ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                              : 'bg-green-100 text-green-700 border border-green-200'
-                          }`}
-                        >
-                          {urgency.level === 'expiring_soon' && (
-                            <AlertTriangle className="w-3 h-3 inline mr-1" />
-                          )}
-                          {urgency.days}d
-                        </div>
                         <button
                           onClick={() => onRemoveFromCart(item.id)}
                           className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-lg transition-all"

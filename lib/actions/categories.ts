@@ -3,6 +3,12 @@
 import { db } from '@/database/drizzle';
 import { categories } from '@/database/schema';
 import { Category, CategoryParams } from '@/types';
+import {
+  getCategoriesSchema,
+  createCategorySchema,
+  updateCategorySchema,
+  deleteCategorySchema,
+} from '@/lib/validations';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
@@ -11,14 +17,27 @@ import { revalidatePath } from 'next/cache';
  */
 export async function getCategories(pharmacyId: number) {
   try {
+    // Validate input with Zod
+    const validatedData = getCategoriesSchema.parse({ pharmacyId });
+
     const result = await db
       .select()
       .from(categories)
       .orderBy(categories.name)
-      .where(eq(categories.pharmacyId, pharmacyId));
+      .where(eq(categories.pharmacyId, validatedData.pharmacyId));
 
     return result;
   } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof Error && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string }> };
+      console.error(
+        'Validation error in getCategories:',
+        zodError.issues[0]?.message,
+      );
+      return [];
+    }
+
     console.error('Error fetching categories:', error);
     return [];
   }
@@ -31,13 +50,16 @@ export async function createCategory(
   params: Pick<Category, 'name' | 'description'> & { pharmacyId: number },
 ) {
   try {
+    // Validate input with Zod
+    const validatedData = createCategorySchema.parse(params);
+
     const existingCategory = await db
       .select()
       .from(categories)
       .where(
         and(
-          eq(categories.name, params.name),
-          eq(categories.pharmacyId, params.pharmacyId),
+          eq(categories.name, validatedData.name),
+          eq(categories.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -48,7 +70,10 @@ export async function createCategory(
       };
     }
 
-    const newCategory = await db.insert(categories).values(params).returning();
+    const newCategory = await db
+      .insert(categories)
+      .values(validatedData)
+      .returning();
 
     revalidatePath('/categories');
 
@@ -57,6 +82,15 @@ export async function createCategory(
       data: JSON.parse(JSON.stringify(newCategory[0])),
     };
   } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof Error && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string }> };
+      return {
+        success: false,
+        message: zodError.issues[0]?.message || 'Invalid input data',
+      };
+    }
+
     console.error('Error creating category:', error);
     return {
       success: false,
@@ -72,13 +106,16 @@ export const updateCategory = async (
   data: { id: number; pharmacyId: number } & CategoryParams,
 ) => {
   try {
+    // Validate input with Zod
+    const validatedData = updateCategorySchema.parse(data);
+
     const existingCategory = await db
       .select()
       .from(categories)
       .where(
         and(
-          eq(categories.id, data.id),
-          eq(categories.pharmacyId, data.pharmacyId),
+          eq(categories.id, validatedData.id),
+          eq(categories.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -92,25 +129,25 @@ export const updateCategory = async (
       .from(categories)
       .where(
         and(
-          eq(categories.name, data.name),
-          eq(categories.pharmacyId, data.pharmacyId),
+          eq(categories.name, validatedData.name),
+          eq(categories.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
-    if (nameCheck.length > 0 && nameCheck[0].id !== data.id) {
+    if (nameCheck.length > 0 && nameCheck[0].id !== validatedData.id) {
       return { success: false, message: 'Category name already exists' };
     }
 
     await db
       .update(categories)
       .set({
-        name: data.name,
-        description: data.description,
+        name: validatedData.name,
+        description: validatedData.description,
       })
       .where(
         and(
-          eq(categories.id, data.id),
-          eq(categories.pharmacyId, data.pharmacyId),
+          eq(categories.id, validatedData.id),
+          eq(categories.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -118,6 +155,15 @@ export const updateCategory = async (
 
     return { success: true };
   } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof Error && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string }> };
+      return {
+        success: false,
+        message: zodError.issues[0]?.message || 'Invalid input data',
+      };
+    }
+
     console.error('Error updating category:', error);
     return {
       success: false,
@@ -134,13 +180,19 @@ export const deleteCategory = async (
   pharmacyId: number,
 ) => {
   try {
+    // Validate input with Zod
+    const validatedData = deleteCategorySchema.parse({
+      id: categoryId,
+      pharmacyId,
+    });
+
     const existingCategory = await db
       .select()
       .from(categories)
       .where(
         and(
-          eq(categories.id, categoryId),
-          eq(categories.pharmacyId, pharmacyId),
+          eq(categories.id, validatedData.id),
+          eq(categories.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -152,8 +204,8 @@ export const deleteCategory = async (
       .delete(categories)
       .where(
         and(
-          eq(categories.id, categoryId),
-          eq(categories.pharmacyId, pharmacyId),
+          eq(categories.id, validatedData.id),
+          eq(categories.pharmacyId, validatedData.pharmacyId),
         ),
       );
 
@@ -164,6 +216,15 @@ export const deleteCategory = async (
       message: 'Category deleted successfully',
     };
   } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof Error && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string }> };
+      return {
+        success: false,
+        message: zodError.issues[0]?.message || 'Invalid input data',
+      };
+    }
+
     console.error('Error deleting category:', error);
     return {
       success: false,

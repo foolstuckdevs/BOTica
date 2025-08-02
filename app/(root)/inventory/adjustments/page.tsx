@@ -5,9 +5,21 @@ import { columns } from './columns';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { getAdjustments } from '@/lib/actions/adjustment';
+import { auth } from '@/auth';
 
 const Page = async () => {
-  const pharmacyId = 1;
+  const session = await auth();
+
+  // Middleware ensures session exists for protected routes
+  if (!session?.user) {
+    throw new Error('Unauthorized: session missing. Check auth middleware.');
+  }
+
+  if (!session.user.pharmacyId) {
+    throw new Error('Unauthorized: user not assigned to any pharmacy.');
+  }
+
+  const pharmacyId = session.user.pharmacyId;
   const result = await getAdjustments(pharmacyId);
 
   return (

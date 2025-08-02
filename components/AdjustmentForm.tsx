@@ -5,15 +5,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { getSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { Search, Package, CheckCircle, X, ChevronLeft } from 'lucide-react';
 import { createAdjustment } from '@/lib/actions/adjustment';
-import { adjustmentSchema } from '@/lib/validation';
+import { createAdjustmentSchema } from '@/lib/validations';
 import { Button } from './ui/button';
 import { Product } from '@/types';
 
-type AdjustmentFormValues = z.infer<typeof adjustmentSchema>;
+type AdjustmentFormValues = z.infer<typeof createAdjustmentSchema>;
 
 interface PendingAdjustment extends AdjustmentFormValues {
   productName: string;
@@ -24,9 +23,15 @@ interface PendingAdjustment extends AdjustmentFormValues {
 
 interface AdjustmentFormProps {
   products: Product[];
+  userId: string; // Pass userId from server component
+  pharmacyId: number; // Pass pharmacyId from server component
 }
 
-const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
+const AdjustmentForm = ({
+  products,
+  userId,
+  pharmacyId,
+}: AdjustmentFormProps) => {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -45,7 +50,7 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
     formState: { errors },
     setValue,
   } = useForm<AdjustmentFormValues>({
-    resolver: zodResolver(adjustmentSchema),
+    resolver: zodResolver(createAdjustmentSchema),
   });
 
   const quantityChange = watch('quantityChange') || 0;
@@ -118,19 +123,10 @@ const AdjustmentForm = ({ products }: AdjustmentFormProps) => {
   };
 
   const submitAllAdjustments = async () => {
-    const pharmacyId = 1;
-
     if (pendingAdjustments.length === 0) return;
 
     try {
       setLoading(true);
-      const session = await getSession();
-      const userId = session?.user?.id;
-
-      if (!userId) {
-        toast.error('You must be logged in to submit adjustments.');
-        return;
-      }
 
       for (const adj of pendingAdjustments) {
         const res = await createAdjustment({

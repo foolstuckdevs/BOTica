@@ -6,12 +6,11 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
-import { purchaseOrderSchema } from '@/lib/validation';
+import { purchaseOrderSchema } from '@/lib/validations';
 import {
   createPurchaseOrder,
   updatePurchaseOrder,
 } from '@/lib/actions/purchase-order';
-import { getSession } from 'next-auth/react';
 
 import { Supplier, Product } from '@/types';
 
@@ -36,6 +35,8 @@ interface PurchaseOrderFormProps {
   suppliers: Supplier[];
   products: Product[];
   initialValues?: PurchaseOrderFormValues & { id?: number; status?: string };
+  userId: string; // Pass userId from server component
+  pharmacyId: number; // Pass pharmacyId from server component
 }
 
 const PurchaseOrderForm = ({
@@ -43,6 +44,8 @@ const PurchaseOrderForm = ({
   suppliers,
   products,
   initialValues,
+  userId,
+  pharmacyId,
 }: PurchaseOrderFormProps) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -112,15 +115,10 @@ const PurchaseOrderForm = ({
     setIsSubmitting(true);
 
     try {
-      const session = await getSession();
-      const userId = session?.user?.id;
-
       if (!userId) {
         toast.error('You must be logged in.');
         return;
       }
-
-      const pharmacyId = 1; // TODO: replace with dynamic value from session later
 
       const payload = {
         ...values,

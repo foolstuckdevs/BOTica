@@ -9,9 +9,21 @@ import {
   getProductPerformance,
   getBatchProfitData,
 } from '@/lib/actions/sales-reports';
+import { auth } from '@/auth';
 
 const page = async () => {
-  const pharmacyId = 1; // TODO: Replace with session-based pharmacyId
+  const session = await auth();
+
+  // Middleware ensures session exists for protected routes
+  if (!session?.user) {
+    throw new Error('Unauthorized: session missing. Check auth middleware.');
+  }
+
+  if (!session.user.pharmacyId) {
+    throw new Error('Unauthorized: user not assigned to any pharmacy.');
+  }
+
+  const pharmacyId = session.user.pharmacyId;
 
   try {
     // Fetch sales data for different periods

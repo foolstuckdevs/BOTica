@@ -5,56 +5,19 @@ import { eq, and } from 'drizzle-orm';
 import { categories, products, suppliers, saleItems } from '@/database/schema';
 import { ProductParams } from '@/types';
 import { revalidatePath } from 'next/cache';
-
-// Lazy loading: page (1-based), pageSize
-// export const getProducts = async (
-//   pharmacyId: number,
-//   page = 1,
-//   pageSize = 20,
-// ) => {
-//   try {
-//     const offset = (page - 1) * pageSize;
-
-//     const result = await db
-//       .select({
-//         id: products.id,
-//         name: products.name,
-//         genericName: products.genericName,
-//         categoryId: products.categoryId,
-//         categoryName: categories.name,
-//         barcode: products.barcode,
-//         lotNumber: products.lotNumber,
-//         expiryDate: products.expiryDate,
-//         quantity: products.quantity,
-//         costPrice: products.costPrice,
-//         sellingPrice: products.sellingPrice,
-//         minStockLevel: products.minStockLevel,
-//         unit: products.unit,
-//         supplierId: products.supplierId,
-//         supplierName: suppliers.name,
-//         imageUrl: products.imageUrl,
-//         createdAt: products.createdAt,
-//         updatedAt: products.updatedAt,
-//         brandName: products.brandName,
-//         dosageForm: products.dosageForm,
-//       })
-//       .from(products)
-//       .leftJoin(categories, eq(products.categoryId, categories.id))
-//       .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
-//       .where(eq(products.pharmacyId, pharmacyId))
-//       .orderBy(products.name)
-//       .limit(pageSize)
-//       .offset(offset);
-
-//     return result;
-//   } catch (error) {
-//     console.error('Error fetching all products:', error);
-//     return [];
-//   }
-// };
+import {
+  pharmacyIdSchema,
+  productIdSchema,
+  createProductSchema,
+  updateProductSchema,
+  getProductBatchesSchema,
+} from '@/lib/validations';
 
 export const getProducts = async (pharmacyId: number) => {
   try {
+    // Validate with Zod
+    pharmacyIdSchema.parse(pharmacyId);
+
     const result = await db
       .select({
         id: products.id,
@@ -96,6 +59,9 @@ export const getProductBatches = async (
   pharmacyId: number,
 ) => {
   try {
+    // Validate with Zod
+    getProductBatchesSchema.parse({ productName, pharmacyId });
+
     const result = await db
       .select({
         id: products.id,
@@ -134,6 +100,10 @@ export const getProductBatches = async (
 
 export const getProductById = async (id: number, pharmacyId: number) => {
   try {
+    // Validate with Zod
+    productIdSchema.parse(id);
+    pharmacyIdSchema.parse(pharmacyId);
+
     const result = await db
       .select({
         id: products.id,
@@ -173,17 +143,20 @@ export const createProduct = async (
   params: ProductParams & { pharmacyId: number },
 ) => {
   try {
+    // Validate with Zod
+    const validatedData = createProductSchema.parse(params);
+
     // For batch tracking: Allow same barcode with different batch/lot numbers
     // Only check for duplicate barcode + lot combination if both are provided
-    if (params.barcode && params.lotNumber) {
+    if (validatedData.barcode && validatedData.lotNumber) {
       const existingProduct = await db
         .select()
         .from(products)
         .where(
           and(
-            eq(products.barcode, params.barcode),
-            eq(products.lotNumber, params.lotNumber),
-            eq(products.pharmacyId, params.pharmacyId),
+            eq(products.barcode, validatedData.barcode),
+            eq(products.lotNumber, validatedData.lotNumber),
+            eq(products.pharmacyId, validatedData.pharmacyId),
           ),
         );
 
@@ -195,7 +168,10 @@ export const createProduct = async (
       }
     }
 
-    const newProduct = await db.insert(products).values(params).returning();
+    const newProduct = await db
+      .insert(products)
+      .values(validatedData)
+      .returning();
 
     revalidatePath('/products');
 
@@ -218,10 +194,18 @@ export const updateProduct = async (
   pharmacyId: number,
 ) => {
   try {
+    // Validate with Zod
+    const validatedData = updateProductSchema.parse({ id, params, pharmacyId });
+
     const existingProductArr = await db
       .select()
       .from(products)
-      .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
+      .where(
+        and(
+          eq(products.id, validatedData.id),
+          eq(products.pharmacyId, validatedData.pharmacyId),
+        ),
+      );
 
     if (existingProductArr.length === 0) {
       return { success: false, message: 'Product not found' };
@@ -229,11 +213,14 @@ export const updateProduct = async (
     const existingProduct = existingProductArr[0];
 
     // Prevent changing lot number if product is in use
-    if (params.lotNumber && params.lotNumber !== existingProduct.lotNumber) {
+    if (
+      validatedData.params.lotNumber &&
+      validatedData.params.lotNumber !== existingProduct.lotNumber
+    ) {
       const isInUse = await db
         .select()
         .from(saleItems)
-        .where(eq(saleItems.productId, id));
+        .where(eq(saleItems.productId, validatedData.id));
       if (isInUse.length > 0) {
         return {
           success: false,
@@ -245,19 +232,19 @@ export const updateProduct = async (
 
     // Only check for duplicate barcode+lot if either is being changed
     const willUpdateBarcode =
-      typeof params.barcode === 'string' &&
-      params.barcode !== existingProduct.barcode;
+      typeof validatedData.params.barcode === 'string' &&
+      validatedData.params.barcode !== existingProduct.barcode;
     const willUpdateLot =
-      typeof params.lotNumber === 'string' &&
-      params.lotNumber !== existingProduct.lotNumber;
+      typeof validatedData.params.lotNumber === 'string' &&
+      validatedData.params.lotNumber !== existingProduct.lotNumber;
     if (willUpdateBarcode || willUpdateLot) {
       const newBarcode =
-        typeof params.barcode === 'string'
-          ? params.barcode
+        typeof validatedData.params.barcode === 'string'
+          ? validatedData.params.barcode
           : existingProduct.barcode;
       const newLot =
-        typeof params.lotNumber === 'string'
-          ? params.lotNumber
+        typeof validatedData.params.lotNumber === 'string'
+          ? validatedData.params.lotNumber
           : existingProduct.lotNumber;
       if (typeof newBarcode === 'string' && typeof newLot === 'string') {
         const duplicate = await db
@@ -267,10 +254,10 @@ export const updateProduct = async (
             and(
               eq(products.barcode, newBarcode),
               eq(products.lotNumber, newLot),
-              eq(products.pharmacyId, pharmacyId),
+              eq(products.pharmacyId, validatedData.pharmacyId),
             ),
           );
-        if (duplicate.length > 0 && duplicate[0].id !== id) {
+        if (duplicate.length > 0 && duplicate[0].id !== validatedData.id) {
           return {
             success: false,
             message:
@@ -281,15 +268,20 @@ export const updateProduct = async (
     }
 
     // Handle image deletion if imageUrl is set to empty string
-    if (params.imageUrl === '' && existingProduct.imageUrl) {
+    if (validatedData.params.imageUrl === '' && existingProduct.imageUrl) {
       const { deleteImageFromSupabase } = await import('@/lib/utils');
       await deleteImageFromSupabase(existingProduct.imageUrl);
     }
 
     const updatedProductArr = await db
       .update(products)
-      .set(params)
-      .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)))
+      .set(validatedData.params)
+      .where(
+        and(
+          eq(products.id, validatedData.id),
+          eq(products.pharmacyId, validatedData.pharmacyId),
+        ),
+      )
       .returning();
 
     revalidatePath('/products');
@@ -302,13 +294,18 @@ export const updateProduct = async (
     console.error('Error updating product:', error);
     return {
       success: false,
-      message: 'Failed to update product',
+      message:
+        error instanceof Error ? error.message : 'Failed to update product',
     };
   }
 };
 
 export const deleteProduct = async (id: number, pharmacyId: number) => {
   try {
+    // Validate with Zod
+    productIdSchema.parse(id);
+    pharmacyIdSchema.parse(pharmacyId);
+
     const existingProduct = await db
       .select()
       .from(products)

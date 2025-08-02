@@ -5,11 +5,15 @@ import { products, saleItems, sales, pharmacies } from '@/database/schema';
 import type { Pharmacy } from '@/types';
 import { eq, and, gte } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { processSaleSchema, pharmacyIdSchema } from '@/lib/validations';
 
 // Get all products for POS
 
 export const getAllProductsPOS = async (pharmacyId: number) => {
   try {
+    // Validate with Zod
+    pharmacyIdSchema.parse(pharmacyId);
+
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10); // 'YYYY-MM-DD'
 
@@ -48,6 +52,9 @@ export const getAllProductsPOS = async (pharmacyId: number) => {
 export const getPharmacy = async (
   pharmacyId: number,
 ): Promise<Pharmacy | null> => {
+  // Validate with Zod
+  pharmacyIdSchema.parse(pharmacyId);
+
   const pharmacyArr = await db
     .select()
     .from(pharmacies)
@@ -80,29 +87,39 @@ export const processSale = async (
   cashReceived: number = 0,
 ) => {
   try {
-    const totalAmount = cartItems.reduce(
+    // Validate all parameters with Zod
+    const validatedData = processSaleSchema.parse({
+      cartItems,
+      paymentMethod,
+      discount,
+      pharmacyId,
+      userId,
+      cashReceived,
+    });
+
+    const totalAmount = validatedData.cartItems.reduce(
       (total, item) => total + parseFloat(item.unitPrice) * item.quantity,
       0,
     );
 
-    const discountedTotal = totalAmount - discount;
-    const change = cashReceived - discountedTotal;
+    const discountedTotal = totalAmount - validatedData.discount;
+    const change = validatedData.cashReceived - discountedTotal;
 
-    if (cashReceived < discountedTotal) {
+    if (validatedData.cashReceived < discountedTotal) {
       throw new Error('Insufficient cash received');
     }
 
     const result = await db.transaction(async (tx) => {
       // 1. Validate and fetch product stocks
       const validatedProducts = await Promise.all(
-        cartItems.map(async (item) => {
+        validatedData.cartItems.map(async (item) => {
           const found = await tx
             .select()
             .from(products)
             .where(
               and(
                 eq(products.id, item.productId),
-                eq(products.pharmacyId, pharmacyId),
+                eq(products.pharmacyId, validatedData.pharmacyId),
               ),
             );
 
@@ -127,17 +144,17 @@ export const processSale = async (
         .values({
           invoiceNumber: `INV-${Date.now()}`,
           totalAmount: totalAmount.toFixed(2),
-          discount: discount.toFixed(2),
-          paymentMethod,
-          amountReceived: cashReceived.toFixed(2),
+          discount: validatedData.discount.toFixed(2),
+          paymentMethod: validatedData.paymentMethod,
+          amountReceived: validatedData.cashReceived.toFixed(2),
           changeDue: Math.max(0, change).toFixed(2),
-          userId,
-          pharmacyId,
+          userId: validatedData.userId,
+          pharmacyId: validatedData.pharmacyId,
         })
         .returning();
 
       // 3. Insert sale items and update product stock
-      for (const item of cartItems) {
+      for (const item of validatedData.cartItems) {
         const product = validatedProducts.find((p) => p.id === item.productId)!;
 
         await tx.insert(saleItems).values({
@@ -156,7 +173,7 @@ export const processSale = async (
           .where(
             and(
               eq(products.id, item.productId),
-              eq(products.pharmacyId, pharmacyId),
+              eq(products.pharmacyId, validatedData.pharmacyId),
             ),
           );
       }

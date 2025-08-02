@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { ProductCard } from '@/components/ProductCard';
@@ -16,15 +15,18 @@ interface POSPageProps {
   products: ProductPOS[];
   pharmacyInfo: Pharmacy | null;
   pharmacyId: number;
+  userId: string; // Pass userId from server component
+  userName: string; // Pass userName from server component
 }
 
 export default function POSPage({
   products: initialProducts,
   pharmacyInfo,
   pharmacyId,
+  userId,
+  userName,
 }: POSPageProps) {
-  const { data: session } = useSession();
-  const [products] = useState<ProductPOS[]>(initialProducts);
+  const [products, setProducts] = useState<ProductPOS[]>(initialProducts);
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountPercentage, setDiscountPercentage] = useState(0);
@@ -139,6 +141,19 @@ export default function POSPage({
       toast.error('Insufficient cash received');
       return;
     }
+
+    // Prevent multiple executions
+    if (isProcessing) {
+      console.log('Payment already processing, skipping...');
+      return;
+    }
+
+    // Validate user
+    if (!userId) {
+      toast.error('User authentication required.');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const result = await processSale(
@@ -150,7 +165,7 @@ export default function POSPage({
         'CASH',
         discountAmount,
         pharmacyId,
-        session?.user?.id ?? '',
+        userId,
         cashReceived,
       );
       if (result.success && result.data) {
@@ -167,7 +182,7 @@ export default function POSPage({
               amountReceived: cashReceived,
               changeDue: Math.max(0, change),
               user: {
-                fullName: session?.user?.name || 'Unknown User',
+                fullName: userName,
               },
               items: [], // Will be passed separately as second parameter
             },
@@ -184,6 +199,21 @@ export default function POSPage({
             toast.warning('Receipt printed with issues - sale was processed');
           }
         }
+
+        // Update product quantities after successful sale
+        setProducts((prevProducts) =>
+          prevProducts.map((product) => {
+            const cartItem = cart.find((item) => item.id === product.id);
+            if (cartItem) {
+              return {
+                ...product,
+                quantity: Math.max(0, product.quantity - cartItem.quantity),
+              };
+            }
+            return product;
+          }),
+        );
+
         setCart([]);
         setCashReceived(0);
         setDiscountPercentage(0);
@@ -210,7 +240,9 @@ export default function POSPage({
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center gap-3 mb-4">
                 <Search className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Search Products</h2>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Search Products
+                </h2>
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -260,13 +292,14 @@ export default function POSPage({
                     <Search className="w-10 h-10 text-gray-400" />
                   </div>
                   <h3 className="text-lg font-medium mb-2 text-gray-900">
-                    {searchTerm ? 'No products found' : 'Start searching for products'}
+                    {searchTerm
+                      ? 'No products found'
+                      : 'Start searching for products'}
                   </h3>
                   <p className="text-sm text-gray-500">
-                    {searchTerm 
+                    {searchTerm
                       ? 'Try adjusting your search terms or browse all products'
-                      : 'Enter a product name, brand, or lot number to begin'
-                    }
+                      : 'Enter a product name, brand, or lot number to begin'}
                   </p>
                 </div>
               </div>

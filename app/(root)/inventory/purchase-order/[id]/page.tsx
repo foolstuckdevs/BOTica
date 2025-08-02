@@ -2,11 +2,24 @@ import PurchaseOrderDetails from '@/components/PurchaseOrderDetails';
 import { getPurchaseOrderById } from '@/lib/actions/purchase-order';
 import { getSuppliers } from '@/lib/actions/suppliers';
 import { getProducts } from '@/lib/actions/products';
+import { auth } from '@/auth';
 
 const Page = async ({ params }: { params: { id: string } }) => {
   const awaitedParams = await Promise.resolve(params);
   const orderId = Number(awaitedParams.id);
-  const pharmacyId = 1; // TODO: Replace with session pharmacyId
+
+  const session = await auth();
+
+  // Middleware ensures session exists for protected routes
+  if (!session?.user) {
+    throw new Error('Unauthorized: session missing. Check auth middleware.');
+  }
+
+  if (!session.user.pharmacyId) {
+    throw new Error('Unauthorized: user not assigned to any pharmacy.');
+  }
+
+  const pharmacyId = session.user.pharmacyId;
 
   const [orderRaw, suppliers, products] = await Promise.all([
     getPurchaseOrderById(orderId, pharmacyId),
