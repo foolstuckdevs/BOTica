@@ -1,23 +1,8 @@
 import { format } from 'date-fns';
-import { motion } from 'framer-motion';
-import { DollarSign, Smartphone, User, Clock, Tag } from 'lucide-react';
-import { JSX } from 'react';
+import { User, Tag, Receipt } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 type PaymentMethod = 'CASH' | 'GCASH';
-
-const paymentConfig: Record<
-  PaymentMethod,
-  { color: string; icon: JSX.Element }
-> = {
-  CASH: {
-    color: 'bg-blue-50 text-blue-600 border-blue-100',
-    icon: <DollarSign className="w-3 h-3" />,
-  },
-  GCASH: {
-    color: 'bg-green-50 text-green-600 border-green-100',
-    icon: <Smartphone className="w-3 h-3" />,
-  },
-};
 
 interface TransactionCardProps {
   transaction: {
@@ -30,84 +15,89 @@ interface TransactionCardProps {
     user: {
       fullName: string;
     };
+    items: Array<{
+      productName: string;
+      quantity: number;
+      unitPrice: string;
+      subtotal: string;
+    }>;
   };
   onClick: () => void;
-  index?: number;
 }
 
 export const TransactionCard = ({
   transaction,
   onClick,
-  index = 0,
 }: TransactionCardProps) => {
   const total = parseFloat(transaction.totalAmount);
   const discount = parseFloat(transaction.discount);
   const discountedTotal = total - discount;
-  const discountPercentage = (discount / total) * 100;
-  const payment = paymentConfig[transaction.paymentMethod];
+  const discountPercentage = total > 0 ? (discount / total) * 100 : 0;
+  const itemCount = transaction.items.reduce(
+    (sum, item) => sum + item.quantity,
+    0,
+  );
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.3 }}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-all cursor-pointer group"
+    <div
+      className="bg-white rounded-lg border border-gray-200 p-3 hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer group"
       onClick={onClick}
     >
-      <div className="flex justify-between items-start gap-3">
+      <div className="flex justify-between items-center gap-3">
+        {/* Left side - Transaction details */}
         <div className="flex-1">
+          {/* Header - Compact inline layout */}
           <div className="flex items-center gap-2 mb-2">
-            <span className="font-semibold text-gray-900 text-sm sm:text-base">
+            <div className="bg-gray-100 p-1.5 rounded">
+              <Receipt className="w-3 h-3 text-gray-600" />
+            </div>
+            <h3 className="font-semibold text-gray-900 text-sm">
               #{transaction.invoiceNumber}
-            </span>
-            <span
-              className={`text-xs px-2 py-1 rounded-full ${payment.color} border flex items-center gap-1`}
-            >
-              {payment.icon}
-              {transaction.paymentMethod}
+            </h3>
+            <span className="text-xs text-gray-500">
+              {format(new Date(transaction.createdAt), 'MMM d, h:mm a')}
             </span>
           </div>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
-            <div className="flex items-center gap-1 text-xs text-gray-500">
-              <Clock className="w-3 h-3 text-gray-400" />
-              {format(new Date(transaction.createdAt), 'MMM d, yyyy · h:mm a')}
+          {/* Transaction info - Compact inline layout */}
+          <div className="flex items-center gap-3 text-xs text-gray-600 mb-2">
+            <div className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              <span>Served by {transaction.user.fullName}</span>
             </div>
-            <div className="flex items-center gap-1 text-xs text-gray-500">
-              <User className="w-3 h-3 text-gray-400" />
-              {transaction.user.fullName}
+            <div>
+              {itemCount} item{itemCount !== 1 ? 's' : ''}
             </div>
             {discount > 0 && (
-              <div className="flex items-center gap-1 text-xs text-red-500">
-                <Tag className="w-3 h-3 text-red-400" />
+              <Badge
+                variant="secondary"
+                className="bg-red-50 text-red-700 border-red-200 text-xs px-1.5 py-0.5"
+              >
+                <Tag className="w-3 h-3 mr-1" />
                 {discountPercentage.toFixed(0)}% OFF
-              </div>
+              </Badge>
             )}
           </div>
         </div>
 
-        <div className="text-right min-w-[90px]">
-          <p className="text-lg font-bold text-gray-900">
-            ₱{discountedTotal.toFixed(2)}
-          </p>
-          {discount > 0 && (
-            <div className="flex flex-col mt-1">
+        {/* Right side - Amount and button */}
+        <div className="text-right">
+          <div className="mb-2">
+            <p className="text-lg font-bold text-gray-900">
+              ₱{discountedTotal.toFixed(2)}
+            </p>
+            {discount > 0 && (
               <p className="text-xs text-gray-400 line-through">
                 ₱{total.toFixed(2)}
               </p>
-              <p className="text-xs text-red-500">-₱{discount.toFixed(2)}</p>
-            </div>
-          )}
+            )}
+          </div>
+
+          <span className="text-xs text-gray-600 hover:text-gray-800 cursor-pointer transition-colors">
+            View Details
+          </span>
         </div>
       </div>
-
-      <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
-        <span className="text-xs text-gray-400 group-hover:text-gray-600 transition-colors">
-          View details →
-        </span>
-      </div>
-    </motion.div>
+    </div>
   );
 };

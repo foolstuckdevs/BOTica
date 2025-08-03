@@ -4,6 +4,14 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Package,
   Search,
@@ -25,16 +33,26 @@ export const BatchProfitTable = ({
   loading = false,
 }: BatchProfitTableProps) => {
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [profitFilter, setProfitFilter] = React.useState<
+    'all' | 'profitable' | 'loss'
+  >('all');
 
   // Use the actual data from the database
   const displayData = batchData;
 
   // Filter data
-  const filteredData = displayData.filter(
-    (item) =>
+  const filteredData = displayData.filter((item) => {
+    const matchesSearch =
       item.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.batch.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+      item.batch.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesProfit =
+      profitFilter === 'all' ||
+      (profitFilter === 'profitable' && item.profit > 0) ||
+      (profitFilter === 'loss' && item.profit <= 0);
+
+    return matchesSearch && matchesProfit;
+  });
 
   const getExpiryStatus = (expiryDate: string) => {
     const expiry = new Date(expiryDate);
@@ -157,6 +175,34 @@ export const BatchProfitTable = ({
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
+          </div>
+
+          <div className="flex gap-4">
+            <Select
+              value={profitFilter}
+              onValueChange={(value: typeof profitFilter) =>
+                setProfitFilter(value)
+              }
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by performance" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Batches</SelectItem>
+                <SelectItem value="profitable">Profitable Only</SelectItem>
+                <SelectItem value="loss">Loss/Break-even</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm('');
+                setProfitFilter('all');
+              }}
+            >
+              Clear Filters
+            </Button>
           </div>
         </div>
       </CardHeader>

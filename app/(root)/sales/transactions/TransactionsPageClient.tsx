@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Pharmacy, Transaction } from '@/types';
+import type { Transaction } from '@/types';
 import { Input } from '@/components/ui/input';
 import { TransactionCard } from '@/components/TransactionCard';
 import { TransactionDetailsModal } from '@/components/TransactionsDetailModal';
@@ -9,12 +9,10 @@ import { Search } from 'lucide-react';
 
 type TransactionsPageClientProps = {
   transactions: Transaction[];
-  pharmacyInfo: Pharmacy | undefined;
 };
 
 export default function TransactionsPageClient({
   transactions,
-  pharmacyInfo,
 }: TransactionsPageClientProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTransaction, setSelectedTransaction] =
@@ -32,18 +30,22 @@ export default function TransactionsPageClient({
     {},
   );
 
-  const transactionList: Transaction[] = Object.values(
-    groupedTransactions,
-  ).filter((t) => {
-    const lowerSearch = searchTerm.toLowerCase();
-    return (
-      t.invoiceNumber.toLowerCase().includes(lowerSearch) ||
-      t.user.fullName.toLowerCase().includes(lowerSearch) ||
-      t.items.some((item) =>
-        item.productName.toLowerCase().includes(lowerSearch),
-      )
-    );
-  });
+  const transactionList: Transaction[] = Object.values(groupedTransactions)
+    .filter((t) => {
+      const lowerSearch = searchTerm.toLowerCase();
+      return (
+        t.invoiceNumber.toLowerCase().includes(lowerSearch) ||
+        t.user.fullName.toLowerCase().includes(lowerSearch)
+      );
+    })
+    .sort((a, b) => {
+      // Sort by createdAt in descending order (latest first)
+      const dateA =
+        typeof a.createdAt === 'string' ? new Date(a.createdAt) : a.createdAt;
+      const dateB =
+        typeof b.createdAt === 'string' ? new Date(b.createdAt) : b.createdAt;
+      return dateB.getTime() - dateA.getTime();
+    });
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
@@ -55,7 +57,7 @@ export default function TransactionsPageClient({
               Transaction History
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              View and manage all sales transactions
+              View all sales transactions
             </p>
           </div>
         </div>
@@ -69,12 +71,27 @@ export default function TransactionsPageClient({
               <Search className="h-4 w-4 text-gray-400" />
             </div>
             <Input
-              placeholder="Search transactions by invoice number, cashier, or items..."
+              placeholder="Search by invoice number or cashier name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 pr-10 h-11 text-base"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                <span className="text-lg">×</span>
+              </button>
+            )}
           </div>
+          {searchTerm && (
+            <p className="text-sm text-gray-500 mt-2">
+              {transactionList.length} result
+              {transactionList.length !== 1 ? 's' : ''} found for &ldquo;
+              {searchTerm}&rdquo;
+            </p>
+          )}
         </div>
       </div>
 
@@ -82,21 +99,21 @@ export default function TransactionsPageClient({
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-6xl mx-auto">
           {transactionList.length === 0 ? (
-            <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center justify-center text-center h-64">
-              <div className="bg-gray-100 p-4 rounded-full mb-3">
-                <Search className="h-6 w-6 text-gray-400" />
+            <div className="bg-white rounded-xl border border-gray-200 p-12 flex flex-col items-center justify-center text-center">
+              <div className="bg-gray-100 p-4 rounded-full mb-4">
+                <Search className="h-8 w-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-1">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 {searchTerm ? 'No transactions found' : 'No transactions yet'}
               </h3>
-              <p className="text-sm text-gray-500 max-w-md">
+              <p className="text-gray-500 max-w-md">
                 {searchTerm
-                  ? "Try adjusting your search or filter to find what you're looking for"
+                  ? "Try adjusting your search to find what you're looking for"
                   : 'All completed sales will appear here'}
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
               {transactionList.map((transaction) => (
                 <TransactionCard
                   key={transaction.id}
@@ -110,13 +127,24 @@ export default function TransactionsPageClient({
                   onClick={() => setSelectedTransaction(transaction)}
                 />
               ))}
+
+              {/* Summary */}
+              {transactionList.length > 5 && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="text-center text-sm text-gray-500">
+                    Showing {transactionList.length} transaction
+                    {transactionList.length !== 1 ? 's' : ''}
+                    {searchTerm && ` matching "${searchTerm}"`}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
 
       {/* Transaction Details Modal */}
-      {selectedTransaction && pharmacyInfo && (
+      {selectedTransaction && (
         <TransactionDetailsModal
           transaction={{
             ...selectedTransaction,
@@ -126,10 +154,6 @@ export default function TransactionsPageClient({
                 : selectedTransaction.createdAt,
           }}
           onClose={() => setSelectedTransaction(null)}
-          pharmacyInfo={{
-            name: pharmacyInfo.name ?? '',
-            address: pharmacyInfo.address ?? '',
-          }}
         />
       )}
     </div>

@@ -1,5 +1,4 @@
 import { getTransactions } from '@/lib/actions/transactions';
-import { getPharmacy } from '@/lib/actions/sales';
 import TransactionsPageClient from './TransactionsPageClient';
 import { auth } from '@/auth';
 
@@ -17,12 +16,6 @@ export default async function TransactionsPage() {
 
   const pharmacyId = session.user.pharmacyId;
   const transactions = await getTransactions(pharmacyId);
-  const pharmacyInfo = await getPharmacy(pharmacyId);
 
-  return (
-    <TransactionsPageClient
-      transactions={transactions}
-      pharmacyInfo={pharmacyInfo ?? undefined}
-    />
-  );
+  return <TransactionsPageClient transactions={transactions} />;
 }
