@@ -8,11 +8,19 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Search, Package, CheckCircle, X, ChevronLeft } from 'lucide-react';
 import { createAdjustment } from '@/lib/actions/adjustment';
-import { createAdjustmentSchema } from '@/lib/validations';
+import { adjustmentReasonSchema } from '@/lib/validations/common';
 import { Button } from './ui/button';
 import { Product } from '@/types';
 
-type AdjustmentFormValues = z.infer<typeof createAdjustmentSchema>;
+// Form schema for client-side validation (only fields user fills out)
+const adjustmentFormSchema = z.object({
+  productId: z.number().int().positive(),
+  quantityChange: z.number().int(),
+  reason: adjustmentReasonSchema,
+  notes: z.string().optional(),
+});
+
+type AdjustmentFormValues = z.infer<typeof adjustmentFormSchema>;
 
 interface PendingAdjustment extends AdjustmentFormValues {
   productName: string;
@@ -50,7 +58,7 @@ const AdjustmentForm = ({
     formState: { errors },
     setValue,
   } = useForm<AdjustmentFormValues>({
-    resolver: zodResolver(createAdjustmentSchema),
+    resolver: zodResolver(adjustmentFormSchema),
   });
 
   const quantityChange = watch('quantityChange') || 0;
@@ -376,6 +384,12 @@ const AdjustmentForm = ({
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                {/* Hidden productId field */}
+                <input
+                  type="hidden"
+                  {...register('productId', { valueAsNumber: true })}
+                />
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Quantity Change <span className="text-red-500">*</span>

@@ -17,7 +17,7 @@ import {
   Settings,
   BarChart2,
   FileText,
-  Layers,
+  // Layers,
   RefreshCw,
   Pill,
   Users,
@@ -218,7 +218,9 @@ const Sidebar = () => {
                 <FileText className="w-4 h-4" />
                 Sales Report
               </Link>
-              <Link
+
+              {/* Remove for now for presentation puroses */}
+              {/* <Link
                 href="/reports/inventory"
                 className={`${submenuLinkClasses} ${
                   isActive('/reports/inventory')
@@ -228,7 +230,7 @@ const Sidebar = () => {
               >
                 <Layers className="w-4 h-4" />
                 Inventory Report
-              </Link>
+              </Link> */}
             </div>
           )}
         </div>

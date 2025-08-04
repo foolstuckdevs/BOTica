@@ -35,16 +35,39 @@ export default function POSPage({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const searchLower = searchTerm.toLowerCase();
-  // Filter products based on search term
+  // Filter products based on search term and hide out-of-stock products unless searched
   const filteredProducts = products
     .filter((product) => {
-      return (
+      // If no search term, only show in-stock products
+      if (!searchTerm || searchTerm.length < 2) {
+        return product.quantity > 0; // Hide out-of-stock products by default
+      }
+
+      // Check if product matches search criteria
+      const matchesSearch =
         product.name.toLowerCase().includes(searchLower) ||
         (product.brandName &&
           product.brandName.toLowerCase().includes(searchLower)) ||
         (product.lotNumber &&
-          product.lotNumber.toLowerCase().includes(searchLower))
-      );
+          product.lotNumber.toLowerCase().includes(searchLower));
+
+      // If product doesn't match search, exclude it
+      if (!matchesSearch) return false;
+
+      // If product is out-of-stock, only show it if search specifically matches it
+      if (product.quantity <= 0) {
+        // Allow out-of-stock products only if search term closely matches name, brand, or lot
+        return (
+          product.name.toLowerCase().includes(searchLower) ||
+          (product.brandName &&
+            product.brandName.toLowerCase().includes(searchLower)) ||
+          (product.lotNumber &&
+            product.lotNumber.toLowerCase().includes(searchLower))
+        );
+      }
+
+      // Show in-stock products that match search
+      return true;
     })
     .sort((a, b) => {
       // Step 1: Prioritize exact/startsWith name matches
@@ -68,7 +91,7 @@ export default function POSPage({
   const discountedTotal = totalAmount - discountAmount;
   const change = cashReceived - discountedTotal;
 
-  // Cart functions
+  // Sale functions
   const handleAddToCart = (product: ProductPOS) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
@@ -306,7 +329,7 @@ export default function POSPage({
             )}
           </div>
 
-          {/* Cart Section */}
+          {/* Current Sale Section */}
           <div className="lg:col-span-1">
             <Cart
               cart={cart}

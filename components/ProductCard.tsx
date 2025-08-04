@@ -127,7 +127,7 @@ export const ProductCard = ({
           </div>
         </div>
 
-        {/* Add to Cart Button */}
+        {/* Add to Sale Button */}
         <Button
           size="sm"
           className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-sm hover:shadow-md transition-all duration-200"
@@ -135,7 +135,7 @@ export const ProductCard = ({
           disabled={product.quantity <= 0}
         >
           <ShoppingCart className="w-4 h-4 mr-2" />
-          {product.quantity > 0 ? 'Add to Cart' : 'Out of Stock'}
+          {product.quantity > 0 ? 'Add to Sale' : 'Out of Stock'}
         </Button>
       </div>
     </div>

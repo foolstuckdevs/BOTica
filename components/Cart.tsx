@@ -58,7 +58,7 @@ export const Cart: React.FC<CartProps> = ({
         <div className="flex items-center gap-2">
           <ShoppingCart className="w-5 h-5 text-blue-600" />
           <h2 className="text-lg font-bold text-blue-900">
-            Cart{' '}
+            Current Sale{' '}
             {cart.length > 0 && (
               <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-blue-600 rounded-full ml-2">
                 {cart.length}
@@ -68,7 +68,7 @@ export const Cart: React.FC<CartProps> = ({
         </div>
       </div>
 
-      {/* Cart Items */}
+      {/* Current Sale Items */}
       <div className="p-4">
         <div className="space-y-3 mb-4 max-h-[350px] overflow-y-auto">
           {cart.length > 0 ? (
@@ -203,7 +203,7 @@ export const Cart: React.FC<CartProps> = ({
                 <ShoppingCart className="w-10 h-10 text-gray-400" />
               </div>
               <p className="text-lg font-medium text-gray-900">
-                Your cart is empty
+                No items in current sale
               </p>
               <p className="text-sm">Add products to get started</p>
             </div>
