@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { getAdjustments } from '@/lib/actions/adjustment';
 import { auth } from '@/auth';
+import { Plus } from 'lucide-react';
 
 const Page = async () => {
   const session = await auth();
@@ -25,7 +26,10 @@ const Page = async () => {
   return (
     <div className="px-6 py-6 space-y-6">
       <div className="flex justify-end">
-        <Button>
+        <Button variant="default" size="sm" className="gap-1.5">
+          <span>
+            <Plus className="h-4 w-4" />
+          </span>
           <Link href="/inventory/adjustments/new">Create Adjustment</Link>
         </Button>
       </div>

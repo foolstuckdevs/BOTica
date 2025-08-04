@@ -19,20 +19,11 @@ export const dosageFormSchema = z.enum([
   'CAPSULE',
   'SYRUP',
   'SUSPENSION',
-  'LOZENGE',
   'INJECTION',
-  'CREAM',
   'OINTMENT',
 ]);
 
-export const unitSchema = z.enum([
-  'PIECE',
-  'BOTTLE',
-  'BOX',
-  'VIAL',
-  'SACHET',
-  'TUBE',
-]);
+export const unitSchema = z.enum(['PIECE', 'BOTTLE', 'VIAL', 'SACHET', 'TUBE']);
 
 export const paymentMethodSchema = z.enum(['CASH', 'GCASH']);
 

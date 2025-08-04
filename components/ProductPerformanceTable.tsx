@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Package } from 'lucide-react';
 import { ProductPerformanceData } from '@/types';
+import { CustomDatePicker, DateRange } from './CustomDatePicker';
 
 interface ProductPerformanceTableProps {
   productData: {
@@ -13,16 +14,59 @@ interface ProductPerformanceTableProps {
     week: ProductPerformanceData[];
     month: ProductPerformanceData[];
   };
+  comprehensiveProductData?: Array<ProductPerformanceData & { date: string }>;
 }
 
 export const ProductPerformanceTable = ({
   productData,
+  comprehensiveProductData = [],
 }: ProductPerformanceTableProps) => {
   const [timePeriod, setTimePeriod] = React.useState('today');
   const [category, setCategory] = React.useState('all');
+  const [customDateRange, setCustomDateRange] = React.useState<
+    DateRange | undefined
+  >();
 
   // Get current data based on selected time period
   const getCurrentData = (): ProductPerformanceData[] => {
+    // If custom date range is selected, calculate from comprehensive data
+    if (
+      customDateRange?.from &&
+      customDateRange?.to &&
+      comprehensiveProductData.length > 0
+    ) {
+      const startDate = customDateRange.from.toISOString().split('T')[0];
+      const endDate = customDateRange.to.toISOString().split('T')[0];
+
+      const filteredData = comprehensiveProductData.filter(
+        (item) => item.date >= startDate && item.date <= endDate,
+      );
+
+      // Group by product name and aggregate
+      const productMap = new Map<string, ProductPerformanceData>();
+
+      filteredData.forEach((item) => {
+        const existing = productMap.get(item.name);
+        if (existing) {
+          existing.quantity += item.quantity;
+          existing.revenue += item.revenue;
+          existing.profit += item.profit;
+        } else {
+          productMap.set(item.name, {
+            name: item.name,
+            category: item.category,
+            quantity: item.quantity,
+            revenue: item.revenue,
+            profit: item.profit,
+          });
+        }
+      });
+
+      return Array.from(productMap.values()).sort(
+        (a, b) => b.quantity - a.quantity,
+      );
+    }
+
     switch (timePeriod) {
       case 'today':
         return productData.today;
@@ -35,12 +79,25 @@ export const ProductPerformanceTable = ({
     }
   };
 
+  const handleQuickPeriod = (period: string) => {
+    setTimePeriod(period);
+    setCustomDateRange(undefined); // Clear custom range when using quick periods
+  };
+
+  const handleCustomDateChange = (range: DateRange | undefined) => {
+    setCustomDateRange(range);
+    if (range?.from && range?.to) {
+      setTimePeriod(''); // Clear quick period when using custom range
+    }
+  };
+
   // Get unique categories from the data
   const getCategories = () => {
     const allData = [
       ...productData.today,
       ...productData.week,
       ...productData.month,
+      ...comprehensiveProductData,
     ];
     const uniqueCategories = [...new Set(allData.map((item) => item.category))];
     return ['all', ...uniqueCategories];
@@ -69,15 +126,19 @@ export const ProductPerformanceTable = ({
           </CardTitle>
 
           {/* Clean Filters */}
-          <div className="flex items-center gap-3">
-            {/* Time Period */}
-            <div className="flex bg-muted rounded-lg p-1">
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            {/* Time Period with Custom Date Picker */}
+            <div className="flex bg-muted rounded-lg p-1 gap-1">
               {['today', 'week', 'month'].map((period) => (
                 <Button
                   key={period}
-                  variant={timePeriod === period ? 'default' : 'ghost'}
+                  variant={
+                    timePeriod === period && !customDateRange
+                      ? 'default'
+                      : 'ghost'
+                  }
                   size="sm"
-                  onClick={() => setTimePeriod(period)}
+                  onClick={() => handleQuickPeriod(period)}
                   className="h-8 px-3 text-sm"
                 >
                   {period === 'week'
@@ -87,6 +148,12 @@ export const ProductPerformanceTable = ({
                     : 'Today'}
                 </Button>
               ))}
+
+              {/* Custom Date Range Picker */}
+              <CustomDatePicker
+                dateRange={customDateRange}
+                onDateRangeChange={handleCustomDateChange}
+              />
             </div>
 
             {/* Category Filter */}

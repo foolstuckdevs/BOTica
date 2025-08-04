@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { Category, Supplier } from '@/types';
 
 interface ProductFiltersProps {
@@ -26,13 +27,28 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
   filters,
   onChange,
 }) => {
+  const handleClearFilters = () => {
+    onChange({
+      search: '',
+      categoryId: 'all',
+      supplierId: 'all',
+      status: 'all',
+    });
+  };
+
+  const hasActiveFilters =
+    filters.categoryId !== 'all' ||
+    filters.supplierId !== 'all' ||
+    filters.status !== 'all' ||
+    filters.search !== '';
+
   return (
     <div className="flex flex-wrap gap-4 items-end">
       <Select
         value={filters.status}
         onValueChange={(value) => onChange({ ...filters, status: value })}
       >
-        <SelectTrigger className="w-48">
+        <SelectTrigger className="w-36">
           <SelectValue placeholder="All Status" />
         </SelectTrigger>
         <SelectContent>
@@ -47,7 +63,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
         value={filters.categoryId}
         onValueChange={(value) => onChange({ ...filters, categoryId: value })}
       >
-        <SelectTrigger className="w-48">
+        <SelectTrigger className="w-36">
           <SelectValue placeholder="All Categories" />
         </SelectTrigger>
         <SelectContent>
@@ -63,7 +79,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
         value={filters.supplierId}
         onValueChange={(value) => onChange({ ...filters, supplierId: value })}
       >
-        <SelectTrigger className="w-48">
+        <SelectTrigger className="w-36">
           <SelectValue placeholder="All Suppliers" />
         </SelectTrigger>
         <SelectContent>
@@ -75,6 +91,17 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
           ))}
         </SelectContent>
       </Select>
+
+      {hasActiveFilters && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleClearFilters}
+          className="h-9 px-3 text-sm"
+        >
+          Clear Filters
+        </Button>
+      )}
     </div>
   );
 };

@@ -76,9 +76,7 @@ const ProductForm = ({
           | 'CAPSULE'
           | 'SYRUP'
           | 'SUSPENSION'
-          | 'LOZENGE'
           | 'INJECTION'
-          | 'CREAM'
           | 'OINTMENT') || 'TABLET',
       expiryDate: product.expiryDate
         ? new Date(product.expiryDate)
@@ -88,13 +86,8 @@ const ProductForm = ({
       sellingPrice: product.sellingPrice || '',
       minStockLevel: product.minStockLevel || 10,
       unit:
-        (product.unit as
-          | 'PIECE'
-          | 'BOTTLE'
-          | 'BOX'
-          | 'VIAL'
-          | 'SACHET'
-          | 'TUBE') || 'PIECE',
+        (product.unit as 'PIECE' | 'BOTTLE' | 'VIAL' | 'SACHET' | 'TUBE') ||
+        'PIECE',
       supplierId: product.supplierId || undefined,
       imageUrl: product.imageUrl || '',
     },
@@ -234,7 +227,6 @@ const ProductForm = ({
                             <SelectContent>
                               <SelectItem value="PIECE">Piece</SelectItem>
                               <SelectItem value="BOTTLE">Bottle</SelectItem>
-                              <SelectItem value="BOX">Box</SelectItem>
                               <SelectItem value="VIAL">Vial</SelectItem>
                               <SelectItem value="SACHET">Sachet</SelectItem>
                               <SelectItem value="TUBE">Tube</SelectItem>
@@ -290,11 +282,9 @@ const ProductForm = ({
                               <SelectItem value="SUSPENSION">
                                 Suspension
                               </SelectItem>
-                              <SelectItem value="LOZENGE">Lozenge</SelectItem>
                               <SelectItem value="INJECTION">
                                 Injection
                               </SelectItem>
-                              <SelectItem value="CREAM">Cream</SelectItem>
                               <SelectItem value="OINTMENT">Ointment</SelectItem>
                             </SelectContent>
                           </Select>

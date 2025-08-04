@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, RefreshCw, Download } from 'lucide-react';
+import { TrendingUp, Download } from 'lucide-react';
 
 export const SalesReportHeader = () => {
   return (
@@ -26,15 +26,7 @@ export const SalesReportHeader = () => {
           </div>
 
           {/* Simple Actions */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              title="Refresh data from database to show latest sales information"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
-            </Button>
+          <div>
             <Button
               variant="outline"
               size="sm"

@@ -1,7 +1,7 @@
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Settings, User, ShoppingCart } from 'lucide-react';
+import { Settings, User, ShoppingCart, Bell } from 'lucide-react';
 import React from 'react';
 import { Button } from './ui/button';
 import { Session } from 'next-auth';
@@ -45,16 +45,14 @@ const Header = ({ session }: { session: Session }) => {
           </Button>
         </Link>
 
-        {/* Temporary remove for presentation purposes */}
-        {/* Notification Bell */}
-        {/* <Button
+        <Button
           variant="ghost"
           size="icon"
           className="relative rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-50/50"
         >
           <Bell className="h-[1.2rem] w-[1.2rem]" />
           <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full border border-white"></span>
-        </Button> */}
+        </Button>
 
         {/* User Dropdown */}
         <DropdownMenu>

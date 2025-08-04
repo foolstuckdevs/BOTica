@@ -22,6 +22,7 @@ import { Tooltip as RechartsTooltip } from 'recharts';
 import { Calendar } from 'lucide-react';
 import useIsMobile from '@/hooks/use-mobile';
 import { ChartDataPoint } from '@/types';
+import { CustomDatePicker, DateRange } from './CustomDatePicker';
 
 interface SalesChartProps {
   chartData: ChartDataPoint[];
@@ -31,25 +32,73 @@ interface SalesChartProps {
 export function SalesChart({ chartData, loading = false }: SalesChartProps) {
   const isMobile = useIsMobile();
   const [timeRange, setTimeRange] = React.useState('30d');
+  const [customDateRange, setCustomDateRange] = React.useState<
+    DateRange | undefined
+  >();
   const [filteredData, setFilteredData] = React.useState<ChartDataPoint[]>([]);
 
   React.useEffect(() => {
     if (isMobile) setTimeRange('7d');
   }, [isMobile]);
 
-  // Filter chart data based on time range
+  // Filter chart data based on time range or custom date range
   React.useEffect(() => {
-    const days = timeRange === '7d' ? 7 : 30;
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - days);
+    let filtered = chartData;
 
-    const filtered = chartData.filter((item) => {
-      const itemDate = new Date(item.date);
-      return itemDate >= cutoffDate;
-    });
+    if (customDateRange?.from && customDateRange?.to) {
+      // Use custom date range if provided
+      const fromDate = new Date(customDateRange.from);
+      const toDate = new Date(customDateRange.to);
+
+      filtered = chartData.filter((item) => {
+        const itemDate = new Date(item.date);
+        return itemDate >= fromDate && itemDate <= toDate;
+      });
+    } else {
+      // Fall back to quick time range filters
+      const days = timeRange === '7d' ? 7 : 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+
+      filtered = chartData.filter((item) => {
+        const itemDate = new Date(item.date);
+        return itemDate >= cutoffDate;
+      });
+    }
 
     setFilteredData(filtered);
-  }, [chartData, timeRange]);
+  }, [chartData, timeRange, customDateRange]);
+
+  const handleQuickFilter = (range: string) => {
+    setTimeRange(range);
+    setCustomDateRange(undefined); // Clear custom range when using quick filter
+  };
+
+  const handleCustomDateChange = (range: DateRange | undefined) => {
+    setCustomDateRange(range);
+    if (range?.from && range?.to) {
+      setTimeRange(''); // Clear quick filter when using custom range
+    }
+  };
+
+  const getActiveFilterDescription = () => {
+    if (customDateRange?.from && customDateRange?.to) {
+      const fromDate = customDateRange.from.toLocaleDateString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+      const toDate = customDateRange.to.toLocaleDateString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+      return `${fromDate} - ${toDate}`;
+    }
+    return `Revenue vs. purchase costs over the last ${
+      timeRange === '7d' ? '7' : '30'
+    } days`;
+  };
 
   const {
     totalSales,
@@ -99,30 +148,42 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
               Sales Performance
             </CardTitle>
             <CardDescription className="text-sm text-muted-foreground">
-              Revenue vs. purchase costs over the last{' '}
-              {timeRange === '7d' ? '7' : '30'} days
+              {getActiveFilterDescription()}
             </CardDescription>
           </div>
 
-          {/* Time Range Selector */}
-          <div className="flex bg-muted rounded-lg p-1">
-            <Button
-              variant={timeRange === '7d' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setTimeRange('7d')}
-              className="h-8 px-3"
-            >
-              <Calendar className="w-3 h-3 mr-1" />7 Days
-            </Button>
-            <Button
-              variant={timeRange === '30d' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setTimeRange('30d')}
-              className="h-8 px-3"
-            >
-              <Calendar className="w-3 h-3 mr-1" />
-              30 Days
-            </Button>
+          {/* Filter Controls */}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {/* Combined Filter Controls */}
+            <div className="flex bg-muted rounded-lg p-1 gap-1">
+              <Button
+                variant={
+                  timeRange === '7d' && !customDateRange ? 'default' : 'ghost'
+                }
+                size="sm"
+                onClick={() => handleQuickFilter('7d')}
+                className="h-8 px-3"
+              >
+                <Calendar className="w-3 h-3 mr-1" />7 Days
+              </Button>
+              <Button
+                variant={
+                  timeRange === '30d' && !customDateRange ? 'default' : 'ghost'
+                }
+                size="sm"
+                onClick={() => handleQuickFilter('30d')}
+                className="h-8 px-3"
+              >
+                <Calendar className="w-3 h-3 mr-1" />
+                30 Days
+              </Button>
+
+              {/* Custom Date Range Picker */}
+              <CustomDatePicker
+                dateRange={customDateRange}
+                onDateRangeChange={handleCustomDateChange}
+              />
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -209,9 +270,17 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
                     tickLine={false}
                   />
                   <YAxis
-                    tickFormatter={(v) => `₱${v / 1000}k`}
+                    tickFormatter={(v) => {
+                      if (v >= 1000000) {
+                        return `₱${(v / 1000000).toFixed(1)}M`;
+                      } else if (v >= 1000) {
+                        return `₱${(v / 1000).toFixed(0)}K`;
+                      } else {
+                        return `₱${v.toFixed(0)}`;
+                      }
+                    }}
                     tick={{ fontSize: 12 }}
-                    width={50}
+                    width={60}
                     axisLine={false}
                     tickLine={false}
                   />

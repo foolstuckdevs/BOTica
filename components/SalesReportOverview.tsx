@@ -4,13 +4,14 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  DollarSign,
+  BarChart3,
   ShoppingCart,
   TrendingUp,
   TrendingDown,
   Package,
 } from 'lucide-react';
 import { SalesOverviewData, SalesComparisonData } from '@/types';
+import { CustomDatePicker, DateRange } from './CustomDatePicker';
 
 interface SalesReportOverviewProps {
   salesData: {
@@ -20,14 +21,61 @@ interface SalesReportOverviewProps {
     month: SalesOverviewData;
     comparison: SalesComparisonData;
   };
+  comprehensiveSalesData?: Array<SalesOverviewData & { date: string }>;
 }
 
 export const SalesReportOverview = ({
   salesData,
+  comprehensiveSalesData = [],
 }: SalesReportOverviewProps) => {
   const [selectedPeriod, setSelectedPeriod] = React.useState('today');
+  const [customDateRange, setCustomDateRange] = React.useState<
+    DateRange | undefined
+  >();
 
   const getCurrentData = (): SalesOverviewData => {
+    // If custom date range is selected, calculate from comprehensive data
+    if (
+      customDateRange?.from &&
+      customDateRange?.to &&
+      comprehensiveSalesData.length > 0
+    ) {
+      const startDate = customDateRange.from.toISOString().split('T')[0];
+      const endDate = customDateRange.to.toISOString().split('T')[0];
+
+      const filteredData = comprehensiveSalesData.filter(
+        (item) => item.date >= startDate && item.date <= endDate,
+      );
+
+      if (filteredData.length === 0) {
+        return {
+          totalSales: 0,
+          totalCost: 0,
+          profit: 0,
+          transactions: 0,
+          totalItems: 0,
+        };
+      }
+
+      // Aggregate the filtered data
+      return filteredData.reduce(
+        (acc, item) => ({
+          totalSales: acc.totalSales + item.totalSales,
+          totalCost: acc.totalCost + item.totalCost,
+          profit: acc.profit + item.profit,
+          transactions: acc.transactions + item.transactions,
+          totalItems: acc.totalItems + item.totalItems,
+        }),
+        {
+          totalSales: 0,
+          totalCost: 0,
+          profit: 0,
+          transactions: 0,
+          totalItems: 0,
+        },
+      );
+    }
+
     switch (selectedPeriod) {
       case 'today':
         return salesData.today;
@@ -39,6 +87,18 @@ export const SalesReportOverview = ({
         return salesData.month;
       default:
         return salesData.today;
+    }
+  };
+
+  const handleQuickPeriod = (period: string) => {
+    setSelectedPeriod(period);
+    setCustomDateRange(undefined); // Clear custom range when using quick periods
+  };
+
+  const handleCustomDateChange = (range: DateRange | undefined) => {
+    setCustomDateRange(range);
+    if (range?.from && range?.to) {
+      setSelectedPeriod(''); // Clear quick period when using custom range
     }
   };
 
@@ -55,9 +115,9 @@ export const SalesReportOverview = ({
       case 'yesterday':
         return 'Yesterday';
       case 'week':
-        return 'This Week';
+        return 'Week';
       case 'month':
-        return 'This Month';
+        return 'Month';
       default:
         return 'Today';
     }
@@ -74,20 +134,31 @@ export const SalesReportOverview = ({
           </p>
         </div>
 
-        {/* Period Selector */}
-        <div className="flex items-center gap-3">
-          <div className="flex bg-muted/50 rounded-xl p-1">
+        {/* Period Selector with Custom Date Picker */}
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          {/* Unified Time Period Filters */}
+          <div className="flex bg-muted/50 rounded-xl p-1 gap-1">
             {['yesterday', 'today', 'week', 'month'].map((period) => (
               <Button
                 key={period}
-                variant={selectedPeriod === period ? 'default' : 'ghost'}
+                variant={
+                  selectedPeriod === period && !customDateRange
+                    ? 'default'
+                    : 'ghost'
+                }
                 size="sm"
-                onClick={() => setSelectedPeriod(period)}
+                onClick={() => handleQuickPeriod(period)}
                 className="h-9 px-4 rounded-lg font-medium"
               >
                 {getPeriodLabel(period)}
               </Button>
             ))}
+
+            {/* Custom Date Range Picker */}
+            <CustomDatePicker
+              dateRange={customDateRange}
+              onDateRangeChange={handleCustomDateChange}
+            />
           </div>
         </div>
       </div>
@@ -113,7 +184,7 @@ export const SalesReportOverview = ({
                 </p>
               </div>
               <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <BarChart3 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </CardContent>

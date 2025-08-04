@@ -80,16 +80,14 @@ export interface SupplierParams {
 // PRODUCT TYPES & ENUMS
 // =============================================================================
 
-export type UnitType = 'PIECE' | 'BOTTLE' | 'BOX' | 'VIAL' | 'SACHET' | 'TUBE';
+export type UnitType = 'PIECE' | 'BOTTLE' | 'VIAL' | 'SACHET' | 'TUBE';
 
 export type DosageFormType =
   | 'TABLET'
   | 'CAPSULE'
   | 'SYRUP'
   | 'SUSPENSION'
-  | 'LOZENGE'
   | 'INJECTION'
-  | 'CREAM'
   | 'OINTMENT';
 
 export interface Product {

@@ -3,12 +3,7 @@ import { SalesReportOverview } from '@/components/SalesReportOverview';
 import { BatchProfitTable } from '@/components/BatchProfitTable';
 import React from 'react';
 import { ProductPerformanceTable } from '@/components/ProductPerformanceTable';
-import {
-  getSalesOverview,
-  getSalesComparison,
-  getProductPerformance,
-  getBatchProfitData,
-} from '@/lib/actions/sales-reports';
+import { getSalesReportData } from '@/lib/actions/sales-reports';
 import { auth } from '@/auth';
 
 const page = async () => {
@@ -26,48 +21,26 @@ const page = async () => {
   const pharmacyId = session.user.pharmacyId;
 
   try {
-    // Fetch sales data for different periods
-    const [
-      todayData,
-      yesterdayData,
-      weekData,
-      monthData,
-      comparisonData,
-      todayProducts,
-      weekProducts,
-      monthProducts,
+    // Fetch all sales report data with a single consolidated server action
+    const {
+      salesData,
+      productData,
       batchProfitData,
-    ] = await Promise.all([
-      getSalesOverview(pharmacyId, 'today'),
-      getSalesOverview(pharmacyId, 'yesterday'),
-      getSalesOverview(pharmacyId, 'week'),
-      getSalesOverview(pharmacyId, 'month'),
-      getSalesComparison(pharmacyId, 'today'),
-      getProductPerformance(pharmacyId, 'today'),
-      getProductPerformance(pharmacyId, 'week'),
-      getProductPerformance(pharmacyId, 'month'),
-      getBatchProfitData(pharmacyId, 'month'),
-    ]);
-
-    const salesData = {
-      today: todayData,
-      yesterday: yesterdayData,
-      week: weekData,
-      month: monthData,
-      comparison: comparisonData,
-    };
-
-    const productData = {
-      today: todayProducts,
-      week: weekProducts,
-      month: monthProducts,
-    };
+      comprehensiveSalesData,
+      comprehensiveProductData,
+    } = await getSalesReportData(pharmacyId);
 
     return (
       <div className="space-y-6 p-6">
         <SalesReportHeader />
-        <SalesReportOverview salesData={salesData} />
-        <ProductPerformanceTable productData={productData} />
+        <SalesReportOverview
+          salesData={salesData}
+          comprehensiveSalesData={comprehensiveSalesData}
+        />
+        <ProductPerformanceTable
+          productData={productData}
+          comprehensiveProductData={comprehensiveProductData}
+        />
         <BatchProfitTable batchData={batchProfitData} loading={false} />
       </div>
     );

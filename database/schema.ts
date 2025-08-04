@@ -20,16 +20,13 @@ export const DOSAGE_FORM_ENUM = pgEnum('dosage_form', [
   'CAPSULE',
   'SYRUP',
   'SUSPENSION',
-  'LOZENGE',
   'INJECTION',
-  'CREAM',
   'OINTMENT',
 ]);
 
 export const UNIT_ENUM = pgEnum('unit', [
   'PIECE',
   'BOTTLE',
-  'BOX',
   'VIAL',
   'SACHET',
   'TUBE',
@@ -56,7 +53,7 @@ export const PURCHASE_ORDER_STATUS_ENUM = pgEnum('purchase_order_status', [
   'CANCELLED',
 ]);
 
-// ✅ Pharmacies (Tenants)
+// ✅ Pharmacies
 export const pharmacies = pgTable('pharmacies', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull().unique(),

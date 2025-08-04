@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { User, Tag, Receipt } from 'lucide-react';
+import { User, Tag, Banknote } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 type PaymentMethod = 'CASH' | 'GCASH';
@@ -49,7 +49,7 @@ export const TransactionCard = ({
           {/* Header - Compact inline layout */}
           <div className="flex items-center gap-2 mb-2">
             <div className="bg-gray-100 p-1.5 rounded">
-              <Receipt className="w-3 h-3 text-gray-600" />
+              <Banknote className="w-3 h-3 text-gray-600" />
             </div>
             <h3 className="font-semibold text-gray-900 text-sm">
               #{transaction.invoiceNumber}
