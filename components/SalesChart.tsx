@@ -23,6 +23,7 @@ import { Calendar } from 'lucide-react';
 import useIsMobile from '@/hooks/use-mobile';
 import { ChartDataPoint } from '@/types';
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface SalesChartProps {
   chartData: ChartDataPoint[];
@@ -46,13 +47,20 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
     let filtered = chartData;
 
     if (customDateRange?.from && customDateRange?.to) {
-      // Use custom date range if provided
-      const fromDate = new Date(customDateRange.from);
-      const toDate = new Date(customDateRange.to);
+      // Use custom date range if provided - convert to Philippines timezone
+      const fromDate = formatInTimeZone(
+        customDateRange.from,
+        'Asia/Manila',
+        'yyyy-MM-dd',
+      );
+      const toDate = formatInTimeZone(
+        customDateRange.to,
+        'Asia/Manila',
+        'yyyy-MM-dd',
+      );
 
       filtered = chartData.filter((item) => {
-        const itemDate = new Date(item.date);
-        return itemDate >= fromDate && itemDate <= toDate;
+        return item.date >= fromDate && item.date <= toDate;
       });
     } else {
       // Fall back to quick time range filters
@@ -83,16 +91,16 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
 
   const getActiveFilterDescription = () => {
     if (customDateRange?.from && customDateRange?.to) {
-      const fromDate = customDateRange.from.toLocaleDateString('en-PH', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-      const toDate = customDateRange.to.toLocaleDateString('en-PH', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
+      const fromDate = formatInTimeZone(
+        customDateRange.from,
+        'Asia/Manila',
+        'MMM d, yyyy',
+      );
+      const toDate = formatInTimeZone(
+        customDateRange.to,
+        'Asia/Manila',
+        'MMM d, yyyy',
+      );
       return `${fromDate} - ${toDate}`;
     }
     return `Revenue vs. purchase costs over the last ${

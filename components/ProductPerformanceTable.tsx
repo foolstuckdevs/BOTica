@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Package } from 'lucide-react';
 import { ProductPerformanceData } from '@/types';
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface ProductPerformanceTableProps {
   productData: {
@@ -35,8 +36,17 @@ export const ProductPerformanceTable = ({
       customDateRange?.to &&
       comprehensiveProductData.length > 0
     ) {
-      const startDate = customDateRange.from.toISOString().split('T')[0];
-      const endDate = customDateRange.to.toISOString().split('T')[0];
+      // Convert dates to Philippines timezone for comparison
+      const startDate = formatInTimeZone(
+        customDateRange.from,
+        'Asia/Manila',
+        'yyyy-MM-dd',
+      );
+      const endDate = formatInTimeZone(
+        customDateRange.to,
+        'Asia/Manila',
+        'yyyy-MM-dd',
+      );
 
       const filteredData = comprehensiveProductData.filter(
         (item) => item.date >= startDate && item.date <= endDate,

@@ -3,23 +3,16 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  BarChart3,
-  ShoppingCart,
-  TrendingUp,
-  TrendingDown,
-  Package,
-} from 'lucide-react';
-import { SalesOverviewData, SalesComparisonData } from '@/types';
+import { BarChart3, ShoppingCart, TrendingUp, Package } from 'lucide-react';
+import { SalesOverviewData } from '@/types';
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface SalesReportOverviewProps {
   salesData: {
     today: SalesOverviewData;
-    yesterday: SalesOverviewData;
     week: SalesOverviewData;
     month: SalesOverviewData;
-    comparison: SalesComparisonData;
   };
   comprehensiveSalesData?: Array<SalesOverviewData & { date: string }>;
 }
@@ -40,8 +33,17 @@ export const SalesReportOverview = ({
       customDateRange?.to &&
       comprehensiveSalesData.length > 0
     ) {
-      const startDate = customDateRange.from.toISOString().split('T')[0];
-      const endDate = customDateRange.to.toISOString().split('T')[0];
+      // Convert dates to Philippines timezone for comparison
+      const startDate = formatInTimeZone(
+        customDateRange.from,
+        'Asia/Manila',
+        'yyyy-MM-dd',
+      );
+      const endDate = formatInTimeZone(
+        customDateRange.to,
+        'Asia/Manila',
+        'yyyy-MM-dd',
+      );
 
       const filteredData = comprehensiveSalesData.filter(
         (item) => item.date >= startDate && item.date <= endDate,
@@ -79,8 +81,6 @@ export const SalesReportOverview = ({
     switch (selectedPeriod) {
       case 'today':
         return salesData.today;
-      case 'yesterday':
-        return salesData.yesterday;
       case 'week':
         return salesData.week;
       case 'month':
@@ -112,8 +112,6 @@ export const SalesReportOverview = ({
     switch (period) {
       case 'today':
         return 'Today';
-      case 'yesterday':
-        return 'Yesterday';
       case 'week':
         return 'Week';
       case 'month':
@@ -138,7 +136,7 @@ export const SalesReportOverview = ({
         <div className="flex flex-col sm:flex-row items-center gap-4">
           {/* Unified Time Period Filters */}
           <div className="flex bg-muted/50 rounded-xl p-1 gap-1">
-            {['yesterday', 'today', 'week', 'month'].map((period) => (
+            {['today', 'week', 'month'].map((period) => (
               <Button
                 key={period}
                 variant={
@@ -253,100 +251,6 @@ export const SalesReportOverview = ({
           </CardContent>
         </Card>
       </div>
-
-      {/* Comparison Sections */}
-      {selectedPeriod === 'today' && (
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-          <CardContent className="p-4">
-            <h3 className="font-medium mb-3 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Performance vs Yesterday
-            </h3>
-
-            {/* Simplified comparison */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Sales Growth:</span>
-                <div className="flex items-center gap-1">
-                  {salesData.comparison.salesGrowth > 0 ? (
-                    <TrendingUp className="w-3 h-3 text-green-600" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3 text-red-600" />
-                  )}
-                  <span
-                    className={`text-sm font-medium ${
-                      salesData.comparison.salesGrowth > 0
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {salesData.comparison.salesGrowth}%
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (₱
-                    {salesData.comparison.previous.totalSales.toLocaleString(
-                      'en-PH',
-                      { maximumFractionDigits: 0 },
-                    )}{' '}
-                    yesterday)
-                  </span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Profit Growth:</span>
-                <div className="flex items-center gap-1">
-                  <span
-                    className={`text-sm font-medium ${
-                      salesData.comparison.profitGrowth > 0
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {salesData.comparison.profitGrowth}%
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-1">
-                    (₱
-                    {salesData.comparison.previous.profit.toLocaleString(
-                      'en-PH',
-                      { maximumFractionDigits: 0 },
-                    )}{' '}
-                    yesterday)
-                  </span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Transactions:</span>
-                <div className="flex items-center gap-1">
-                  <span
-                    className={`text-sm font-medium ${
-                      salesData.comparison.transactionGrowth > 0
-                        ? 'text-green-600'
-                        : 'text-red-600'
-                    }`}
-                  >
-                    {salesData.comparison.transactionGrowth}%
-                  </span>
-                  <span className="text-xs text-muted-foreground ml-1">
-                    ({salesData.comparison.previous.transactions} yesterday)
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Quick comparison info for Yesterday */}
-      {selectedPeriod === 'yesterday' && (
-        <Card className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
-          <CardContent className="p-3">
-            <div className="text-sm text-muted-foreground">
-              Yesterday&apos;s performance. Switch to &quot;Today&quot; for
-              growth comparisons.
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };

@@ -277,7 +277,7 @@ export interface Transaction {
 // SALES REPORTS & ANALYTICS TYPES
 // =============================================================================
 
-export type PeriodType = 'today' | 'yesterday' | 'week' | 'month' | 'quarter';
+export type PeriodType = 'today' | 'week' | 'month' | 'quarter';
 
 export interface SalesOverviewData {
   totalSales: number;
@@ -285,14 +285,6 @@ export interface SalesOverviewData {
   profit: number;
   transactions: number;
   totalItems: number;
-}
-
-export interface SalesComparisonData {
-  current: SalesOverviewData;
-  previous: SalesOverviewData;
-  salesGrowth: number;
-  profitGrowth: number;
-  transactionGrowth: number;
 }
 
 export interface ProductPerformanceData {

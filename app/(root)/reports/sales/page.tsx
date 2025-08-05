@@ -56,13 +56,6 @@ const page = async () => {
         transactions: 0,
         totalItems: 0,
       },
-      yesterday: {
-        totalSales: 0,
-        totalCost: 0,
-        profit: 0,
-        transactions: 0,
-        totalItems: 0,
-      },
       week: {
         totalSales: 0,
         totalCost: 0,
@@ -76,25 +69,6 @@ const page = async () => {
         profit: 0,
         transactions: 0,
         totalItems: 0,
-      },
-      comparison: {
-        current: {
-          totalSales: 0,
-          totalCost: 0,
-          profit: 0,
-          transactions: 0,
-          totalItems: 0,
-        },
-        previous: {
-          totalSales: 0,
-          totalCost: 0,
-          profit: 0,
-          transactions: 0,
-          totalItems: 0,
-        },
-        salesGrowth: 0,
-        profitGrowth: 0,
-        transactionGrowth: 0,
       },
     };
 

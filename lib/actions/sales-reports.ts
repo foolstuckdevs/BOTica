@@ -7,7 +7,6 @@ import { getBatchProfitDataSchema } from '@/lib/validations';
 import {
   PeriodType,
   SalesOverviewData,
-  SalesComparisonData,
   ProductPerformanceData,
   BatchProfitData,
 } from '@/types';
@@ -132,9 +131,6 @@ export const getSalesReportData = async (pharmacyId: number) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
     const weekStart = new Date(today);
     weekStart.setDate(weekStart.getDate() - 7);
 
@@ -230,7 +226,6 @@ export const getSalesReportData = async (pharmacyId: number) => {
       costResults,
       productResults,
       today,
-      yesterday,
       weekStart,
       monthStart,
     );
@@ -267,7 +262,6 @@ function processSalesReportData(
     costPrice: string | null;
   }>,
   today: Date,
-  yesterday: Date,
   weekStart: Date,
   monthStart: Date,
 ) {
@@ -313,48 +307,8 @@ function processSalesReportData(
 
   // Generate period data
   const todayData = aggregateByDateRange(today, today);
-  const yesterdayData = aggregateByDateRange(yesterday, yesterday);
   const weekData = aggregateByDateRange(weekStart, today);
   const monthData = aggregateByDateRange(monthStart, today);
-
-  // Generate comparison data (today vs yesterday for daily comparison)
-  const todayComparison = todayData;
-  const yesterdayComparison = yesterdayData;
-
-  const comparisonData: SalesComparisonData = {
-    current: todayComparison,
-    previous: yesterdayComparison,
-    salesGrowth:
-      yesterdayComparison.totalSales > 0
-        ? Number(
-            (
-              ((todayComparison.totalSales - yesterdayComparison.totalSales) /
-                yesterdayComparison.totalSales) *
-              100
-            ).toFixed(2),
-          )
-        : 0,
-    profitGrowth:
-      yesterdayComparison.profit > 0
-        ? Number(
-            (
-              ((todayComparison.profit - yesterdayComparison.profit) /
-                yesterdayComparison.profit) *
-              100
-            ).toFixed(2),
-          )
-        : 0,
-    transactionGrowth:
-      yesterdayComparison.transactions > 0
-        ? Number(
-            (
-              ((todayComparison.transactions - yesterdayComparison.transactions) /
-                yesterdayComparison.transactions) *
-              100
-            ).toFixed(2),
-          )
-        : 0,
-  };
 
   // Process product performance data
   const processProducts = (
@@ -410,10 +364,8 @@ function processSalesReportData(
   return {
     salesData: {
       today: todayData,
-      yesterday: yesterdayData,
       week: weekData,
       month: monthData,
-      comparison: comparisonData,
     },
     productData: {
       today: todayProducts,
