@@ -141,9 +141,6 @@ export const getSalesReportData = async (pharmacyId: number) => {
     const monthStart = new Date(today);
     monthStart.setDate(monthStart.getDate() - 30);
 
-    const previousWeekStart = new Date(weekStart);
-    previousWeekStart.setDate(previousWeekStart.getDate() - 7);
-
     // Single consolidated query for all sales overview data (30 days)
     const salesOverviewQuery = db
       .select({
@@ -236,7 +233,6 @@ export const getSalesReportData = async (pharmacyId: number) => {
       yesterday,
       weekStart,
       monthStart,
-      previousWeekStart,
     );
 
     return {
@@ -274,7 +270,6 @@ function processSalesReportData(
   yesterday: Date,
   weekStart: Date,
   monthStart: Date,
-  previousWeekStart: Date,
 ) {
   // Create maps for efficient lookup
   const salesMap = new Map(salesResults.map((item) => [item.date, item]));
@@ -322,39 +317,39 @@ function processSalesReportData(
   const weekData = aggregateByDateRange(weekStart, today);
   const monthData = aggregateByDateRange(monthStart, today);
 
-  // Generate comparison data (current week vs previous week)
-  const currentWeek = weekData;
-  const previousWeek = aggregateByDateRange(previousWeekStart, weekStart);
+  // Generate comparison data (today vs yesterday for daily comparison)
+  const todayComparison = todayData;
+  const yesterdayComparison = yesterdayData;
 
   const comparisonData: SalesComparisonData = {
-    current: currentWeek,
-    previous: previousWeek,
+    current: todayComparison,
+    previous: yesterdayComparison,
     salesGrowth:
-      previousWeek.totalSales > 0
+      yesterdayComparison.totalSales > 0
         ? Number(
             (
-              ((currentWeek.totalSales - previousWeek.totalSales) /
-                previousWeek.totalSales) *
+              ((todayComparison.totalSales - yesterdayComparison.totalSales) /
+                yesterdayComparison.totalSales) *
               100
             ).toFixed(2),
           )
         : 0,
     profitGrowth:
-      previousWeek.profit > 0
+      yesterdayComparison.profit > 0
         ? Number(
             (
-              ((currentWeek.profit - previousWeek.profit) /
-                previousWeek.profit) *
+              ((todayComparison.profit - yesterdayComparison.profit) /
+                yesterdayComparison.profit) *
               100
             ).toFixed(2),
           )
         : 0,
     transactionGrowth:
-      previousWeek.transactions > 0
+      yesterdayComparison.transactions > 0
         ? Number(
             (
-              ((currentWeek.transactions - previousWeek.transactions) /
-                previousWeek.transactions) *
+              ((todayComparison.transactions - yesterdayComparison.transactions) /
+                yesterdayComparison.transactions) *
               100
             ).toFixed(2),
           )
