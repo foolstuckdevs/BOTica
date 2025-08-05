@@ -10,6 +10,7 @@ import {
   getLowStockProductsSchema,
 } from '@/lib/validations';
 import { ChartDataPoint, ChartMetrics } from '@/types';
+import { formatInTimeZone } from 'date-fns-tz';
 
 // Helper: Get total sales within a date range
 const getSalesTotalForRange = async (
@@ -317,22 +318,18 @@ export const getChartData = async (
   days: number = 30,
 ): Promise<ChartDataPoint[]> => {
   try {
-    // Calculate date range in Philippines timezone (UTC+8)
+    // Get current date in Philippines timezone for more accurate range calculation
     const now = new Date();
-    const philippinesOffset = 8 * 60; // 8 hours in minutes
-    const localTime = new Date(now.getTime() + philippinesOffset * 60 * 1000);
-
-    const endDate = new Date(localTime);
-    const startDate = new Date(localTime);
-    startDate.setUTCDate(endDate.getUTCDate() - days);
-
-    // Reset to start of day in Philippines time, then convert to UTC for storage
-    startDate.setUTCHours(0, 0, 0, 0);
-    startDate.setTime(startDate.getTime() - philippinesOffset * 60 * 1000);
-
-    // Set end date to end of current day in Philippines time, then convert to UTC
-    endDate.setUTCHours(23, 59, 59, 999);
-    endDate.setTime(endDate.getTime() - philippinesOffset * 60 * 1000);
+    const currentPhilippinesDate = formatInTimeZone(now, 'Asia/Manila', 'yyyy-MM-dd');
+    
+    // Calculate start date (days ago from current Philippines date)
+    const endDateCalc = new Date(currentPhilippinesDate + 'T00:00:00.000Z');
+    const startDate = new Date(endDateCalc);
+    startDate.setDate(startDate.getDate() - days);
+    
+    // Set end to include the full current day in Philippines timezone
+    // Use end of day instead of just current Philippines date
+    const endDate = new Date(currentPhilippinesDate + 'T23:59:59.999Z');
 
     // Get daily aggregated data
     const result = await db
@@ -360,8 +357,9 @@ export const getChartData = async (
     // Create array of all dates in range
     const chartData: ChartDataPoint[] = [];
     const currentDate = new Date(startDate);
+    const endDateForLoop = new Date(currentPhilippinesDate + 'T00:00:00.000Z');
 
-    while (currentDate <= endDate) {
+    while (currentDate <= endDateForLoop) {
       const dateStr = currentDate.toISOString().split('T')[0];
 
       // Find data for this date

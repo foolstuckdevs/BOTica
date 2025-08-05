@@ -63,14 +63,27 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
         return item.date >= fromDate && item.date <= toDate;
       });
     } else {
-      // Fall back to quick time range filters
+      // Fall back to quick time range filters - use Philippines timezone
       const days = timeRange === '7d' ? 7 : 30;
-      const cutoffDate = new Date();
+
+      // Get current date in Philippines timezone
+      const now = new Date();
+      const philippinesTime = formatInTimeZone(
+        now,
+        'Asia/Manila',
+        'yyyy-MM-dd',
+      );
+      const currentPhilippinesDate = new Date(
+        philippinesTime + 'T00:00:00.000Z',
+      );
+
+      // Calculate cutoff date
+      const cutoffDate = new Date(currentPhilippinesDate);
       cutoffDate.setDate(cutoffDate.getDate() - days);
+      const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
 
       filtered = chartData.filter((item) => {
-        const itemDate = new Date(item.date);
-        return itemDate >= cutoffDate;
+        return item.date >= cutoffDateStr;
       });
     }
 
