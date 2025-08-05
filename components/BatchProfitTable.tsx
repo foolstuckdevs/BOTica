@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   CheckCircle,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { BatchProfitData } from '@/types';
 
@@ -36,6 +38,8 @@ export const BatchProfitTable = ({
   const [profitFilter, setProfitFilter] = React.useState<
     'all' | 'profitable' | 'loss'
   >('all');
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [itemsPerPage, setItemsPerPage] = React.useState(10);
 
   // Use the actual data from the database
   const displayData = batchData;
@@ -53,6 +57,17 @@ export const BatchProfitTable = ({
 
     return matchesSearch && matchesProfit;
   });
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, profitFilter, itemsPerPage]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
 
   const getExpiryStatus = (expiryDate: string) => {
     const expiry = new Date(expiryDate);
@@ -199,6 +214,7 @@ export const BatchProfitTable = ({
               onClick={() => {
                 setSearchTerm('');
                 setProfitFilter('all');
+                setCurrentPage(1);
               }}
             >
               Clear Filters
@@ -247,7 +263,7 @@ export const BatchProfitTable = ({
                 </tr>
               </thead>
               <tbody>
-                {filteredData.length === 0 ? (
+                {paginatedData.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="text-center py-8 text-gray-500">
                       {searchTerm
@@ -258,7 +274,7 @@ export const BatchProfitTable = ({
                     </td>
                   </tr>
                 ) : (
-                  filteredData.map((item) => {
+                  paginatedData.map((item) => {
                     const expiryStatus = getExpiryStatus(item.expiry);
                     const stockStatus = getStockStatus(item.qtyRemaining);
                     return (
@@ -333,11 +349,79 @@ export const BatchProfitTable = ({
           )}
         </div>
 
-        {filteredData.length > 0 && (
-          <div className="mt-4 text-sm text-gray-500 text-center">
-            Showing {filteredData.length} batch
-            {filteredData.length !== 1 ? 'es' : ''} of {displayData.length}{' '}
-            total
+        {/* Pagination Controls */}
+        {filteredData.length > itemsPerPage && (
+          <div className="flex items-center justify-between px-2 py-4">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium">Rows per page</p>
+              <Select
+                value={`${itemsPerPage}`}
+                onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={itemsPerPage} />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  {[10, 20, 30, 40, 50].map((pageSize) => (
+                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                      {pageSize}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center space-x-6 lg:space-x-8">
+              <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                Page {currentPage} of {totalPages}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <span className="sr-only">Go to previous page</span>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <span className="sr-only">Go to next page</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {paginatedData.length > 0 && filteredData.length <= itemsPerPage && (
+          <div className="flex items-center justify-between px-2 py-4">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium">Rows per page</p>
+              <Select
+                value={`${itemsPerPage}`}
+                onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={itemsPerPage} />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  {[10, 20, 30, 40, 50].map((pageSize) => (
+                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                      {pageSize}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
       </CardContent>
