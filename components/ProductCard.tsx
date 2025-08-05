@@ -34,7 +34,7 @@ export const ProductCard = ({
       className={`bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border ${urgency.borderColor} hover:-translate-y-1 overflow-hidden`}
     >
       {/* Image Section */}
-      <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 border-b-2 border-gray-200">
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}

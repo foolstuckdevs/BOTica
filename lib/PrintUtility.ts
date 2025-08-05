@@ -36,7 +36,7 @@ export class PrintUtility {
       );
 
       // Create a new window for printing instead of iframe
-      const printWindow = window.open('', '_blank', 'width=300,height=600');
+      const printWindow = window.open('', '_blank', 'width=800,height=1000');
 
       if (!printWindow) {
         this.isPrinting = false;
@@ -150,6 +150,15 @@ export class PrintUtility {
       margin-bottom: 3mm;
       flex-shrink: 0;
     }
+    .temp-receipt {
+      border: 1px dashed #000;
+      padding: 2mm;
+      margin: 2mm 0;
+      text-align: center;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
     .pharmacy-name {
       font-weight: bold;
       font-size: 14px;
@@ -234,6 +243,8 @@ export class PrintUtility {
     <div class="pharmacy-info">${pharmacy.address ?? ''}</div>
     <div class="pharmacy-info">${pharmacy.phone ?? ''}</div>
   </div>
+
+  <div class="temp-receipt">TEMPORARY RECEIPT</div>
 
   <div class="divider"></div>
 

@@ -70,6 +70,24 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
               .header p {
                 margin: 2px 0;
               }
+              .logo {
+                width: 60px;
+                height: 60px;
+                margin: 0 auto 10px auto;
+                border: 2px solid #333;
+                border-radius: 8px;
+              }
+              .temp-receipt {
+                border: 3px solid black;
+                padding: 8px 15px;
+                margin: 10px auto 15px auto;
+                font-weight: bold;
+                font-size: 14px;
+                text-transform: uppercase;
+                display: inline-block;
+                text-align: center;
+                letter-spacing: 2px;
+              }
               .info {
                 border-top: 1px solid black;
                 border-bottom: 1px solid black;
@@ -118,6 +136,8 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           </head>
           <body>
             <div class="header">
+              <img src="/BOTica2.png" alt="BOTica Logo" class="logo" />
+              <div class="temp-receipt">*** TEMPORARY RECEIPT ***</div>
               <h1>${pharmacy.name}</h1>
               <p>${pharmacy.address}</p>
               <p>${pharmacy.phone} | ${pharmacy.email}</p>
