@@ -6,10 +6,6 @@ import {
   periodSchema,
 } from './common';
 
-// =============================================================================
-// SALES SCHEMAS
-// =============================================================================
-
 export const cartItemSchema = z.object({
   productId: z.number().min(1, 'Valid product ID is required'),
   quantity: z.number().min(1, 'Quantity must be at least 1'),
@@ -34,9 +30,7 @@ export const processSaleSchema = z.object({
   cashReceived: z.number().min(0, 'Cash received cannot be negative'),
 });
 
-// =============================================================================
 // SALES REPORTS SCHEMAS
-// =============================================================================
 
 export const getSalesOverviewSchema = z.object({
   pharmacyId: z.number().int().positive(),
@@ -67,9 +61,7 @@ export const getBatchProfitSummarySchema = z.object({
   period: periodSchema.optional().default('month'),
 });
 
-// =============================================================================
-// TRANSACTION SCHEMAS
-// =============================================================================
+// TRANSACTION SCHEMA
 
 export const getTransactionsSchema = z.object({
   pharmacyId: z.number().int().positive(),

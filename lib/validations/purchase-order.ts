@@ -1,9 +1,7 @@
 import { z } from 'zod';
 import { purchaseOrderStatusSchema } from './common';
 
-// =============================================================================
 // PURCHASE ORDER SCHEMAS
-// =============================================================================
 
 export const purchaseOrderItemSchema = z.object({
   productId: z.number().min(1, 'Product is required'),

@@ -1,9 +1,7 @@
 import { z } from 'zod';
 import { adjustmentReasonSchema } from './common';
 
-// =============================================================================
 // ADJUSTMENT SCHEMAS
-// =============================================================================
 
 export const createAdjustmentSchema = z.object({
   productId: z.number().int().positive(),

@@ -2,10 +2,6 @@ import { z } from 'zod';
 import { SupplierParams } from '@/types';
 import { pharmacyIdSchema } from './common';
 
-// =============================================================================
-// SUPPLIER SCHEMAS
-// =============================================================================
-
 export const supplierSchema = z.object({
   name: z.string().min(1, 'Supplier name is required'),
   contactPerson: z.string().min(1, 'Contact person is required'),

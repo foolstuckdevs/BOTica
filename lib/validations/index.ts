@@ -1,6 +1,4 @@
-// =============================================================================
 // VALIDATION SCHEMAS INDEX
-// =============================================================================
 // This file re-exports all validation schemas from their respective modules
 // for easy importing throughout the application.
 

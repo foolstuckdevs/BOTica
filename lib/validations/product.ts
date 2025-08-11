@@ -6,10 +6,6 @@ import {
   productIdSchema,
 } from './common';
 
-// =============================================================================
-// PRODUCT SCHEMAS
-// =============================================================================
-
 export const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   genericName: z.string().optional(),
@@ -71,10 +67,6 @@ export const getProductBatchesSchema = z.object({
   productName: z.string().min(1, 'Valid product name is required'),
   pharmacyId: pharmacyIdSchema,
 });
-
-// =============================================================================
-// PRODUCT STOCK SCHEMAS
-// =============================================================================
 
 export const getProductStockSummariesSchema = z.object({
   pharmacyId: z.number().int().positive(),

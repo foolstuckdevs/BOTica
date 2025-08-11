@@ -53,7 +53,7 @@ export const PURCHASE_ORDER_STATUS_ENUM = pgEnum('purchase_order_status', [
   'CANCELLED',
 ]);
 
-// ✅ Pharmacies
+// Pharmacies
 export const pharmacies = pgTable('pharmacies', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull().unique(),
@@ -62,7 +62,7 @@ export const pharmacies = pgTable('pharmacies', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// ✅ Users
+// Users
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   fullName: varchar('full_name', { length: 100 }).notNull(),
@@ -77,7 +77,7 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// ✅ Categories
+// Categories
 export const categories = pgTable('categories', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull().unique(),
@@ -87,7 +87,7 @@ export const categories = pgTable('categories', {
     .references(() => pharmacies.id),
 });
 
-// ✅ Suppliers
+// Suppliers
 export const suppliers = pgTable('suppliers', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull().unique(),
@@ -103,7 +103,7 @@ export const suppliers = pgTable('suppliers', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-// ✅ Products
+// Products
 export const products = pgTable('products', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
@@ -129,7 +129,7 @@ export const products = pgTable('products', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-// ✅ Sales
+// Sales
 export const sales = pgTable('sales', {
   id: serial('id').primaryKey(),
   invoiceNumber: varchar('invoice_number', { length: 20 }).notNull().unique(),
@@ -154,7 +154,7 @@ export const sales = pgTable('sales', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// ✅ Sale Items
+// Sale Items
 export const saleItems = pgTable('sale_items', {
   id: serial('id').primaryKey(),
   saleId: integer('sale_id')
@@ -168,7 +168,7 @@ export const saleItems = pgTable('sale_items', {
   subtotal: decimal('subtotal', { precision: 10, scale: 2 }).notNull(),
 });
 
-// ✅ Notifications
+// Notifications
 export const notifications = pgTable('notifications', {
   id: serial('id').primaryKey(),
   type: NOTIFICATION_TYPE_ENUM('type').notNull(),
@@ -182,7 +182,7 @@ export const notifications = pgTable('notifications', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// ✅ Activity Logs
+// Activity Logs
 export const activityLogs = pgTable('activity_logs', {
   id: serial('id').primaryKey(),
   userId: uuid('user_id')
@@ -197,7 +197,7 @@ export const activityLogs = pgTable('activity_logs', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-// ✅ Inventory Adjustments
+// Inventory Adjustments
 export const inventoryAdjustments = pgTable('inventory_adjustments', {
   id: serial('id').primaryKey(),
   productId: integer('product_id')

@@ -1,6 +1,4 @@
-// =============================================================================
 // PHARMACY & AUTHENTICATION TYPES
-// =============================================================================
 
 export interface Pharmacy {
   id: number;
@@ -34,9 +32,7 @@ export interface StaffMember {
   createdAt: Date | null;
 }
 
-// =============================================================================
 // CATEGORY TYPES
-// =============================================================================
 
 export interface Category {
   id: number;
@@ -51,9 +47,7 @@ export type CategoryParams = {
   pharmacyId?: number;
 };
 
-// =============================================================================
 // SUPPLIER TYPES
-// =============================================================================
 
 export interface Supplier {
   id: number;
@@ -76,9 +70,7 @@ export interface SupplierParams {
   pharmacyId?: number;
 }
 
-// =============================================================================
 // PRODUCT TYPES & ENUMS
-// =============================================================================
 
 export type UnitType = 'PIECE' | 'BOTTLE' | 'VIAL' | 'SACHET' | 'TUBE';
 
@@ -148,9 +140,7 @@ export interface ProductParams {
   pharmacyId?: number;
 }
 
-// =============================================================================
 // INVENTORY & STOCK MANAGEMENT TYPES
-// =============================================================================
 
 export type ProductStockSummary = {
   id: number;
@@ -186,9 +176,7 @@ export interface Adjustment {
   notes?: string;
 }
 
-// =============================================================================
 // PURCHASE ORDER TYPES
-// =============================================================================
 
 export type PurchaseOrderStatus =
   | 'DRAFT'
@@ -243,9 +231,7 @@ export interface PurchaseOrderItem {
   productUnit?: string; // From JOIN with products table
 }
 
-// =============================================================================
-// SALES & TRANSACTION TYPES
-// =============================================================================
+// SALES & TRANSACTION
 
 export type PaymentMethod = 'CASH' | 'GCASH';
 
@@ -273,9 +259,7 @@ export interface Transaction {
   items: TransactionItem[];
 }
 
-// =============================================================================
-// SALES REPORTS & ANALYTICS TYPES
-// =============================================================================
+// SALES REPORTS & ANALYTICS
 
 export type PeriodType = 'today' | 'week' | 'month' | 'quarter';
 

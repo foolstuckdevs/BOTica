@@ -2,9 +2,7 @@ import { z } from 'zod';
 import { CategoryParams } from '@/types';
 import { pharmacyIdSchema } from './common';
 
-// =============================================================================
 // CATEGORY SCHEMAS
-// =============================================================================
 
 export const categorySchema = z.object({
   name: z

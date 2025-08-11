@@ -1,7 +1,5 @@
-//home/iantristanlandagura/Desktop/SCHOOL/BSIT-4/System/BOT-ica/lib/utils.ts
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-
 import { supabase } from '@/database/supabase';
 
 export function cn(...inputs: ClassValue[]) {

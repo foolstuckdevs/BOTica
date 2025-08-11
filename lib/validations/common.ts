@@ -1,8 +1,6 @@
 import { z } from 'zod';
 
-// =============================================================================
 // COMMON/SHARED SCHEMAS
-// =============================================================================
 
 // Common ID schemas used across multiple validators
 export const pharmacyIdSchema = z
