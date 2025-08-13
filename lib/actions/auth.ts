@@ -10,7 +10,6 @@ import { eq } from 'drizzle-orm';
 
 export const signInWithCredentials = async (
   params: Pick<AuthCredentials, 'email' | 'password'>,
-  rememberMe: boolean = false,
 ) => {
   try {
     // Validate input with Zod
@@ -51,13 +50,10 @@ export const signInWithCredentials = async (
       return { success: false, error: 'Invalid email or password' };
     }
 
-    console.log('SignIn attempt with rememberMe:', rememberMe);
-
     // Now proceed with NextAuth signIn
     const result = await signIn('credentials', {
       email,
       password,
-      rememberMe: rememberMe.toString(),
       redirect: false,
     });
 

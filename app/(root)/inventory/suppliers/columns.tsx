@@ -5,7 +5,7 @@ import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import { Supplier } from '@/types';
 import SupplierActions from '@/components/SupplierActions';
 
-export const columns = (pharmacyId: number): ColumnDef<Supplier>[] => [
+export const columns: ColumnDef<Supplier>[] = [
   {
     accessorKey: 'id',
     header: ({ column }) => (
@@ -71,9 +71,7 @@ export const columns = (pharmacyId: number): ColumnDef<Supplier>[] => [
   {
     id: 'actions',
     header: () => <div className="pl-3">Actions</div>,
-    cell: ({ row }) => (
-      <SupplierActions supplier={row.original} pharmacyId={pharmacyId} />
-    ),
+    cell: ({ row }) => <SupplierActions supplier={row.original} />,
     enableSorting: false,
   },
 ];

@@ -12,14 +12,12 @@ interface ProductsPageClientProps {
   products: Product[];
   categories: Category[];
   suppliers: Supplier[];
-  pharmacyId: number;
 }
 
 export function ProductsPageClient({
   products,
   categories,
   suppliers,
-  pharmacyId,
 }: ProductsPageClientProps) {
   const [filters, setFilters] = useState({
     search: '',
@@ -84,7 +82,7 @@ export function ProductsPageClient({
       </div>
       <div className="bg-white rounded-lg shadow border">
         <DataTable
-          columns={columns(pharmacyId)}
+          columns={columns}
           data={filteredProducts}
           searchConfig={{
             enabled: true,

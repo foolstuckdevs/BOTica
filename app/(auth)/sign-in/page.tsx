@@ -12,8 +12,8 @@ const Page = () => {
         type="SIGN_IN"
         schema={signInSchema}
         defaultValues={{ email: '', password: '' }}
-        onSubmit={async (data, rememberMe) => {
-          const result = await signInWithCredentials(data, rememberMe || false);
+        onSubmit={async (data) => {
+          const result = await signInWithCredentials(data);
           return result;
         }}
       />

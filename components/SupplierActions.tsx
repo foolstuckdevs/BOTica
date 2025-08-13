@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,16 +12,17 @@ import { Supplier } from '@/types';
 import { updateSupplier, deleteSupplier } from '@/lib/actions/suppliers';
 import { supplierSchema } from '@/lib/validations';
 
-const SupplierActions = ({
-  supplier,
-  pharmacyId,
-}: {
-  supplier: Supplier;
-  pharmacyId: number;
-}) => {
+const SupplierActions = ({ supplier }: { supplier: Supplier }) => {
   const router = useRouter();
+  const { data: session } = useSession();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  if (!session?.user?.pharmacyId) {
+    return null; // Don't render actions if no pharmacy access
+  }
+
+  const pharmacyId = session.user.pharmacyId;
 
   const handleDelete = async () => {
     const result = await deleteSupplier(supplier.id, pharmacyId);

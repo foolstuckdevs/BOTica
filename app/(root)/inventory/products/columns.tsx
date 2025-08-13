@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
 
-export const columns = (pharmacyId: number): ColumnDef<Product>[] => [
+export const columns: ColumnDef<Product>[] = [
   {
     accessorKey: 'imageUrl',
     header: 'Image',
@@ -206,9 +206,7 @@ export const columns = (pharmacyId: number): ColumnDef<Product>[] => [
   {
     id: 'actions',
     header: () => <div className="pl-3">Actions</div>,
-    cell: ({ row }) => (
-      <ProductActions product={row.original} pharmacyId={pharmacyId} />
-    ),
+    cell: ({ row }) => <ProductActions product={row.original} />,
     size: 80,
   },
 ];

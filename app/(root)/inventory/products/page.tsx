@@ -29,7 +29,6 @@ const ProductsPage = async () => {
       products={products}
       categories={categories}
       suppliers={suppliers}
-      pharmacyId={pharmacyId}
     />
   );
 };

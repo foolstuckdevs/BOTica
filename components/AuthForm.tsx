@@ -46,7 +46,6 @@ interface Props<T extends FieldValues> {
   defaultValues: T;
   onSubmit: (
     data: T,
-    rememberMe?: boolean,
   ) => Promise<{ success: boolean; error?: string; role?: string }>;
 }
 
@@ -71,7 +70,7 @@ const AuthForm = <T extends FieldValues>({
     setIsLoading(true);
 
     try {
-      const result = await onSubmit(data, isSignIn ? rememberMe : false);
+      const result = await onSubmit(data);
 
       if (result.success) {
         toast.success(
@@ -85,7 +84,7 @@ const AuthForm = <T extends FieldValues>({
           },
         );
 
-        setTimeout(() => router.push('/'), 1000);
+        setTimeout(() => router.push('/'), 1500);
       } else {
         // Handle specific error cases
         const errorMessage =
