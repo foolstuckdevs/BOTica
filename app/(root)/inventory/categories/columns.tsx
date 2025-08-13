@@ -5,7 +5,7 @@ import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import { CategoryActions } from '@/components/CategoryActions';
 import { Category } from '@/types';
 
-export const columns: ColumnDef<Category>[] = [
+export const columns = (pharmacyId: number): ColumnDef<Category>[] => [
   {
     accessorKey: 'id',
     header: ({ column }) => (
@@ -41,7 +41,9 @@ export const columns: ColumnDef<Category>[] = [
   {
     id: 'actions',
     header: () => <div className="pl-3">Actions</div>,
-    cell: ({ row }) => <CategoryActions category={row.original} />,
+    cell: ({ row }) => (
+      <CategoryActions category={row.original} pharmacyId={pharmacyId} />
+    ),
     enableSorting: false,
   },
 ];

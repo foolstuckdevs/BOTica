@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -12,18 +11,17 @@ import { getProductById, deleteProduct } from '@/lib/actions/products';
 import { DeleteDialog } from './DeleteDialog';
 import ProductViewDialog from './ProductViewDialog';
 
-const ProductActions = ({ product }: { product: Product }) => {
+const ProductActions = ({
+  product,
+  pharmacyId,
+}: {
+  product: Product;
+  pharmacyId: number;
+}) => {
   const router = useRouter();
-  const { data: session } = useSession();
   const [viewOpen, setViewOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productDetails, setProductDetails] = useState<Product | null>(null);
-
-  if (!session?.user?.pharmacyId) {
-    return null; // Don't render actions if no pharmacy access
-  }
-
-  const pharmacyId = session.user.pharmacyId;
 
   const handleView = async () => {
     try {

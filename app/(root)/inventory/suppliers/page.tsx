@@ -17,6 +17,7 @@ const Page = async () => {
   }
 
   const pharmacyId = session.user.pharmacyId;
+  const supplierColumns = columns(pharmacyId);
 
   const suppliers = await getSuppliers(pharmacyId);
   return (
@@ -26,7 +27,7 @@ const Page = async () => {
       </div>
       <div className="bg-white rounded-lg shadow border">
         <DataTable
-          columns={columns}
+          columns={supplierColumns}
           data={suppliers}
           searchConfig={{
             enabled: true,

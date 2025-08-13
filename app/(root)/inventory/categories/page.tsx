@@ -18,6 +18,7 @@ const Page = async () => {
   }
 
   const pharmacyId = session.user.pharmacyId;
+  const categoryColumns = columns(pharmacyId);
 
   const result = await getCategories(pharmacyId);
   return (
@@ -27,7 +28,7 @@ const Page = async () => {
       </div>
       <div className="bg-white rounded-lg shadow border">
         <DataTable
-          columns={columns}
+          columns={categoryColumns}
           data={result}
           searchConfig={{
             enabled: true,
