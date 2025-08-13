@@ -1,74 +1,3 @@
-// import NextAuth, { User } from 'next-auth';
-// import CredentialsProvider from 'next-auth/providers/credentials';
-// import { db } from './database/drizzle';
-// import { users } from './database/schema';
-// import { eq } from 'drizzle-orm';
-// import { compare } from 'bcryptjs';
-
-// export const { handlers, signIn, signOut, auth } = NextAuth({
-//   session: {
-//     strategy: 'jwt',
-//   },
-//   providers: [
-//     CredentialsProvider({
-//       async authorize(credentials) {
-//         if (!credentials?.email || !credentials?.password) {
-//           return null;
-//         }
-
-//         const user = await db
-//           .select({
-//             id: users.id,
-//             fullName: users.fullName,
-//             email: users.email,
-//             passwordHash: users.password,
-//             role: users.role,
-//           })
-//           .from(users)
-//           .where(eq(users.email, credentials.email.toString()))
-//           .limit(1);
-
-//         if (user.length === 0) return null;
-
-//         const isPasswordValid = await compare(
-//           credentials.password.toString(),
-//           user[0].passwordHash,
-//         );
-
-//         if (!isPasswordValid) return null;
-
-//         return {
-//           id: user[0].id.toString(),
-//           email: user[0].email,
-//           name: user[0].fullName,
-//           role: user[0].role,
-//         } as User;
-//       },
-//     }),
-//   ],
-//   pages: {
-//     signIn: 'signIn',
-//   },
-//   callbacks: {
-//     async jwt({ token, user }) {
-//       if (user) {
-//         token.id = user.id as string;
-//         token.name = user.name;
-//         token.role = user.role;
-//       }
-//       return token;
-//     },
-//     async session({ session, token }) {
-//       if (session.user) {
-//         session.user.id = token.id as string;
-//         session.user.name = token.name as string;
-//         session.user.role = token.role;
-//       }
-//       return session;
-//     },
-//   },
-// });
-
 import NextAuth, { User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { db } from './database/drizzle';
@@ -79,6 +8,7 @@ import { compare } from 'bcryptjs';
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days for remembered sessions, will be overridden for regular sessions
   },
   providers: [
     CredentialsProvider({
@@ -86,6 +16,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
+        rememberMe: { label: 'Remember Me', type: 'text' },
       },
       async authorize(credentials) {
         try {
@@ -136,7 +67,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             name: user[0].fullName,
             role: user[0].role,
             pharmacyId: user[0].pharmacyId,
-          } as User & { pharmacyId: number };
+            rememberMe: credentials.rememberMe === 'true',
+          } as User & { pharmacyId: number; rememberMe: boolean };
         } catch (error) {
           console.error('Error during authentication:', error);
           return null;
@@ -154,6 +86,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.name = user.name;
         token.role = user.role;
         token.pharmacyId = (user as User & { pharmacyId: number }).pharmacyId;
+        // Set expiration based on remember me preference
+        const rememberMe =
+          (user as { rememberMe?: boolean })?.rememberMe || false;
+        if (rememberMe) {
+          token.exp = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // 30 days
+        } else {
+          token.exp = Math.floor(Date.now() / 1000) + 8 * 60 * 60; // 8 hours
+        }
       }
       return token;
     },
