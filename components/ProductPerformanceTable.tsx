@@ -4,7 +4,14 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Package } from 'lucide-react';
+import { Package, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ProductPerformanceData } from '@/types';
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -27,6 +34,8 @@ export const ProductPerformanceTable = ({
   const [customDateRange, setCustomDateRange] = React.useState<
     DateRange | undefined
   >();
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [itemsPerPage, setItemsPerPage] = React.useState(10);
 
   // Get current data based on selected time period
   const getCurrentData = (): ProductPerformanceData[] => {
@@ -126,123 +135,207 @@ export const ProductPerformanceTable = ({
   // Sort by quantity (most sold first)
   currentData = [...currentData].sort((a, b) => b.quantity - a.quantity);
 
+  // Reset pagination on filter changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [timePeriod, category, customDateRange]);
+
+  // Pagination calculations
+  const totalPages = Math.max(1, Math.ceil(currentData.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = currentData.slice(startIndex, endIndex);
+
   return (
-    <Card>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Package className="w-5 h-5 text-muted-foreground" />
-            Product Performance Analysis
-          </CardTitle>
-
-          {/* Clean Filters */}
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            {/* Time Period with Custom Date Picker */}
-            <div className="flex bg-muted rounded-lg p-1 gap-1">
-              {['today', 'week', 'month'].map((period) => (
-                <Button
-                  key={period}
-                  variant={
-                    timePeriod === period && !customDateRange
-                      ? 'default'
-                      : 'ghost'
-                  }
-                  size="sm"
-                  onClick={() => handleQuickPeriod(period)}
-                  className="h-8 px-3 text-sm"
-                >
-                  {period === 'week'
-                    ? 'Week'
-                    : period === 'month'
-                    ? 'Month'
-                    : 'Today'}
-                </Button>
-              ))}
-
-              {/* Custom Date Range Picker */}
-              <CustomDatePicker
-                dateRange={customDateRange}
-                onDateRangeChange={handleCustomDateChange}
-              />
+    <div className="flex flex-col space-y-2">
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-lg font-semibold">
+                  Product Performance
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Top-selling products and profitability
+                </p>
+              </div>
             </div>
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <div className="flex bg-muted/50 rounded-lg p-1 gap-1">
+                {['today', 'week', 'month'].map((period) => (
+                  <Button
+                    key={period}
+                    variant={
+                      timePeriod === period && !customDateRange
+                        ? 'default'
+                        : 'ghost'
+                    }
+                    size="sm"
+                    onClick={() => handleQuickPeriod(period)}
+                    className="h-9 px-4 text-sm font-medium"
+                  >
+                    {period === 'week'
+                      ? 'Week'
+                      : period === 'month'
+                      ? 'Month'
+                      : 'Today'}
+                  </Button>
+                ))}
 
-            {/* Category Filter */}
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="h-8 px-3 text-sm border rounded-md bg-background"
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat === 'all' ? 'All' : cat}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </CardHeader>
+                <CustomDatePicker
+                  dateRange={customDateRange}
+                  onDateRangeChange={handleCustomDateChange}
+                />
+              </div>
 
-      <CardContent className="space-y-4">
-        {currentData.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>No products found for the selected filters.</p>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="h-10 w-full sm:w-auto sm:min-w-[160px] text-sm px-3 py-2">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat === 'all' ? 'All' : cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        ) : (
-          <>
-            {/* Simple Product List - Top 5 */}
-            <div className="space-y-3">
-              {currentData.slice(0, 5).map((product, index) => (
-                <div
-                  key={`${product.name}-${index}`}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  {/* Left Side - Rank & Product Info */}
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
-                        index === 0
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                          : index === 1
-                          ? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                          : index === 2
-                          ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="py-3 px-4 text-left font-medium">Product</th>
+                  <th className="py-3 px-4 text-left font-medium">Category</th>
+                  <th className="py-3 px-4 text-right font-medium">Quantity</th>
+                  <th className="py-3 px-4 text-right font-medium">Revenue</th>
+                  <th className="py-3 px-4 text-right font-medium">Profit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedData.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="py-6 text-center text-muted-foreground"
                     >
-                      {index + 1}
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium text-sm mb-1">
-                        {product.name}
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs h-5">
-                          {product.category}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {product.quantity} units sold
-                        </span>
+                      No products found for the selected filters.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedData.map((product, index) => (
+                    <tr
+                      key={`${product.name}-${startIndex + index}`}
+                      className="border-b hover:bg-muted/50 transition-colors"
+                    >
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {startIndex + index + 1}.
+                          </span>
+                          <span className="font-medium">{product.name}</span>
+                          <Badge variant="outline" className="text-xs h-5 ml-2">
+                            {product.category}
+                          </Badge>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">{product.category}</td>
+                      <td className="py-3 px-4 text-right">
+                        {product.quantity}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        ₱
+                        {product.revenue.toLocaleString('en-PH', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        ₱
+                        {product.profit.toLocaleString('en-PH', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              <tfoot>
+                {currentData.length > 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-2 px-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <p className="text-sm font-medium">Rows per page</p>
+                          <Select
+                            value={`${itemsPerPage}`}
+                            onValueChange={(value) =>
+                              setItemsPerPage(Number(value))
+                            }
+                          >
+                            <SelectTrigger className="h-8 w-[70px]">
+                              <SelectValue placeholder={itemsPerPage} />
+                            </SelectTrigger>
+                            <SelectContent side="top">
+                              {[10, 20, 30, 40, 50].map((pageSize) => (
+                                <SelectItem
+                                  key={pageSize}
+                                  value={`${pageSize}`}
+                                >
+                                  {pageSize}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center space-x-6 lg:space-x-8">
+                          <div className="flex w-[120px] items-center justify-center text-sm font-medium">
+                            Page {currentPage} of {totalPages}
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              className="h-8 w-8 p-0"
+                              onClick={() =>
+                                setCurrentPage((p) => Math.max(1, p - 1))
+                              }
+                              disabled={currentPage === 1}
+                            >
+                              <span className="sr-only">
+                                Go to previous page
+                              </span>
+                              <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="h-8 w-8 p-0"
+                              onClick={() =>
+                                setCurrentPage((p) =>
+                                  Math.min(totalPages, p + 1),
+                                )
+                              }
+                              disabled={currentPage === totalPages}
+                            >
+                              <span className="sr-only">Go to next page</span>
+                              <ChevronRight className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Right Side - Revenue */}
-                  <div className="text-right">
-                    <p className="font-semibold">
-                      ₱{product.revenue.toLocaleString('en-PH')}
-                    </p>
-                    <p className="text-xs text-green-600">
-                      ₱{product.profit.toLocaleString('en-PH')} profit
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+                    </td>
+                  </tr>
+                )}
+              </tfoot>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };

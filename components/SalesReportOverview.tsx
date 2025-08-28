@@ -123,19 +123,19 @@ export const SalesReportOverview = ({
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Sales Overview</h2>
-          <p className="text-muted-foreground">
-            Track your pharmacy&apos;s sales performance
-          </p>
+      {/* Header Section (no border) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-muted-foreground" />
+          <div>
+            <h3 className="text-lg font-semibold">Sales Overview</h3>
+            <p className="text-sm text-muted-foreground">
+              Key sales metrics and performance indicators
+            </p>
+          </div>
         </div>
-
-        {/* Period Selector with Custom Date Picker */}
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          {/* Unified Time Period Filters */}
-          <div className="flex bg-muted/50 rounded-xl p-1 gap-1">
+        <div className="flex flex-col sm:flex-row items-center gap-2">
+          <div className="flex bg-muted/50 rounded-lg p-1 gap-1">
             {['today', 'week', 'month'].map((period) => (
               <Button
                 key={period}
@@ -146,7 +146,7 @@ export const SalesReportOverview = ({
                 }
                 size="sm"
                 onClick={() => handleQuickPeriod(period)}
-                className="h-9 px-4 rounded-lg font-medium"
+                className="h-9 px-4 text-sm font-medium"
               >
                 {getPeriodLabel(period)}
               </Button>

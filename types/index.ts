@@ -310,3 +310,61 @@ export interface ChartMetrics {
   avgDailyTransactions: number;
   daysWithSales: number;
 }
+
+// INVENTORY REPORTS
+export interface InventoryOverviewData {
+  totalProducts: number;
+  totalValue: number;
+  lowStockCount: number;
+  expiringCount: number;
+  outOfStockCount: number;
+}
+
+export interface ExpiringProductData {
+  id: number;
+  name: string;
+  brandName?: string | null;
+  lotNumber: string;
+  expiryDate: string;
+  daysRemaining: number;
+  quantity: number;
+  value: number;
+  sellingPrice: number;
+  costPrice: number;
+  unit?: string | null;
+  categoryId?: number | null;
+  categoryName: string;
+  urgency: 'critical' | 'warning' | 'normal';
+}
+
+export interface LowStockProductData {
+  id: number;
+  name: string;
+  brandName?: string | null;
+  lotNumber: string;
+  quantity: number;
+  reorderPoint: number;
+  supplierId?: number | null;
+  supplierName: string;
+  lastRestockDate: Date | null;
+  value: number;
+  unit?: string | null;
+  categoryId?: number | null;
+  categoryName: string;
+  status: 'out_of_stock' | 'critical' | 'low';
+}
+
+export interface CategoryDistributionData {
+  categoryId: number;
+  categoryName: string;
+  productCount: number;
+  totalValue: number;
+  totalQuantity: number;
+  percentage: number;
+}
+
+export interface InventoryValueData {
+  range: string;
+  count: number;
+  totalValue: number;
+}

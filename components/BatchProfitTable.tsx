@@ -168,38 +168,35 @@ export const BatchProfitTable = ({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Package className="w-5 h-5 text-blue-600" />
-              Batch Profit Analysis
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Profit analysis by product batch with expiry tracking
-            </p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Package className="w-5 h-5 text-blue-600" />
+            <div>
+              <CardTitle className="text-lg font-semibold">
+                Batch Profit
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Profit by product batch with expiry tracking
+              </p>
+            </div>
           </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mt-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search products or batch numbers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:min-w-[280px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Search products or batch numbers..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-9 text-sm py-2 pl-10 pr-3 w-full"
+              />
+            </div>
             <Select
               value={profitFilter}
               onValueChange={(value: typeof profitFilter) =>
                 setProfitFilter(value)
               }
             >
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="h-9 w-full sm:w-auto sm:min-w-[180px] text-sm px-3 py-2">
                 <SelectValue placeholder="Filter by performance" />
               </SelectTrigger>
               <SelectContent>
@@ -208,17 +205,6 @@ export const BatchProfitTable = ({
                 <SelectItem value="loss">Loss/Break-even</SelectItem>
               </SelectContent>
             </Select>
-
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSearchTerm('');
-                setProfitFilter('all');
-                setCurrentPage(1);
-              }}
-            >
-              Clear Filters
-            </Button>
           </div>
         </div>
       </CardHeader>
@@ -232,7 +218,7 @@ export const BatchProfitTable = ({
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
+                <tr className="border-b bg-muted/50">
                   <th className="text-left py-3 px-4 font-medium text-gray-900 dark:text-gray-100">
                     Product Details
                   </th>

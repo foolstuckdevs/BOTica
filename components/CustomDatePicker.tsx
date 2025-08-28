@@ -73,7 +73,7 @@ export function CustomDatePicker({
             variant={startDate ? 'default' : 'ghost'}
             size="sm"
             className={cn(
-              'h-8 px-3 justify-start text-left font-normal',
+              'h-9 px-3 justify-start text-left font-normal',
               !startDate && 'text-muted-foreground',
             )}
           >
@@ -109,7 +109,7 @@ export function CustomDatePicker({
           variant="ghost"
           size="sm"
           onClick={handleClear}
-          className="h-8 px-1 text-xs"
+          className="h-9 px-1 text-xs"
         >
           <X className="h-3 w-3" />
         </Button>

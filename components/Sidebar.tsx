@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Pill,
   Users,
+  Layers,
 } from 'lucide-react';
 import React, { useState } from 'react';
 
@@ -218,9 +219,7 @@ const Sidebar = () => {
                 <FileText className="w-4 h-4" />
                 Sales Report
               </Link>
-
-              {/* Remove for now for presentation puroses */}
-              {/* <Link
+              <Link
                 href="/reports/inventory"
                 className={`${submenuLinkClasses} ${
                   isActive('/reports/inventory')
@@ -230,7 +229,7 @@ const Sidebar = () => {
               >
                 <Layers className="w-4 h-4" />
                 Inventory Report
-              </Link> */}
+              </Link>
             </div>
           )}
         </div>

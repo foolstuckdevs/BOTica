@@ -1,10 +1,7 @@
-import { SalesReportHeader } from '@/components/SalesReportHeader';
-import { SalesReportOverview } from '@/components/SalesReportOverview';
-import { BatchProfitTable } from '@/components/BatchProfitTable';
 import React from 'react';
-import { ProductPerformanceTable } from '@/components/ProductPerformanceTable';
 import { getSalesReportData } from '@/lib/actions/sales-reports';
 import { auth } from '@/auth';
+import SalesReportClient from '@/components/SalesReportClient';
 
 const page = async () => {
   const session = await auth();
@@ -31,17 +28,16 @@ const page = async () => {
     } = await getSalesReportData(pharmacyId);
 
     return (
-      <div className="space-y-6 p-6">
-        <SalesReportHeader />
-        <SalesReportOverview
-          salesData={salesData}
-          comprehensiveSalesData={comprehensiveSalesData}
-        />
-        <ProductPerformanceTable
-          productData={productData}
-          comprehensiveProductData={comprehensiveProductData}
-        />
-        <BatchProfitTable batchData={batchProfitData} loading={false} />
+      <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <SalesReportClient
+            salesData={salesData}
+            productData={productData}
+            batchProfitData={batchProfitData}
+            comprehensiveSalesData={comprehensiveSalesData}
+            comprehensiveProductData={comprehensiveProductData}
+          />
+        </div>
       </div>
     );
   } catch (error) {
@@ -79,18 +75,16 @@ const page = async () => {
     };
 
     return (
-      <div className="space-y-6 p-6">
-        {/* Header with filters and actions */}
-        <SalesReportHeader />
-
-        {/* Sales Overview - Core metrics with period filtering */}
-        <SalesReportOverview salesData={fallbackData} />
-
-        {/* Product Performance Analysis */}
-        <ProductPerformanceTable productData={fallbackProductData} />
-
-        {/* Batch Profit Analysis */}
-        <BatchProfitTable batchData={[]} loading={false} />
+      <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <SalesReportClient
+            salesData={fallbackData}
+            productData={fallbackProductData}
+            batchProfitData={[]}
+            comprehensiveSalesData={[]}
+            comprehensiveProductData={[]}
+          />
+        </div>
       </div>
     );
   }
