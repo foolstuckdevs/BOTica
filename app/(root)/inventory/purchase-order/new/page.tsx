@@ -1,7 +1,7 @@
 import PurchaseOrderForm from '@/components/PurchaseOrderForm';
 import React from 'react';
 import { getSuppliers } from '@/lib/actions/suppliers';
-import { getProducts } from '@/lib/actions/products';
+import { getOrderableProducts } from '@/lib/actions/purchase-order';
 import { auth } from '@/auth';
 
 export default async function Page() {
@@ -17,7 +17,7 @@ export default async function Page() {
 
   const pharmacyId = session.user.pharmacyId;
   const suppliers = await getSuppliers(pharmacyId);
-  const products = await getProducts(pharmacyId);
+  const products = await getOrderableProducts(pharmacyId);
   return (
     <div>
       <PurchaseOrderForm

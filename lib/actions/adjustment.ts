@@ -2,7 +2,7 @@
 
 import { db } from '@/database/drizzle';
 import { inventoryAdjustments, products, suppliers } from '@/database/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { Adjustment } from '@/types';
 import {
@@ -85,6 +85,7 @@ export const createAdjustment = async ({
         and(
           eq(products.id, validatedData.productId),
           eq(products.pharmacyId, validatedData.pharmacyId),
+          sql`${products.deletedAt} IS NULL`,
         ),
       );
 
@@ -120,6 +121,7 @@ export const createAdjustment = async ({
         and(
           eq(products.id, validatedData.productId),
           eq(products.pharmacyId, validatedData.pharmacyId),
+          sql`${products.deletedAt} IS NULL`,
         ),
       );
 

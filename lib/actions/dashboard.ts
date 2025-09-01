@@ -170,7 +170,12 @@ export const getProductStockSummaries = async (pharmacyId: number) => {
         minStockLevel: products.minStockLevel,
       })
       .from(products)
-      .where(eq(products.pharmacyId, validatedData.pharmacyId));
+      .where(
+        and(
+          eq(products.pharmacyId, validatedData.pharmacyId),
+          sql`${products.deletedAt} IS NULL`,
+        ),
+      );
   } catch (error) {
     console.error('Error fetching product summaries:', error);
     return [];
@@ -293,6 +298,7 @@ export const getLowStockProducts = async (
           // Only show products where current stock <= minimum stock level AND quantity > 0
           lte(products.quantity, products.minStockLevel),
           gte(products.quantity, 0),
+          sql`${products.deletedAt} IS NULL`,
         ),
       )
       .orderBy(products.quantity) // Show lowest stock first
@@ -320,13 +326,17 @@ export const getChartData = async (
   try {
     // Get current date in Philippines timezone for more accurate range calculation
     const now = new Date();
-    const currentPhilippinesDate = formatInTimeZone(now, 'Asia/Manila', 'yyyy-MM-dd');
-    
+    const currentPhilippinesDate = formatInTimeZone(
+      now,
+      'Asia/Manila',
+      'yyyy-MM-dd',
+    );
+
     // Calculate start date (days ago from current Philippines date)
     const endDateCalc = new Date(currentPhilippinesDate + 'T00:00:00.000Z');
     const startDate = new Date(endDateCalc);
     startDate.setDate(startDate.getDate() - days);
-    
+
     // Set end to include the full current day in Philippines timezone
     // Use end of day instead of just current Philippines date
     const endDate = new Date(currentPhilippinesDate + 'T23:59:59.999Z');

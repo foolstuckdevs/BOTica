@@ -7,16 +7,6 @@ import { Category } from '@/types';
 
 export const columns: ColumnDef<Category>[] = [
   {
-    accessorKey: 'id',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ID" />
-    ),
-    cell: ({ getValue }) => (
-      <span className="text-muted-foreground">{getValue<number>()}</span>
-    ),
-    enableSorting: true,
-  },
-  {
     accessorKey: 'name',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Category Name" />

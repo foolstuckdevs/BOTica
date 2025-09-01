@@ -7,6 +7,7 @@ import {
   suppliers,
   users,
   products,
+  categories,
 } from '@/database/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
@@ -22,6 +23,49 @@ import {
   receiveAllItemsSchema,
   partiallyReceiveItemsSchema,
 } from '@/lib/validations';
+import { pharmacyIdSchema } from '@/lib/validations';
+
+// Provide catalog for PO: includes soft-deleted products (for historical ordering), scoped by pharmacy
+export const getOrderableProducts = async (pharmacyId: number) => {
+  try {
+    pharmacyIdSchema.parse(pharmacyId);
+
+    const result = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        genericName: products.genericName,
+        categoryId: products.categoryId,
+        categoryName: categories.name,
+        barcode: products.barcode,
+        lotNumber: products.lotNumber,
+        expiryDate: products.expiryDate,
+        quantity: products.quantity,
+        costPrice: products.costPrice,
+        sellingPrice: products.sellingPrice,
+        minStockLevel: products.minStockLevel,
+        unit: products.unit,
+        supplierId: products.supplierId,
+        supplierName: suppliers.name,
+        imageUrl: products.imageUrl,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        brandName: products.brandName,
+        dosageForm: products.dosageForm,
+        deletedAt: products.deletedAt,
+      })
+      .from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
+      .where(eq(products.pharmacyId, pharmacyId))
+      .orderBy(products.name);
+
+    return result;
+  } catch (error) {
+    console.error('Error fetching orderable products:', error);
+    return [];
+  }
+};
 
 // Generate purchase orders list with computed totals
 export const getPurchaseOrders = async (pharmacyId: number) => {
@@ -636,6 +680,7 @@ export const receiveAllItems = async (
                 and(
                   eq(products.id, item.productId),
                   eq(products.pharmacyId, validatedData.pharmacyId),
+                  sql`${products.deletedAt} IS NULL`,
                 ),
               );
           }
@@ -722,6 +767,7 @@ export const partiallyReceiveItems = async (
                     and(
                       eq(products.id, currentItem.productId),
                       eq(products.pharmacyId, validatedData.pharmacyId),
+                      sql`${products.deletedAt} IS NULL`,
                     ),
                   );
               }

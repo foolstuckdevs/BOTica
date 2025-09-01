@@ -29,10 +29,11 @@ const ProductActions = ({ product }: { product: Product }) => {
     try {
       const details = await getProductById(product.id, pharmacyId);
       if (details) {
+        const d = details as Product;
         setProductDetails({
-          ...details,
-          dosageForm: details.dosageForm ?? '',
-          brandName: details.brandName ?? '',
+          ...d,
+          dosageForm: d.dosageForm,
+          brandName: d.brandName ?? '',
         });
         setViewOpen(true);
       }

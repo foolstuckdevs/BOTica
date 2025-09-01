@@ -128,10 +128,25 @@ const ProductForm = ({
             : 10,
       };
 
+      // On update, prune fields that are server-restricted to improve UX
+      const toSend: Partial<typeof apiData> = { ...apiData };
+      if (type === 'update' && (product as Product).hasReferences) {
+        // Never allow client-side quantity edits via update
+        delete toSend.quantity;
+        // Freeze identity/traceability
+        delete toSend.lotNumber;
+        delete toSend.expiryDate; // server validates too; UI stays disabled
+        delete toSend.unit;
+        delete toSend.dosageForm;
+        delete toSend.barcode;
+        delete toSend.supplierId;
+        // Optionally freeze costPrice after sales; server enforces strictly
+      }
+
       const result =
         type === 'create'
           ? await createProduct({ ...apiData, pharmacyId })
-          : await updateProduct(product.id!, apiData, pharmacyId);
+          : await updateProduct(product.id!, toSend, pharmacyId);
 
       if (result?.success) {
         toast.success(`Product ${type === 'create' ? 'added' : 'updated'}`);
@@ -220,6 +235,10 @@ const ProductForm = ({
                           <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
+                            disabled={
+                              type === 'update' &&
+                              (product as Product).hasReferences
+                            }
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select unit" />
@@ -271,6 +290,10 @@ const ProductForm = ({
                           <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
+                            disabled={
+                              type === 'update' &&
+                              (product as Product).hasReferences
+                            }
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Select dosage form" />
@@ -412,8 +435,14 @@ const ProductForm = ({
                               placeholder="e.g., LOT2025-001"
                               {...field}
                               className="w-full"
-                              readOnly={false}
-                              disabled={false}
+                              readOnly={
+                                type === 'update' &&
+                                (product as Product).hasReferences
+                              }
+                              disabled={
+                                type === 'update' &&
+                                (product as Product).hasReferences
+                              }
                             />
                           </div>
                         </FormControl>
@@ -434,6 +463,14 @@ const ProductForm = ({
                               placeholder="Enter barcode"
                               {...field}
                               className="w-full"
+                              readOnly={
+                                type === 'update' &&
+                                (product as Product).hasReferences
+                              }
+                              disabled={
+                                type === 'update' &&
+                                (product as Product).hasReferences
+                              }
                             />
                           </div>
                         </FormControl>
@@ -459,6 +496,10 @@ const ProductForm = ({
                               minDate={new Date()}
                               placeholderText="Pick a date"
                               className="rounded-md border w-full"
+                              disabled={
+                                type === 'update' &&
+                                (product as Product).hasReferences
+                              }
                             />
                           </div>
                         </FormControl>
@@ -480,7 +521,11 @@ const ProductForm = ({
                                 field.onChange(Number(value) || undefined)
                               }
                               value={field.value?.toString() || undefined}
-                              disabled={suppliers.length === 0}
+                              disabled={
+                                suppliers.length === 0 ||
+                                (type === 'update' &&
+                                  (product as Product).hasReferences)
+                              }
                             >
                               <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Select supplier" />
@@ -548,6 +593,14 @@ const ProductForm = ({
                                 field.onChange(value.toFixed(2));
                               }
                             }}
+                            readOnly={
+                              type === 'update' &&
+                              (product as Product).hasReferences
+                            }
+                            disabled={
+                              type === 'update' &&
+                              (product as Product).hasReferences
+                            }
                           />
                         </FormControl>
                         <FormMessage className="text-xs" />

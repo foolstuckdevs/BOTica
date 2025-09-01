@@ -1,8 +1,16 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { eq, and } from 'drizzle-orm';
-import { categories, products, suppliers, saleItems } from '@/database/schema';
+import { eq, and, sql } from 'drizzle-orm';
+import type { InferSelectModel } from 'drizzle-orm';
+import {
+  categories,
+  products,
+  suppliers,
+  saleItems,
+  inventoryAdjustments,
+  purchaseOrderItems,
+} from '@/database/schema';
 import { ProductParams } from '@/types';
 import { revalidatePath } from 'next/cache';
 import {
@@ -12,6 +20,22 @@ import {
   updateProductSchema,
   getProductBatchesSchema,
 } from '@/lib/validations';
+import type { Product } from '@/types';
+
+// Drizzle product row type and a narrowed subset used in update checks
+type ProductRow = InferSelectModel<typeof products>;
+type ExistingProductSubset = Pick<
+  ProductRow,
+  | 'expiryDate'
+  | 'unit'
+  | 'dosageForm'
+  | 'barcode'
+  | 'supplierId'
+  | 'quantity'
+  | 'lotNumber'
+  | 'costPrice'
+  | 'imageUrl'
+>;
 
 export const getProducts = async (pharmacyId: number) => {
   try {
@@ -45,7 +69,12 @@ export const getProducts = async (pharmacyId: number) => {
       .leftJoin(categories, eq(products.categoryId, categories.id))
       .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
       .orderBy(products.name)
-      .where(eq(products.pharmacyId, pharmacyId));
+      .where(
+        and(
+          eq(products.pharmacyId, pharmacyId),
+          sql`${products.deletedAt} IS NULL`,
+        ),
+      );
 
     return result;
   } catch (error) {
@@ -77,6 +106,7 @@ export const getProductBatches = async (
         and(
           eq(products.name, productName),
           eq(products.pharmacyId, pharmacyId),
+          sql`COALESCE(${products.deletedAt}, NULL) IS NULL`,
         ),
       );
 
@@ -98,7 +128,10 @@ export const getProductBatches = async (
   }
 };
 
-export const getProductById = async (id: number, pharmacyId: number) => {
+export const getProductById = async (
+  id: number,
+  pharmacyId: number,
+): Promise<(Product & { hasReferences?: boolean }) | null> => {
   try {
     // Validate with Zod
     productIdSchema.parse(id);
@@ -130,9 +163,36 @@ export const getProductById = async (id: number, pharmacyId: number) => {
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
       .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
+      .where(
+        and(
+          eq(products.id, id),
+          eq(products.pharmacyId, pharmacyId),
+          sql`${products.deletedAt} IS NULL`,
+        ),
+      );
+
+    if (result.length === 0) return null;
+
+    // Determine if product is referenced by transactions/adjustments/receipts (EXISTS-based)
+    const [{ hasReferences }] = await db
+      .select({
+        hasReferences: sql<boolean>`(
+          EXISTS (SELECT 1 FROM ${saleItems} WHERE ${saleItems.productId} = ${id})
+          OR EXISTS (SELECT 1 FROM ${inventoryAdjustments} WHERE ${inventoryAdjustments.productId} = ${id})
+          OR EXISTS (
+            SELECT 1 FROM ${purchaseOrderItems}
+            WHERE ${purchaseOrderItems.productId} = ${id}
+              AND COALESCE(${purchaseOrderItems.receivedQuantity}, 0) > 0
+          )
+        )`,
+      })
+      .from(products)
       .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
 
-    return result.length > 0 ? result[0] : null;
+    return {
+      ...(result[0] as unknown as Product),
+      hasReferences,
+    };
   } catch (error) {
     console.error('Error fetching product with category:', error);
     return null;
@@ -157,6 +217,7 @@ export const createProduct = async (
             eq(products.barcode, validatedData.barcode),
             eq(products.lotNumber, validatedData.lotNumber),
             eq(products.pharmacyId, validatedData.pharmacyId),
+            sql`${products.deletedAt} IS NULL`,
           ),
         );
 
@@ -210,24 +271,108 @@ export const updateProduct = async (
     if (existingProductArr.length === 0) {
       return { success: false, message: 'Product not found' };
     }
-    const existingProduct = existingProductArr[0];
+    const existingProduct = existingProductArr[0] as ExistingProductSubset;
 
-    // Prevent changing lot number if product is in use
+    // Check references
+    const [{ hasReferences, hasSales }] = await db
+      .select({
+        hasReferences: sql<boolean>`(
+          EXISTS (SELECT 1 FROM ${saleItems} WHERE ${saleItems.productId} = ${validatedData.id})
+          OR EXISTS (SELECT 1 FROM ${inventoryAdjustments} WHERE ${inventoryAdjustments.productId} = ${validatedData.id})
+          OR EXISTS (
+            SELECT 1 FROM ${purchaseOrderItems}
+            WHERE ${purchaseOrderItems.productId} = ${validatedData.id}
+              AND COALESCE(${purchaseOrderItems.receivedQuantity}, 0) > 0
+          )
+        )`,
+        hasSales: sql<boolean>`EXISTS (SELECT 1 FROM ${saleItems} WHERE ${saleItems.productId} = ${validatedData.id})`,
+      })
+      .from(products)
+      .where(
+        and(
+          eq(products.id, validatedData.id),
+          eq(products.pharmacyId, validatedData.pharmacyId),
+        ),
+      );
+
+    // lotNumber immutability is handled below together with other identity fields when referenced
+
+    // Disallow direct quantity changes via update; use adjustments/PO
     if (
-      validatedData.params.lotNumber &&
-      validatedData.params.lotNumber !== existingProduct.lotNumber
+      Object.prototype.hasOwnProperty.call(validatedData.params, 'quantity') &&
+      validatedData.params.quantity !== undefined &&
+      validatedData.params.quantity !== existingProduct.quantity
     ) {
-      const isInUse = await db
-        .select()
-        .from(saleItems)
-        .where(eq(saleItems.productId, validatedData.id));
-      if (isInUse.length > 0) {
+      return {
+        success: false,
+        message:
+          'Quantity cannot be edited directly. Use Inventory Adjustments or Purchase Order receiving to change stock.',
+      };
+    }
+
+    // If referenced, freeze identity/traceability fields and barcode/supplier
+    if (hasReferences) {
+      const normalizeDate = (d: string | Date) => {
+        const dt = typeof d === 'string' ? new Date(d) : d;
+        return new Date(dt.getTime() - dt.getTimezoneOffset() * 60000)
+          .toISOString()
+          .slice(0, 10);
+      };
+
+      const attemptedChanges: string[] = [];
+      if (
+        validatedData.params.expiryDate &&
+        normalizeDate(validatedData.params.expiryDate) !==
+          normalizeDate(existingProduct.expiryDate)
+      )
+        attemptedChanges.push('expiryDate');
+      if (
+        validatedData.params.lotNumber &&
+        validatedData.params.lotNumber !== existingProduct.lotNumber
+      )
+        attemptedChanges.push('lotNumber');
+      if (
+        validatedData.params.unit &&
+        validatedData.params.unit !== existingProduct.unit
+      )
+        attemptedChanges.push('unit');
+      if (
+        validatedData.params.dosageForm &&
+        validatedData.params.dosageForm !== existingProduct.dosageForm
+      )
+        attemptedChanges.push('dosageForm');
+      if (
+        validatedData.params.barcode !== undefined &&
+        validatedData.params.barcode !== existingProduct.barcode
+      )
+        attemptedChanges.push('barcode');
+      if (
+        validatedData.params.supplierId !== undefined &&
+        validatedData.params.supplierId !== existingProduct.supplierId
+      )
+        attemptedChanges.push('supplierId');
+
+      if (attemptedChanges.length > 0) {
         return {
           success: false,
-          message:
-            "This product has existing records - lot number can't be changed",
+          message: `This product is referenced by existing records; the following field(s) cannot be changed: ${attemptedChanges.join(
+            ', ',
+          )}.`,
         };
       }
+    }
+
+    // If sales exist, lock costPrice to avoid altering historical profit calc
+    if (
+      hasSales &&
+      validatedData.params.costPrice !== undefined &&
+      validatedData.params.costPrice !== existingProduct.costPrice
+    ) {
+      return {
+        success: false,
+        message:
+          'Cost price cannot be changed after sales exist for this product. Update cost via new purchase receipts instead.',
+      };
     }
 
     // Only check for duplicate barcode+lot if either is being changed
@@ -255,6 +400,7 @@ export const updateProduct = async (
               eq(products.barcode, newBarcode),
               eq(products.lotNumber, newLot),
               eq(products.pharmacyId, validatedData.pharmacyId),
+              sql`${products.deletedAt} IS NULL`,
             ),
           );
         if (duplicate.length > 0 && duplicate[0].id !== validatedData.id) {
@@ -315,16 +461,56 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
       return { success: false, message: 'Product not found' };
     }
 
-    await db
-      .delete(products)
+    // Check references (single EXISTS-based query)
+    const [{ hasReferences }] = await db
+      .select({
+        hasReferences: sql<boolean>`(
+          EXISTS (SELECT 1 FROM ${saleItems} WHERE ${saleItems.productId} = ${id})
+          OR EXISTS (SELECT 1 FROM ${inventoryAdjustments} WHERE ${inventoryAdjustments.productId} = ${id})
+          OR EXISTS (
+            SELECT 1 FROM ${purchaseOrderItems}
+            WHERE ${purchaseOrderItems.productId} = ${id}
+              AND COALESCE(${purchaseOrderItems.receivedQuantity}, 0) > 0
+          )
+        )`,
+      })
+      .from(products)
       .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
 
-    revalidatePath('/products');
+    if (hasReferences) {
+      // Soft delete when referenced
+      await db
+        .update(products)
+        .set({ deletedAt: sql`NOW()` })
+        .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
+      revalidatePath('/products');
+      return {
+        success: true,
+        message: 'Product archived (still linked to records)',
+      };
+    }
 
-    return {
-      success: true,
-      message: 'Product deleted successfully',
-    };
+    // Attempt hard delete; fall back to soft delete on FK failure
+    try {
+      await db
+        .delete(products)
+        .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
+      revalidatePath('/products');
+      return {
+        success: true,
+        message: 'Product deleted permanently',
+      };
+    } catch {
+      await db
+        .update(products)
+        .set({ deletedAt: sql`NOW()` })
+        .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
+      revalidatePath('/products');
+      return {
+        success: true,
+        message: 'Product archived (linked to past transactions)',
+      };
+    }
   } catch (error) {
     console.error('Error deleting product:', error);
     return {

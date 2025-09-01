@@ -44,7 +44,12 @@ export async function getInventoryReportData(pharmacyId: number) {
       ),
     })
     .from(products)
-    .where(eq(products.pharmacyId, pharmacyId));
+    .where(
+      and(
+        eq(products.pharmacyId, pharmacyId),
+        sql`${products.deletedAt} IS NULL`,
+      ),
+    );
 
   // 2. Get expiring products (next 30/90 days)
   const expiringResults = await db
@@ -100,6 +105,7 @@ export async function getInventoryReportData(pharmacyId: number) {
       and(
         eq(products.pharmacyId, pharmacyId),
         lte(products.quantity, products.minStockLevel),
+        sql`${products.deletedAt} IS NULL`,
       ),
     )
     .orderBy(asc(products.quantity));

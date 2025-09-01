@@ -3,7 +3,7 @@
 import { db } from '@/database/drizzle';
 import { products, saleItems, sales, pharmacies } from '@/database/schema';
 import type { Pharmacy } from '@/types';
-import { eq, and, gte } from 'drizzle-orm';
+import { eq, and, gte, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { processSaleSchema, pharmacyIdSchema } from '@/lib/validations';
 
@@ -38,6 +38,7 @@ export const getAllProductsPOS = async (pharmacyId: number) => {
         and(
           eq(products.pharmacyId, pharmacyId),
           gte(products.expiryDate, todayStr), // Exclude expired products
+          sql`${products.deletedAt} IS NULL`,
         ),
       );
 
@@ -120,6 +121,7 @@ export const processSale = async (
               and(
                 eq(products.id, item.productId),
                 eq(products.pharmacyId, validatedData.pharmacyId),
+                sql`${products.deletedAt} IS NULL`,
               ),
             );
 

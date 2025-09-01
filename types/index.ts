@@ -104,6 +104,9 @@ export interface Product {
   createdAt: Date | string | null;
   updatedAt: Date | string | null;
   pharmacyId?: number;
+  // Computed field: indicates product has references (sales/adjustments/receipts)
+  hasReferences?: boolean;
+  deletedAt?: string | Date | null;
 }
 
 export interface ProductPOS {

@@ -1,7 +1,7 @@
 import PurchaseOrderDetails from '@/components/PurchaseOrderDetails';
 import { getPurchaseOrderById } from '@/lib/actions/purchase-order';
 import { getSuppliers } from '@/lib/actions/suppliers';
-import { getProducts } from '@/lib/actions/products';
+import { getOrderableProducts } from '@/lib/actions/purchase-order';
 import { auth } from '@/auth';
 
 const Page = async ({ params }: { params: { id: string } }) => {
@@ -24,7 +24,7 @@ const Page = async ({ params }: { params: { id: string } }) => {
   const [orderRaw, suppliers, products] = await Promise.all([
     getPurchaseOrderById(orderId, pharmacyId),
     getSuppliers(pharmacyId),
-    getProducts(pharmacyId),
+    getOrderableProducts(pharmacyId),
   ]);
 
   if (!orderRaw) {
