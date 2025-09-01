@@ -18,16 +18,27 @@ import { InventoryOverview } from '@/components/inventory-report/Overview';
 import { ExpiringProductsTable } from '@/components/inventory-report/ExpiringProductsTable';
 import { LowStockTable } from '@/components/inventory-report/LowStockTable';
 
+type TabKey = 'overview' | 'expiring' | 'low-stock';
+
 interface Props {
   inventoryData: {
     overview: InventoryOverviewData;
     expiringProducts: ExpiringProductData[];
     lowStockProducts: LowStockProductData[];
   };
+  initialTab?: TabKey;
 }
 
-export default function InventoryReportClient({ inventoryData }: Props) {
-  const [, setActiveTab] = useState('overview');
+export default function InventoryReportClient({
+  inventoryData,
+  initialTab = 'overview',
+}: Props) {
+  const [, setActiveTab] = useState<TabKey>(initialTab);
+  const handleTabChange = (value: string) => {
+    if (value === 'overview' || value === 'expiring' || value === 'low-stock') {
+      setActiveTab(value);
+    }
+  };
   const [expiryFilter, setExpiryFilter] = useState<
     'all' | '7days' | '30days' | '60days' | '90days'
   >('all');
@@ -191,8 +202,8 @@ export default function InventoryReportClient({ inventoryData }: Props) {
       />
       <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-lg overflow-hidden">
         <Tabs
-          defaultValue="overview"
-          onValueChange={setActiveTab}
+          defaultValue={initialTab}
+          onValueChange={handleTabChange}
           className="w-full"
         >
           <div className="border-b bg-gray-50 dark:bg-gray-800/50">

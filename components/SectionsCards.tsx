@@ -112,7 +112,7 @@ export function SectionCards({
         </CardHeader>
         <CardFooter className="justify-end">
           <Link
-            href="/inventory/products"
+            href="/reports/inventory?tab=low-stock"
             className="text-xs text-yellow-800 hover:underline flex items-center gap-1"
           >
             View Report <ArrowRight className="w-3 h-3" />
@@ -139,7 +139,7 @@ export function SectionCards({
         </CardHeader>
         <CardFooter className="justify-end">
           <Link
-            href="/reports/inventory"
+            href="/reports/inventory?tab=expiring"
             className="text-xs text-red-700 hover:underline flex items-center gap-1"
           >
             View Expiry List <ArrowRight className="w-3 h-3" />
