@@ -4,6 +4,12 @@ import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import { CategoryActions } from '@/components/CategoryActions';
 import { Category } from '@/types';
+import usePermissions from '@/hooks/use-permissions';
+
+const ActionsHeader = () => {
+  const { canEditMasterData } = usePermissions();
+  return canEditMasterData ? <div className="pl-3">Actions</div> : null;
+};
 
 export const columns: ColumnDef<Category>[] = [
   {
@@ -30,7 +36,7 @@ export const columns: ColumnDef<Category>[] = [
   },
   {
     id: 'actions',
-    header: () => <div className="pl-3">Actions</div>,
+    header: ActionsHeader,
     cell: ({ row }) => <CategoryActions category={row.original} />,
     enableSorting: false,
   },

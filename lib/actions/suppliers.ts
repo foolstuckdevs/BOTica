@@ -11,6 +11,7 @@ import {
 } from '@/lib/validations';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { canEditMasterData } from '@/lib/helpers/rbac';
 
 /**
  * Get suppliers for a specific pharmacy
@@ -48,6 +49,10 @@ export const createSupplier = async (
   params: SupplierParams & { pharmacyId: number },
 ) => {
   try {
+    // RBAC: Admin-only for master data mutations (suppliers)
+    if (!(await canEditMasterData())) {
+      return { success: false, message: 'Unauthorized' };
+    }
     // Validate input with Zod
     const validatedData = createSupplierSchema.parse(params);
 
@@ -98,6 +103,10 @@ export const updateSupplier = async (
   data: { id: number; pharmacyId: number } & SupplierParams,
 ) => {
   try {
+    // RBAC: Admin-only for master data mutations (suppliers)
+    if (!(await canEditMasterData())) {
+      return { success: false, message: 'Unauthorized' };
+    }
     // Validate input with Zod
     const validatedData = updateSupplierSchema.parse(data);
 
@@ -169,6 +178,10 @@ export const updateSupplier = async (
  */
 export const deleteSupplier = async (id: number, pharmacyId: number) => {
   try {
+    // RBAC: Admin-only for master data mutations (suppliers)
+    if (!(await canEditMasterData())) {
+      return { success: false, message: 'Unauthorized' };
+    }
     // Validate input with Zod
     const validatedData = deleteSupplierSchema.parse({ id, pharmacyId });
 

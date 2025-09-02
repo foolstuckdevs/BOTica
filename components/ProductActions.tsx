@@ -11,10 +11,12 @@ import { Product } from '@/types';
 import { getProductById, deleteProduct } from '@/lib/actions/products';
 import { DeleteDialog } from './DeleteDialog';
 import ProductViewDialog from './ProductViewDialog';
+import usePermissions from '@/hooks/use-permissions';
 
 const ProductActions = ({ product }: { product: Product }) => {
   const router = useRouter();
   const { data: session } = useSession();
+  const { canEditMasterData } = usePermissions();
   const [viewOpen, setViewOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productDetails, setProductDetails] = useState<Product | null>(null);
@@ -61,24 +63,29 @@ const ProductActions = ({ product }: { product: Product }) => {
         <Button variant="ghost" size="icon" onClick={handleView} title="View">
           <Eye className="h-4 w-4 text-gray-600" />
         </Button>
+        {canEditMasterData && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                router.push(`/inventory/products/${product.id}/edit`)
+              }
+              title="Edit"
+            >
+              <Pencil className="h-4 w-4 text-gray-600" />
+            </Button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.push(`/inventory/products/${product.id}/edit`)}
-          title="Edit"
-        >
-          <Pencil className="h-4 w-4 text-gray-600" />
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setDeleteDialogOpen(true)}
-          title="Delete"
-        >
-          <Trash2 className="h-4 w-4 text-red-600" />
-        </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDeleteDialogOpen(true)}
+              title="Delete"
+            >
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </Button>
+          </>
+        )}
       </div>
 
       {productDetails && (

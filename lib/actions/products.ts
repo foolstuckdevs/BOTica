@@ -21,6 +21,7 @@ import {
   getProductBatchesSchema,
 } from '@/lib/validations';
 import type { Product } from '@/types';
+import { canEditMasterData } from '@/lib/helpers/rbac';
 
 // Drizzle product row type and a narrowed subset used in update checks
 type ProductRow = InferSelectModel<typeof products>;
@@ -203,6 +204,10 @@ export const createProduct = async (
   params: ProductParams & { pharmacyId: number },
 ) => {
   try {
+    // RBAC: Admin-only for master data mutations (products)
+    if (!(await canEditMasterData())) {
+      return { success: false, message: 'Unauthorized' };
+    }
     // Validate with Zod
     const validatedData = createProductSchema.parse(params);
 
@@ -255,6 +260,10 @@ export const updateProduct = async (
   pharmacyId: number,
 ) => {
   try {
+    // RBAC: Admin-only for master data mutations (products)
+    if (!(await canEditMasterData())) {
+      return { success: false, message: 'Unauthorized' };
+    }
     // Validate with Zod
     const validatedData = updateProductSchema.parse({ id, params, pharmacyId });
 
@@ -448,6 +457,10 @@ export const updateProduct = async (
 
 export const deleteProduct = async (id: number, pharmacyId: number) => {
   try {
+    // RBAC: Admin-only for master data mutations (products)
+    if (!(await canEditMasterData())) {
+      return { success: false, message: 'Unauthorized' };
+    }
     // Validate with Zod
     productIdSchema.parse(id);
     pharmacyIdSchema.parse(pharmacyId);

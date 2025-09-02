@@ -11,6 +11,7 @@ import {
 } from '@/lib/validations';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { canEditMasterData } from '@/lib/helpers/rbac';
 
 /**
  * Get categories by pharmacy
@@ -50,6 +51,10 @@ export async function createCategory(
   params: Pick<Category, 'name' | 'description'> & { pharmacyId: number },
 ) {
   try {
+    // RBAC: Admin-only for master data mutations (categories)
+    if (!(await canEditMasterData())) {
+      return { success: false, message: 'Unauthorized' } as const;
+    }
     // Validate input with Zod
     const validatedData = createCategorySchema.parse(params);
 
@@ -106,6 +111,10 @@ export const updateCategory = async (
   data: { id: number; pharmacyId: number } & CategoryParams,
 ) => {
   try {
+    // RBAC: Admin-only for master data mutations (categories)
+    if (!(await canEditMasterData())) {
+      return { success: false, message: 'Unauthorized' } as const;
+    }
     // Validate input with Zod
     const validatedData = updateCategorySchema.parse(data);
 
@@ -180,6 +189,10 @@ export const deleteCategory = async (
   pharmacyId: number,
 ) => {
   try {
+    // RBAC: Admin-only for master data mutations (categories)
+    if (!(await canEditMasterData())) {
+      return { success: false, message: 'Unauthorized' } as const;
+    }
     // Validate input with Zod
     const validatedData = deleteCategorySchema.parse({
       id: categoryId,

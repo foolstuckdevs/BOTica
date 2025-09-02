@@ -4,6 +4,12 @@ import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import { Supplier } from '@/types';
 import SupplierActions from '@/components/SupplierActions';
+import usePermissions from '@/hooks/use-permissions';
+
+const ActionsHeader = () => {
+  const { canEditMasterData } = usePermissions();
+  return canEditMasterData ? <div className="pl-3">Actions</div> : null;
+};
 
 export const columns: ColumnDef<Supplier>[] = [
   {
@@ -70,7 +76,7 @@ export const columns: ColumnDef<Supplier>[] = [
   },
   {
     id: 'actions',
-    header: () => <div className="pl-3">Actions</div>,
+    header: ActionsHeader,
     cell: ({ row }) => <SupplierActions supplier={row.original} />,
     enableSorting: false,
   },

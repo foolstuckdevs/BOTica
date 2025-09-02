@@ -11,10 +11,12 @@ import EditDialog from './EditDialog';
 import { Category } from '@/types';
 import { updateCategory, deleteCategory } from '@/lib/actions/categories';
 import { categorySchema } from '@/lib/validations';
+import usePermissions from '@/hooks/use-permissions';
 
 export function CategoryActions({ category }: { category: Category }) {
   const router = useRouter();
   const { data: session } = useSession();
+  const { canEditMasterData } = usePermissions();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -38,23 +40,27 @@ export function CategoryActions({ category }: { category: Category }) {
   return (
     <>
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setEditDialogOpen(true)}
-          title="Edit"
-        >
-          <Pencil className="h-4 w-4 text-gray-600" />
-        </Button>
+        {canEditMasterData && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setEditDialogOpen(true)}
+              title="Edit"
+            >
+              <Pencil className="h-4 w-4 text-gray-600" />
+            </Button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setDeleteDialogOpen(true)}
-          title="Delete"
-        >
-          <Trash2 className="h-4 w-4 text-red-600" />
-        </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDeleteDialogOpen(true)}
+              title="Delete"
+            >
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </Button>
+          </>
+        )}
       </div>
 
       <EditDialog

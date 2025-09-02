@@ -7,6 +7,7 @@ import { columns } from './columns';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import usePermissions from '@/hooks/use-permissions';
 
 interface ProductsPageClientProps {
   products: Product[];
@@ -19,6 +20,7 @@ export function ProductsPageClient({
   categories,
   suppliers,
 }: ProductsPageClientProps) {
+  const { canEditMasterData } = usePermissions();
   const [filters, setFilters] = useState({
     search: '',
     categoryId: 'all',
@@ -75,10 +77,12 @@ export function ProductsPageClient({
           filters={filters}
           setFilters={setFilters}
         />
-        <Button>
-          <Plus className="h-4 w-4" />
-          <Link href="/inventory/products/new"> Add Product</Link>
-        </Button>
+        {canEditMasterData && (
+          <Button>
+            <Plus className="h-4 w-4" />
+            <Link href="/inventory/products/new"> Add Product</Link>
+          </Button>
+        )}
       </div>
       <div className="bg-white rounded-lg shadow border">
         <DataTable
