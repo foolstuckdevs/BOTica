@@ -22,6 +22,7 @@ import {
 } from '@/lib/validations';
 import type { Product } from '@/types';
 import { canEditMasterData } from '@/lib/helpers/rbac';
+import { logActivity } from '@/lib/actions/activity';
 
 // Drizzle product row type and a narrowed subset used in update checks
 type ProductRow = InferSelectModel<typeof products>;
@@ -239,6 +240,18 @@ export const createProduct = async (
       .values(validatedData)
       .returning();
 
+    // Log activity
+    await logActivity({
+      action: 'PRODUCT_CREATED',
+      pharmacyId: validatedData.pharmacyId,
+      details: {
+        id: newProduct[0]?.id,
+        name: validatedData.name,
+        brandName: validatedData.brandName ?? null,
+        categoryId: validatedData.categoryId ?? null,
+      },
+    });
+
     revalidatePath('/products');
 
     return {
@@ -439,6 +452,16 @@ export const updateProduct = async (
       )
       .returning();
 
+    // Log activity
+    await logActivity({
+      action: 'PRODUCT_UPDATED',
+      pharmacyId: validatedData.pharmacyId,
+      details: {
+        id: validatedData.id,
+        changes: Object.keys(validatedData.params ?? {}),
+      },
+    });
+
     revalidatePath('/products');
 
     return {
@@ -466,7 +489,7 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
     pharmacyIdSchema.parse(pharmacyId);
 
     const existingProduct = await db
-      .select()
+      .select({ id: products.id, name: products.name })
       .from(products)
       .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
 
@@ -497,6 +520,11 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         .set({ deletedAt: sql`NOW()` })
         .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
       revalidatePath('/products');
+      await logActivity({
+        action: 'PRODUCT_ARCHIVED',
+        pharmacyId,
+        details: { id, name: (existingProduct[0] as { name?: string })?.name },
+      });
       return {
         success: true,
         message: 'Product archived (still linked to records)',
@@ -509,6 +537,11 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         .delete(products)
         .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
       revalidatePath('/products');
+      await logActivity({
+        action: 'PRODUCT_DELETED',
+        pharmacyId,
+        details: { id, name: (existingProduct[0] as { name?: string })?.name },
+      });
       return {
         success: true,
         message: 'Product deleted permanently',
@@ -519,6 +552,11 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         .set({ deletedAt: sql`NOW()` })
         .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
       revalidatePath('/products');
+      await logActivity({
+        action: 'PRODUCT_ARCHIVED',
+        pharmacyId,
+        details: { id, name: (existingProduct[0] as { name?: string })?.name },
+      });
       return {
         success: true,
         message: 'Product archived (linked to past transactions)',

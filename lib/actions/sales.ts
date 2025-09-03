@@ -5,6 +5,7 @@ import { products, saleItems, sales, pharmacies } from '@/database/schema';
 import type { Pharmacy } from '@/types';
 import { eq, and, gte, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { logActivity } from '@/lib/actions/activity';
 import { processSaleSchema, pharmacyIdSchema } from '@/lib/validations';
 
 // Get all products for POS
@@ -189,6 +190,19 @@ export const processSale = async (
     // Revalidate inventory and POS pages
     revalidatePath('/sales/pos');
     revalidatePath('/products');
+
+    // Activity log
+    await logActivity({
+      action: 'SALE_COMPLETED',
+      pharmacyId: validatedData.pharmacyId,
+      details: {
+        id: result.sale.id,
+        invoiceNumber: result.sale.invoiceNumber,
+        totalAmount: result.sale.totalAmount,
+        discount: result.sale.discount,
+        paymentMethod: result.sale.paymentMethod,
+      },
+    });
 
     return {
       success: true,

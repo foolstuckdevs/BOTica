@@ -190,7 +190,7 @@ export const activityLogs = pgTable('activity_logs', {
     .references(() => users.id)
     .notNull(),
   action: varchar('action', { length: 100 }).notNull(),
-  details: text('details'),
+  description: text('description'),
   pharmacyId: integer('pharmacy_id')
     .notNull()
     .references(() => pharmacies.id),

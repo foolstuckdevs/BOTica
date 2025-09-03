@@ -7,6 +7,7 @@ import { users } from '@/database/schema';
 import { AuthCredentials } from '@/types';
 import { signInSchema } from '@/lib/validations';
 import { eq } from 'drizzle-orm';
+import { logActivity } from '@/lib/actions/activity';
 
 export const signInWithCredentials = async (
   params: Pick<AuthCredentials, 'email' | 'password'>,
@@ -64,6 +65,28 @@ export const signInWithCredentials = async (
     if (result?.error) {
       console.log('NextAuth signIn error:', result.error);
       return { success: false, error: 'Authentication failed' };
+    }
+
+    // Log sign in activity with verified user record (session may not be hydrated yet)
+    try {
+      // fetch user's pharmacyId for logging
+      const userRow = await db
+        .select({ id: users.id, pharmacyId: users.pharmacyId })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+      const pharmacyId = userRow[0]?.pharmacyId as number | undefined;
+      const uid = userRow[0]?.id as string | undefined;
+      if (pharmacyId && uid) {
+        await logActivity({
+          action: 'AUTH_SIGNIN',
+          pharmacyId,
+          userId: uid,
+          details: { email },
+        });
+      }
+    } catch (e) {
+      console.error('Failed to log AUTH_SIGNIN:', e);
     }
 
     return { success: true, role: userRecord[0].role };

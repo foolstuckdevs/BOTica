@@ -12,6 +12,7 @@ import {
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { canEditMasterData } from '@/lib/helpers/rbac';
+import { logActivity } from '@/lib/actions/activity';
 
 /**
  * Get suppliers for a specific pharmacy
@@ -76,6 +77,12 @@ export const createSupplier = async (
       .returning();
 
     revalidatePath('/suppliers');
+
+    await logActivity({
+      action: 'SUPPLIER_CREATED',
+      pharmacyId: validatedData.pharmacyId,
+      details: { id: newSupplier[0]?.id, name: validatedData.name },
+    });
 
     return {
       success: true,
@@ -157,6 +164,12 @@ export const updateSupplier = async (
 
     revalidatePath('/suppliers');
 
+    await logActivity({
+      action: 'SUPPLIER_UPDATED',
+      pharmacyId: validatedData.pharmacyId,
+      details: { id: validatedData.id, name: validatedData.name },
+    });
+
     return { success: true };
   } catch (error) {
     // Handle Zod validation errors
@@ -209,6 +222,15 @@ export const deleteSupplier = async (id: number, pharmacyId: number) => {
       );
 
     revalidatePath('/suppliers');
+
+    await logActivity({
+      action: 'SUPPLIER_DELETED',
+      pharmacyId: validatedData.pharmacyId,
+      details: {
+        id: validatedData.id,
+        name: (existingSupplier[0] as { name?: string })?.name,
+      },
+    });
 
     return { success: true, message: 'Supplier deleted successfully' };
   } catch (error) {

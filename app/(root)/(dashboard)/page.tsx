@@ -2,6 +2,7 @@ import { LowStockAlerts } from '@/components/LowStockAlerts';
 import { SectionCards } from '@/components/SectionsCards';
 import { SalesChart } from '@/components/SalesChart';
 import { TopSellingProducts } from '@/components/TopSellingProducts';
+import RecentActivity from '@/components/RecentActivity';
 import { auth } from '@/auth';
 import {
   getProductStockSummaries,
@@ -50,6 +51,7 @@ const Page = async () => {
         <LowStockAlerts lowStockProducts={lowStockProducts} />
         <TopSellingProducts products={topSellingProducts} />
       </div>
+      <RecentActivity pharmacyId={pharmacyId} />
     </main>
   );
 };

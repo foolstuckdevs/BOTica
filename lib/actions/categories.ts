@@ -12,6 +12,7 @@ import {
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { canEditMasterData } from '@/lib/helpers/rbac';
+import { logActivity } from '@/lib/actions/activity';
 
 /**
  * Get categories by pharmacy
@@ -81,6 +82,12 @@ export async function createCategory(
       .returning();
 
     revalidatePath('/categories');
+
+    await logActivity({
+      action: 'CATEGORY_CREATED',
+      pharmacyId: validatedData.pharmacyId,
+      details: { id: newCategory[0]?.id, name: validatedData.name },
+    });
 
     return {
       success: true,
@@ -162,6 +169,12 @@ export const updateCategory = async (
 
     revalidatePath('/categories');
 
+    await logActivity({
+      action: 'CATEGORY_UPDATED',
+      pharmacyId: validatedData.pharmacyId,
+      details: { id: validatedData.id, name: validatedData.name },
+    });
+
     return { success: true };
   } catch (error) {
     // Handle Zod validation errors
@@ -223,6 +236,12 @@ export const deleteCategory = async (
       );
 
     revalidatePath('/categories');
+
+    await logActivity({
+      action: 'CATEGORY_DELETED',
+      pharmacyId: validatedData.pharmacyId,
+      details: { id: validatedData.id, name: existingCategory[0]?.name },
+    });
 
     return {
       success: true,

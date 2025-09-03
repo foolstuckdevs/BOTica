@@ -24,6 +24,7 @@ import {
   partiallyReceiveItemsSchema,
 } from '@/lib/validations';
 import { pharmacyIdSchema } from '@/lib/validations';
+import { logActivity } from '@/lib/actions/activity';
 
 // Provide catalog for PO: includes soft-deleted products (for historical ordering), scoped by pharmacy
 export const getOrderableProducts = async (pharmacyId: number) => {
@@ -265,6 +266,27 @@ export const createPurchaseOrder = async (
     }
 
     revalidatePath('/purchase-orders');
+
+    // Activity log
+    let supplierName: string | undefined;
+    try {
+      const [sup] = await db
+        .select({ name: suppliers.name })
+        .from(suppliers)
+        .where(eq(suppliers.id, params.supplierId));
+      supplierName = sup?.name;
+    } catch {}
+    await logActivity({
+      action: 'PO_CREATED',
+      pharmacyId: params.pharmacyId,
+      details: {
+        id: order.id,
+        orderNumber,
+        supplierId: params.supplierId,
+        supplierName: supplierName ?? null,
+      },
+    });
+
     return { success: true, data: order };
   } catch (error) {
     console.error('Error creating purchase order:', error);
@@ -338,6 +360,14 @@ export const updatePurchaseOrder = async (
     }
 
     revalidatePath('/inventory/purchase-order');
+
+    // Activity log
+    await logActivity({
+      action: 'PO_UPDATED',
+      pharmacyId,
+      details: { id },
+    });
+
     return { success: true };
   } catch (error) {
     console.error('Error updating purchase order:', error);
@@ -393,6 +423,14 @@ export const updatePurchaseOrderStatus = async (
     revalidatePath('/purchase-orders');
     revalidatePath(`/inventory/purchase-order/${validatedData.id}`);
     revalidatePath('/inventory/purchase-order');
+
+    // Activity log
+    await logActivity({
+      action: 'PO_STATUS_CHANGED',
+      pharmacyId: validatedData.pharmacyId,
+      details: { id: validatedData.id, status: validatedData.status },
+    });
+
     return { success: true };
   } catch (error) {
     console.error('Error updating purchase order status:', error);
@@ -439,6 +477,15 @@ export const deletePurchaseOrder = async (id: number, pharmacyId: number) => {
       );
 
     revalidatePath('/purchase-orders');
+
+    // Activity log
+    const orderNumber = (existing[0] as { orderNumber?: string })?.orderNumber;
+    await logActivity({
+      action: 'PO_DELETED',
+      pharmacyId: validatedData.pharmacyId,
+      details: { id: validatedData.id, orderNumber: orderNumber ?? null },
+    });
+
     return { success: true, message: 'Purchase order deleted' };
   } catch (error) {
     console.error('Error deleting purchase order:', error);
@@ -533,6 +580,14 @@ export const confirmPurchaseOrder = async (
       );
 
     revalidatePath('/inventory/purchase-order');
+
+    // Activity log
+    await logActivity({
+      action: 'PO_CONFIRMED',
+      pharmacyId,
+      details: { id, totalCost: confirmedTotalCost.toFixed(2) },
+    });
+
     return {
       success: true,
       message: 'Purchase order confirmed with supplier',
@@ -617,6 +672,14 @@ export const updateReceivedQuantities = async (
       );
 
     revalidatePath('/inventory/purchase-order');
+
+    // Activity log
+    await logActivity({
+      action: 'PO_RECEIPT_UPDATED',
+      pharmacyId: validatedData.pharmacyId,
+      details: { id: validatedData.orderId, status: newStatus },
+    });
+
     return {
       success: true,
       message: 'Received quantities updated',
@@ -701,6 +764,14 @@ export const receiveAllItems = async (
 
     revalidatePath('/inventory/purchase-order');
     revalidatePath('/products');
+
+    // Activity log
+    await logActivity({
+      action: 'PO_RECEIVED',
+      pharmacyId: validatedData.pharmacyId,
+      details: { id: validatedData.orderId },
+    });
+
     return { success: true, message: 'All items marked as received' };
   } catch (error) {
     console.error('Error receiving all items:', error);
@@ -811,6 +882,14 @@ export const partiallyReceiveItems = async (
 
     revalidatePath('/inventory/purchase-order');
     revalidatePath('/products');
+
+    // Activity log
+    await logActivity({
+      action: 'PO_PARTIALLY_RECEIVED',
+      pharmacyId: validatedData.pharmacyId,
+      details: { id: validatedData.orderId },
+    });
+
     return { success: true, message: 'Receipt quantities updated' };
   } catch (error) {
     console.error('Error updating received items:', error);

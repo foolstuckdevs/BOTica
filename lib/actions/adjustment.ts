@@ -9,6 +9,7 @@ import {
   getAdjustmentsSchema,
   createAdjustmentSchema,
 } from '@/lib/validations';
+import { logActivity } from '@/lib/actions/activity';
 
 /**
  * Get all inventory adjustments
@@ -111,6 +112,17 @@ export const createAdjustment = async ({
       reason: validatedData.reason,
       pharmacyId: validatedData.pharmacyId,
       notes: validatedData.notes,
+    });
+    // Log adjustment activity
+    await logActivity({
+      action: 'ADJUSTMENT_CREATED',
+      pharmacyId: validatedData.pharmacyId,
+      details: {
+        productId: validatedData.productId,
+        quantityChange: validatedData.quantityChange,
+        reason: validatedData.reason,
+        notes: validatedData.notes ?? null,
+      },
     });
 
     // Update product quantity

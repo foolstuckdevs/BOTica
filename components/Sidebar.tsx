@@ -230,6 +230,17 @@ const Sidebar = () => {
                 <Layers className="w-4 h-4" />
                 Inventory Report
               </Link>
+              <Link
+                href="/reports/activity-log"
+                className={`${submenuLinkClasses} ${
+                  isActive('/reports/activity-log')
+                    ? submenuActiveClasses
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                }`}
+              >
+                <ClipboardList className="w-4 h-4" />
+                Activity Log
+              </Link>
             </div>
           )}
         </div>
