@@ -1,6 +1,7 @@
 import { getTransactions } from '@/lib/actions/transactions';
 import TransactionsPageClient from './TransactionsPageClient';
 import { auth } from '@/auth';
+import { getPharmacy } from '@/lib/actions/pharmacy';
 
 export default async function TransactionsPage() {
   const session = await auth();
@@ -15,7 +16,22 @@ export default async function TransactionsPage() {
   }
 
   const pharmacyId = session.user.pharmacyId;
-  const transactions = await getTransactions(pharmacyId);
+  const [transactions, pharmacy] = await Promise.all([
+    getTransactions(pharmacyId),
+    getPharmacy(pharmacyId),
+  ]);
 
-  return <TransactionsPageClient transactions={transactions} />;
+  return (
+    <TransactionsPageClient
+      transactions={transactions}
+      pharmacy={
+        pharmacy ?? {
+          id: pharmacyId,
+          name: 'BOTica Pharmacy',
+          address: '',
+          phone: '',
+        }
+      }
+    />
+  );
 }

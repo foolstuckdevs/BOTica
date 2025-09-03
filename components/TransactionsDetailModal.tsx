@@ -10,8 +10,12 @@ import {
   Smartphone,
   Banknote,
 } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PrintUtility } from '@/lib/PrintUtility';
+import type { Pharmacy, Transaction, TransactionItem } from '@/types';
+import { useSession } from 'next-auth/react';
 
 type PaymentMethod = 'CASH' | 'GCASH';
 const paymentIcons: Record<PaymentMethod, React.JSX.Element> = {
@@ -42,13 +46,16 @@ interface TransactionDetailsModalProps {
       subtotal: string;
     }>;
   };
+  pharmacy?: Pharmacy;
   onClose: () => void;
 }
 
 export const TransactionDetailsModal = ({
   transaction,
+  pharmacy,
   onClose,
 }: TransactionDetailsModalProps) => {
+  const { data: session } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const total = parseFloat(transaction.totalAmount);
@@ -105,13 +112,45 @@ export const TransactionDetailsModal = ({
                   )}
                 </p>
               </div>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4 text-gray-500" />
-              </button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  className="h-8 px-2 text-sm"
+                  onClick={async () => {
+                    const tx: Transaction = {
+                      ...transaction,
+                      createdAt: transaction.createdAt,
+                    } as unknown as Transaction;
+                    const items: TransactionItem[] = transaction.items.map(
+                      (i) => ({
+                        id: (Math.random() * 1e9) | 0,
+                        productName: i.productName,
+                        quantity: i.quantity,
+                        unitPrice: i.unitPrice,
+                        subtotal: i.subtotal,
+                      }),
+                    );
+                    const ph: Pharmacy = pharmacy ?? {
+                      id: session?.user?.pharmacyId ?? 0,
+                      name: 'BOTica Pharmacy',
+                      address: '',
+                      phone: '',
+                    };
+                    await PrintUtility.printDynamicReceipt(tx, items, ph);
+                  }}
+                  title="Print receipt"
+                >
+                  <Printer className="w-4 h-4 mr-1" />
+                  Print receipt
+                </Button>
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
             </div>
 
             {/* Collapsible Header */}
@@ -297,17 +336,6 @@ export const TransactionDetailsModal = ({
                 </div>
               </motion.div>
             )}
-
-            {/* Footer */}
-            <div className="border-t p-3 flex justify-end bg-gray-50">
-              <Button
-                onClick={onClose}
-                className="px-4 py-2 text-sm"
-                variant="outline"
-              >
-                Close
-              </Button>
-            </div>
           </motion.div>
         </div>
       </AnimatePresence>

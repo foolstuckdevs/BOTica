@@ -24,6 +24,8 @@ export const getTransactions = async (
         invoiceNumber: sales.invoiceNumber,
         totalAmount: sales.totalAmount,
         discount: sales.discount,
+        amountReceived: sales.amountReceived,
+        changeDue: sales.changeDue,
         paymentMethod: sales.paymentMethod,
         createdAt: sales.createdAt,
         userId: users.id,
@@ -77,6 +79,8 @@ export const getTransactions = async (
       invoiceNumber: s.invoiceNumber ?? '',
       totalAmount: s.totalAmount ?? '0.00',
       discount: s.discount ?? '0.00',
+      amountReceived: s.amountReceived ?? '0.00',
+      changeDue: s.changeDue ?? '0.00',
       paymentMethod: s.paymentMethod ?? 'CASH',
       createdAt: s.createdAt ?? new Date(),
       user: {
