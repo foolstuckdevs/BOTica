@@ -58,6 +58,7 @@ export async function getBatchProfitData(
       .select({
         productId: products.id,
         productName: products.name,
+        categoryName: categories.name,
         batch: products.lotNumber,
         expiry: products.expiryDate,
         costPrice: products.costPrice,
@@ -68,6 +69,7 @@ export async function getBatchProfitData(
       })
       .from(saleItems)
       .innerJoin(products, eq(saleItems.productId, products.id))
+      .leftJoin(categories, eq(products.categoryId, categories.id))
       .innerJoin(sales, eq(saleItems.saleId, sales.id))
       .where(
         and(
@@ -79,6 +81,7 @@ export async function getBatchProfitData(
       .groupBy(
         products.id,
         products.name,
+        categories.name,
         products.lotNumber,
         products.expiryDate,
         products.costPrice,
@@ -99,6 +102,7 @@ export async function getBatchProfitData(
       return {
         id: `${row.productId}-${row.batch}`,
         productName: row.productName,
+        categoryName: row.categoryName || 'Uncategorized',
         batch: row.batch || 'N/A',
         expiry: row.expiry || 'N/A',
         qtySold,
@@ -140,7 +144,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
     // Single consolidated query for all sales overview data (30 days)
     const salesOverviewQuery = db
       .select({
-        date: sql<string>`DATE(${sales.createdAt})`,
+        date: sql<string>`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
         totalSales: sum(sales.totalAmount),
         transactions: count(sales.id),
       })
@@ -152,13 +156,17 @@ export const getSalesReportData = async (pharmacyId: number) => {
           lte(sales.createdAt, tomorrow),
         ),
       )
-      .groupBy(sql`DATE(${sales.createdAt})`)
-      .orderBy(sql`DATE(${sales.createdAt})`);
+      .groupBy(
+        sql`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
+      )
+      .orderBy(
+        sql`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
+      );
 
     // Single consolidated query for cost and items data (30 days)
     const costAndItemsQuery = db
       .select({
-        date: sql<string>`DATE(${sales.createdAt})`,
+        date: sql<string>`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
         totalItems: sum(saleItems.quantity),
         totalCost: sum(
           sql`CAST(${products.costPrice} AS NUMERIC) * ${saleItems.quantity}`,
@@ -174,13 +182,17 @@ export const getSalesReportData = async (pharmacyId: number) => {
           lte(sales.createdAt, tomorrow),
         ),
       )
-      .groupBy(sql`DATE(${sales.createdAt})`)
-      .orderBy(sql`DATE(${sales.createdAt})`);
+      .groupBy(
+        sql`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
+      )
+      .orderBy(
+        sql`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
+      );
 
     // Single consolidated query for all product performance data (30 days)
     const productPerformanceQuery = db
       .select({
-        date: sql<string>`DATE(${sales.createdAt})`,
+        date: sql<string>`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
         productId: saleItems.productId,
         name: products.name,
         categoryName: categories.name,
@@ -200,13 +212,16 @@ export const getSalesReportData = async (pharmacyId: number) => {
         ),
       )
       .groupBy(
-        sql`DATE(${sales.createdAt})`,
+        sql`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
         saleItems.productId,
         products.name,
         categories.name,
         products.costPrice,
       )
-      .orderBy(sql`DATE(${sales.createdAt})`, desc(sum(saleItems.quantity)));
+      .orderBy(
+        sql`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
+        desc(sum(saleItems.quantity)),
+      );
 
     // Batch profit data query (keep existing logic)
     const batchProfitQuery = getBatchProfitData(pharmacyId, 'month');

@@ -285,6 +285,7 @@ export interface ProductPerformanceData {
 export interface BatchProfitData {
   id: string;
   productName: string;
+  categoryName?: string;
   batch: string;
   expiry: string;
   qtySold: number;

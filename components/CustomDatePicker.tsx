@@ -22,12 +22,14 @@ interface CustomDatePickerProps {
   dateRange?: DateRange;
   onDateRangeChange?: (range: DateRange | undefined) => void;
   className?: string;
+  buttonClassName?: string;
 }
 
 export function CustomDatePicker({
   dateRange,
   onDateRangeChange,
   className,
+  buttonClassName,
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [startDate, setStartDate] = React.useState<Date | null>(
@@ -75,6 +77,7 @@ export function CustomDatePicker({
             className={cn(
               'h-9 px-3 justify-start text-left font-normal',
               !startDate && 'text-muted-foreground',
+              buttonClassName,
             )}
           >
             <CalendarIcon className="w-3 h-3 mr-1" />

@@ -1,22 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, Download, FileSpreadsheet, FileText } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
+import { TrendingUp } from 'lucide-react';
 
-interface Props {
-  onExportPDF?: () => void;
-  onExportExcel?: () => void;
-}
-
-export const SalesReportHeader = ({ onExportPDF, onExportExcel }: Props) => {
+export const SalesReportHeader = () => {
   return (
     <Card className="border shadow-sm">
       <CardContent className="p-6">
@@ -34,39 +22,6 @@ export const SalesReportHeader = ({ onExportPDF, onExportExcel }: Props) => {
                 Monitor sales performance and trends across all time periods
               </p>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow"
-                  title="Export sales report to PDF or Excel"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Export Report
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={onExportPDF}
-                  className="cursor-pointer"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  <span>Export as PDF</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={onExportExcel}
-                  className="cursor-pointer"
-                >
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  <span>Export as Excel</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
       </CardContent>

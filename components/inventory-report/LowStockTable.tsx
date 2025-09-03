@@ -11,71 +11,271 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Package2,
+  FileDown,
+  Filter,
+  X,
+} from 'lucide-react';
 import type { LowStockProductData } from '@/types';
-import { formatDistanceToNow } from 'date-fns';
+import {
+  exportToExcel,
+  exportToPDF,
+  exportFormatters,
+  type ExportTable,
+} from '@/lib/exporters';
 
 interface Props {
   products: LowStockProductData[];
   searchTerm: string;
   onSearchChange: (v: string) => void;
-  stockFilter: 'all' | 'out_of_stock' | 'critical' | 'low';
-  onStockFilterChange: (v: 'all' | 'out_of_stock' | 'critical' | 'low') => void;
+  statusFilter?: 'all' | 'out_of_stock' | 'critical' | 'low';
+  onStatusFilterChange?: (
+    v: 'all' | 'out_of_stock' | 'critical' | 'low',
+  ) => void;
+  categoryFilter?: string;
+  onCategoryFilterChange?: (v: string) => void;
 }
 
 export function LowStockTable({
   products,
   searchTerm,
   onSearchChange,
-  stockFilter,
-  onStockFilterChange,
+  statusFilter = 'all',
+  onStatusFilterChange,
+  categoryFilter = 'all',
+  onCategoryFilterChange,
 }: Props) {
+  const clearAllFilters = () => {
+    if (onStatusFilterChange) onStatusFilterChange('all');
+    if (onCategoryFilterChange) onCategoryFilterChange('all');
+    onSearchChange('');
+  };
+
+  const hasActiveFilters =
+    statusFilter !== 'all' || categoryFilter !== 'all' || searchTerm !== '';
+
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, stockFilter]);
+  }, [searchTerm, statusFilter, categoryFilter]);
 
   const totalPages = Math.max(1, Math.ceil(products.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginated = products.slice(startIndex, endIndex);
 
+  // Build export data
+  const buildExport = (): ExportTable[] => {
+    const columns = [
+      { header: 'Product Name', key: 'name' },
+      { header: 'Brand', key: 'brandName' },
+      { header: 'Category', key: 'categoryName' },
+      { header: 'Lot Number', key: 'lotNumber' },
+      { header: 'Quantity', key: 'quantity' },
+      { header: 'Unit', key: 'unit' },
+      { header: 'Minimum Qty', key: 'reorderPoint' },
+      {
+        header: 'Total Value',
+        key: 'value',
+        formatter: (v: unknown) => exportFormatters.phpCurrency(v),
+      },
+      { header: 'Supplier', key: 'supplierName' },
+      { header: 'Status', key: 'status' },
+    ];
+
+    const rows = products.map((product) => ({
+      name: product.name,
+      brandName: product.brandName || '',
+      categoryName: product.categoryName,
+      lotNumber: product.lotNumber,
+      quantity: product.quantity,
+      unit: product.unit || '',
+      reorderPoint: product.reorderPoint,
+      value: product.value,
+      supplierName: product.supplierName,
+      status:
+        product.status === 'out_of_stock'
+          ? 'Out of Stock'
+          : product.status === 'critical'
+          ? 'Critical'
+          : 'Low',
+    }));
+
+    return [{ name: 'Low Stock Products', columns, rows }];
+  };
+
+  const getSubtitle = () => {
+    const filterLabel = {
+      all: 'All Low Stock',
+      out_of_stock: 'Out of Stock Only',
+      critical: 'Critical Level Only',
+      low: 'Low Level Only',
+    }[statusFilter];
+
+    const categoryLabel =
+      categoryFilter !== 'all' ? ` • Category: ${categoryFilter}` : '';
+
+    return `Filter: ${filterLabel}${categoryLabel}${
+      searchTerm ? ` • Search: "${searchTerm}"` : ''
+    } • ${products.length} product${products.length !== 1 ? 's' : ''} found`;
+  };
+
+  const onExportPDF = () =>
+    exportToPDF({
+      title: 'Low Stock Products Report',
+      subtitle: getSubtitle(),
+      tables: buildExport(),
+      filename: 'low-stock-products.pdf',
+      orientation: 'landscape',
+    });
+
+  const onExportExcel = () =>
+    exportToExcel({
+      filename: 'low-stock-products.xlsx',
+      sheets: buildExport(),
+    });
+
   return (
     <div className="flex flex-col space-y-2">
       <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-lg font-semibold">
-                Low Stock Products
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Products with quantity below their reorder point
-              </p>
+        <CardHeader className="py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package2 className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-lg font-semibold">
+                  Low Stock Products
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Products with quantity below their minimum quantity
+                </p>
+              </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   placeholder="Search products..."
                   value={searchTerm}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  className="h-9 w-full text-sm py-2 pl-10 pr-3"
+                  className="h-8 w-[240px] text-sm py-2 pl-10 pr-3"
                 />
               </div>
-              <Select value={stockFilter} onValueChange={onStockFilterChange}>
-                <SelectTrigger className="h-9 w-full sm:w-auto sm:min-w-[160px] text-sm px-3 py-2">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Low Stock</SelectItem>
-                  <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 text-sm"
+                  >
+                    <FileDown className="h-4 w-4 mr-1.5" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={onExportPDF}>
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onExportExcel}>
+                    Export as Excel
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 text-sm"
+                  >
+                    <Filter className="h-4 w-4 mr-1.5" />
+                    Filters
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2" align="end">
+                  <div className="space-y-2">
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Status
+                        </label>
+                        <Select
+                          value={statusFilter}
+                          onValueChange={onStatusFilterChange}
+                        >
+                          <SelectTrigger className="h-8 w-full text-xs px-2 py-1 mt-1">
+                            <SelectValue placeholder="Filter by status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="out_of_stock">
+                              Out of Stock
+                            </SelectItem>
+                            <SelectItem value="critical">Critical</SelectItem>
+                            <SelectItem value="low">Low</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Category
+                        </label>
+                        <Select
+                          value={categoryFilter}
+                          onValueChange={onCategoryFilterChange}
+                        >
+                          <SelectTrigger className="h-8 w-full text-xs px-2 py-1 mt-1">
+                            <SelectValue placeholder="Filter by category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+                            {/* Get unique categories from products */}
+                            {Array.from(
+                              new Set(products.map((p) => p.categoryName)),
+                            )
+                              .sort()
+                              .map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {hasActiveFilters && (
+                      <div className="pt-2 border-t">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearAllFilters}
+                          className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground w-full"
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Clear filters
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </CardHeader>
@@ -91,12 +291,9 @@ export function LowStockTable({
                   </th>
                   <th className="py-3 px-4 text-left font-medium">Quantity</th>
                   <th className="py-3 px-4 text-left font-medium">
-                    Reorder Point
+                    Minimum Qty
                   </th>
                   <th className="py-3 px-4 text-left font-medium">Supplier</th>
-                  <th className="py-3 px-4 text-left font-medium">
-                    Last Updated
-                  </th>
                   <th className="py-3 px-4 text-left font-medium">Status</th>
                 </tr>
               </thead>
@@ -125,14 +322,6 @@ export function LowStockTable({
                       <td className="py-3 px-4">{product.reorderPoint}</td>
                       <td className="py-3 px-4">{product.supplierName}</td>
                       <td className="py-3 px-4">
-                        {product.lastRestockDate
-                          ? formatDistanceToNow(
-                              new Date(product.lastRestockDate),
-                              { addSuffix: true },
-                            )
-                          : 'N/A'}
-                      </td>
-                      <td className="py-3 px-4">
                         <span
                           className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                             product.status === 'out_of_stock'
@@ -154,7 +343,7 @@ export function LowStockTable({
                 ) : (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={7}
                       className="py-6 text-center text-muted-foreground"
                     >
                       No low stock products found
@@ -165,7 +354,7 @@ export function LowStockTable({
               <tfoot>
                 {products.length > 0 && (
                   <tr>
-                    <td colSpan={8} className="py-2 px-2">
+                    <td colSpan={7} className="py-2 px-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <p className="text-sm font-medium">Rows per page</p>

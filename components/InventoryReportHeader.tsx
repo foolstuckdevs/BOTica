@@ -2,24 +2,9 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Layers, Download, FileSpreadsheet, FileText } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
+import { Layers } from 'lucide-react';
 
-interface InventoryReportHeaderProps {
-  onExportPDF?: () => void;
-  onExportExcel?: () => void;
-}
-
-export const InventoryReportHeader = ({
-  onExportPDF,
-  onExportExcel,
-}: InventoryReportHeaderProps) => {
+export const InventoryReportHeader = () => {
   return (
     <Card className="border shadow-sm">
       <CardContent className="p-6">
@@ -37,39 +22,6 @@ export const InventoryReportHeader = ({
                 Monitor stock levels, expiry dates, and inventory health
               </p>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow"
-                  title="Export inventory data"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Export Report
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem
-                  onClick={onExportPDF}
-                  className="cursor-pointer"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  <span>Export as PDF</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={onExportExcel}
-                  className="cursor-pointer"
-                >
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  <span>Export as Excel</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
       </CardContent>

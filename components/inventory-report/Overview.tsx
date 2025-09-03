@@ -12,10 +12,10 @@ import type { InventoryOverviewData } from '@/types';
 
 interface Props {
   overview: InventoryOverviewData;
-  expiring7Count: number;
+  expiringCount: number;
 }
 
-export function InventoryOverview({ overview, expiring7Count }: Props) {
+export function InventoryOverview({ overview, expiringCount }: Props) {
   const formatCurrency = (amount: number): string =>
     new Intl.NumberFormat('en-PH', {
       style: 'currency',
@@ -35,7 +35,7 @@ export function InventoryOverview({ overview, expiring7Count }: Props) {
               </p>
               <p className="text-2xl font-bold">{overview.outOfStockCount}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                needs restock
+                immediate restock needed
               </p>
             </div>
             <div className="h-8 w-8 bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center">
@@ -49,29 +49,11 @@ export function InventoryOverview({ overview, expiring7Count }: Props) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Inventory Value
-              </p>
-              <p className="text-2xl font-bold">
-                {formatCurrency(overview.totalValue)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">booked cost</p>
-            </div>
-            <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-              <PhilippinePeso className="h-4 w-4 text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Low Stock Products
+                Low Stock Alert
               </p>
               <p className="text-2xl font-bold">{overview.lowStockCount}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                below min level
+                below minimum quantity
               </p>
             </div>
             <div className="h-8 w-8 bg-amber-100 dark:bg-amber-900 rounded-lg flex items-center justify-center">
@@ -85,15 +67,35 @@ export function InventoryOverview({ overview, expiring7Count }: Props) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Expiring (7 days)
+                Expiring Soon
               </p>
-              <p className="text-2xl font-bold">{expiring7Count}</p>
+              <p className="text-2xl font-bold">{expiringCount || 0}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                urgent to move
+                products need attention
               </p>
             </div>
             <div className="h-8 w-8 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
               <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Total Inventory Value
+              </p>
+              <p className="text-2xl font-bold">
+                {formatCurrency(overview.totalValue)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                current stock value
+              </p>
+            </div>
+            <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+              <PhilippinePeso className="h-4 w-4 text-green-600 dark:text-green-400" />
             </div>
           </div>
         </CardContent>

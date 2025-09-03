@@ -3,12 +3,6 @@
 import React, { useMemo, useState } from 'react';
 import InventoryReportHeader from '@/components/InventoryReportHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  exportToExcel,
-  exportToPDF,
-  exportFormatters,
-  type ExportTable,
-} from '@/lib/exporters';
 import type {
   ExpiringProductData,
   InventoryOverviewData,
@@ -40,11 +34,12 @@ export default function InventoryReportClient({
     }
   };
   const [expiryFilter, setExpiryFilter] = useState<
-    'all' | '7days' | '30days' | '60days' | '90days'
+    'all' | '30days' | '60days' | '90days'
   >('all');
-  const [stockFilter, setStockFilter] = useState<
+  const [statusFilter, setStatusFilter] = useState<
     'all' | 'out_of_stock' | 'critical' | 'low'
   >('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredExpiringProducts = useMemo(() => {
@@ -54,7 +49,6 @@ export default function InventoryReportClient({
         .includes(searchTerm.toLowerCase());
       const matchesFilter =
         expiryFilter === 'all' ||
-        (expiryFilter === '7days' && product.daysRemaining <= 7) ||
         (expiryFilter === '30days' && product.daysRemaining <= 30) ||
         (expiryFilter === '60days' &&
           product.daysRemaining > 30 &&
@@ -71,135 +65,32 @@ export default function InventoryReportClient({
       const matchesSearch = product.name
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
-      const matchesFilter =
-        stockFilter === 'all' ||
-        (stockFilter === 'out_of_stock' && product.status === 'out_of_stock') ||
-        (stockFilter === 'critical' && product.status === 'critical') ||
-        (stockFilter === 'low' && product.status === 'low');
-      return matchesSearch && matchesFilter;
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'out_of_stock' &&
+          product.status === 'out_of_stock') ||
+        (statusFilter === 'critical' && product.status === 'critical') ||
+        (statusFilter === 'low' && product.status === 'low');
+      const matchesCategory =
+        categoryFilter === 'all' || product.categoryName === categoryFilter;
+      return matchesSearch && matchesStatus && matchesCategory;
     });
-  }, [inventoryData.lowStockProducts, searchTerm, stockFilter]);
+  }, [
+    inventoryData.lowStockProducts,
+    searchTerm,
+    statusFilter,
+    categoryFilter,
+  ]);
 
-  const expiring7Count = useMemo(
+  const expiringCount = useMemo(
     () =>
-      inventoryData.expiringProducts.filter((p) => p.daysRemaining <= 7).length,
+      inventoryData.expiringProducts.filter((p) => p.daysRemaining > 0).length,
     [inventoryData.expiringProducts],
   );
 
-  const exportPDF = () => {
-    const expiring: ExportTable = {
-      name: 'Expiring',
-      columns: [
-        { header: 'Product', key: 'name' },
-        { header: 'Category', key: 'categoryName' },
-        { header: 'Lot', key: 'lotNumber' },
-        {
-          header: 'Expiry',
-          key: 'expiryDate',
-          formatter: exportFormatters.date,
-        },
-        { header: 'Days', key: 'daysRemaining' },
-        { header: 'Qty', key: 'quantity' },
-        { header: 'Unit', key: 'unit' },
-        {
-          header: 'Value',
-          key: 'value',
-          formatter: exportFormatters.phpCurrency,
-        },
-        { header: 'Status', key: 'urgency' },
-      ],
-      rows: filteredExpiringProducts as unknown as Array<
-        Record<string, unknown>
-      >,
-    };
-    const low: ExportTable = {
-      name: 'Low Stock',
-      columns: [
-        { header: 'Product', key: 'name' },
-        { header: 'Category', key: 'categoryName' },
-        { header: 'Lot', key: 'lotNumber' },
-        { header: 'Qty', key: 'quantity' },
-        { header: 'Unit', key: 'unit' },
-        { header: 'Reorder', key: 'reorderPoint' },
-        { header: 'Supplier', key: 'supplierName' },
-        {
-          header: 'Last Updated',
-          key: 'lastRestockDate',
-          formatter: exportFormatters.date,
-        },
-        { header: 'Status', key: 'status' },
-      ],
-      rows: filteredLowStockProducts as unknown as Array<
-        Record<string, unknown>
-      >,
-    };
-    exportToPDF({
-      title: 'Inventory Report',
-      subtitle: 'BOTica',
-      tables: [expiring, low],
-      filename: 'inventory-report.pdf',
-    });
-  };
-
-  const exportExcel = () => {
-    const expiring: ExportTable = {
-      name: 'Expiring',
-      columns: [
-        { header: 'Product', key: 'name' },
-        { header: 'Category', key: 'categoryName' },
-        { header: 'Lot', key: 'lotNumber' },
-        {
-          header: 'Expiry',
-          key: 'expiryDate',
-          formatter: exportFormatters.date,
-        },
-        { header: 'Days', key: 'daysRemaining' },
-        { header: 'Quantity', key: 'quantity' },
-        { header: 'Unit', key: 'unit' },
-        {
-          header: 'Value',
-          key: 'value',
-          formatter: exportFormatters.phpCurrency,
-        },
-        { header: 'Status', key: 'urgency' },
-      ],
-      rows: filteredExpiringProducts as unknown as Array<
-        Record<string, unknown>
-      >,
-    };
-    const low: ExportTable = {
-      name: 'Low Stock',
-      columns: [
-        { header: 'Product', key: 'name' },
-        { header: 'Category', key: 'categoryName' },
-        { header: 'Lot', key: 'lotNumber' },
-        { header: 'Quantity', key: 'quantity' },
-        { header: 'Unit', key: 'unit' },
-        { header: 'ReorderPoint', key: 'reorderPoint' },
-        { header: 'Supplier', key: 'supplierName' },
-        {
-          header: 'LastUpdated',
-          key: 'lastRestockDate',
-          formatter: exportFormatters.date,
-        },
-        { header: 'Status', key: 'status' },
-      ],
-      rows: filteredLowStockProducts as unknown as Array<
-        Record<string, unknown>
-      >,
-    };
-    exportToExcel({
-      filename: 'inventory-report.xlsx',
-      sheets: [expiring, low],
-    });
-  };
-
   return (
     <div className="space-y-6">
-      <InventoryReportHeader
-        onExportPDF={exportPDF}
-        onExportExcel={exportExcel}
-      />
+      <InventoryReportHeader />
       <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-lg overflow-hidden">
         <Tabs
           defaultValue={initialTab}
@@ -224,9 +115,9 @@ export default function InventoryReportClient({
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
                   <span>Expiring Products</span>
-                  {expiring7Count > 0 && (
+                  {expiringCount > 0 && (
                     <span className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 text-xs px-2 py-1 rounded-full font-semibold">
-                      {expiring7Count}
+                      {expiringCount}
                     </span>
                   )}
                 </div>
@@ -252,7 +143,7 @@ export default function InventoryReportClient({
             <TabsContent value="overview" className="m-0">
               <InventoryOverview
                 overview={inventoryData.overview}
-                expiring7Count={expiring7Count}
+                expiringCount={expiringCount}
               />
             </TabsContent>
 
@@ -271,8 +162,10 @@ export default function InventoryReportClient({
                 products={filteredLowStockProducts}
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
-                stockFilter={stockFilter}
-                onStockFilterChange={setStockFilter}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={setCategoryFilter}
               />
             </TabsContent>
           </div>
