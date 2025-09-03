@@ -28,6 +28,7 @@ interface Props {
   comprehensiveProductData?: Array<{
     date: string;
     name: string;
+    brandName?: string | null;
     category: string;
     quantity: number;
     revenue: number;

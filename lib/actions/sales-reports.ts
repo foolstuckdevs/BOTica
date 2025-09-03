@@ -195,6 +195,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
         date: sql<string>`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
         productId: saleItems.productId,
         name: products.name,
+        brandName: products.brandName,
         categoryName: categories.name,
         totalQuantity: sum(saleItems.quantity),
         totalRevenue: sum(saleItems.subtotal),
@@ -215,6 +216,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
         sql`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
         saleItems.productId,
         products.name,
+        products.brandName,
         categories.name,
         products.costPrice,
       )
@@ -271,6 +273,7 @@ function processSalesReportData(
     date: string;
     productId: number;
     name: string;
+    brandName: string | null;
     categoryName: string | null;
     totalQuantity: string | null;
     totalRevenue: string | null;
@@ -338,7 +341,8 @@ function processSalesReportData(
     productResults
       .filter((item) => item.date >= start && item.date <= end)
       .forEach((item) => {
-        const existing = productMap.get(item.name);
+        const key = `${item.name}__${item.brandName ?? ''}`; // group by name+brand
+        const existing = productMap.get(key);
         const quantity = Number(item.totalQuantity) || 0;
         const revenue = Number(item.totalRevenue) || 0;
         const costPrice = Number(item.costPrice) || 0;
@@ -349,8 +353,9 @@ function processSalesReportData(
           existing.revenue += revenue;
           existing.profit += profit;
         } else {
-          productMap.set(item.name, {
+          productMap.set(key, {
             name: item.name,
+            brandName: item.brandName,
             category: item.categoryName || 'Uncategorized',
             quantity,
             revenue: Number(revenue.toFixed(2)),
@@ -433,6 +438,7 @@ function generateComprehensiveProductData(
     date: string;
     productId: number;
     name: string;
+    brandName: string | null;
     categoryName: string | null;
     totalQuantity: string | null;
     totalRevenue: string | null;
@@ -449,6 +455,7 @@ function generateComprehensiveProductData(
     return {
       date: item.date,
       name: item.name,
+      brandName: item.brandName,
       category: item.categoryName || 'Uncategorized',
       quantity,
       revenue: Number(revenue.toFixed(2)),

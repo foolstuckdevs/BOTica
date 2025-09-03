@@ -84,18 +84,20 @@ export const ProductPerformanceTable = ({
         (item) => item.date >= startDate && item.date <= endDate,
       );
 
-      // Group by product name and aggregate
+      // Group by product name + brand and aggregate
       const productMap = new Map<string, ProductPerformanceData>();
 
       filteredData.forEach((item) => {
-        const existing = productMap.get(item.name);
+        const key = `${item.name}__${item.brandName ?? ''}`;
+        const existing = productMap.get(key);
         if (existing) {
           existing.quantity += item.quantity;
           existing.revenue += item.revenue;
           existing.profit += item.profit;
         } else {
-          productMap.set(item.name, {
+          productMap.set(key, {
             name: item.name,
+            brandName: item.brandName,
             category: item.category,
             quantity: item.quantity,
             revenue: item.revenue,
@@ -187,7 +189,7 @@ export const ProductPerformanceTable = ({
       },
     ];
     const rows = currentData.map((p) => ({
-      name: p.name,
+      name: p.brandName ? `${p.name} — ${p.brandName}` : p.name,
       category: p.category,
       quantity: p.quantity,
       revenue: p.revenue,
@@ -393,7 +395,16 @@ export const ProductPerformanceTable = ({
                     key={`${product.name}-${startIndex + index}`}
                     className="border-b hover:bg-muted/50 transition-colors"
                   >
-                    <td className="py-3 px-4">{product.name}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-col">
+                        <span>{product.name}</span>
+                        {product.brandName ? (
+                          <span className="text-xs text-muted-foreground">
+                            {product.brandName}
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
                     <td className="py-3 px-4">{product.category}</td>
                     <td className="py-3 px-4 text-right font-medium">
                       {product.quantity}

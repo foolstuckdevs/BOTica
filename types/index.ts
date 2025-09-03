@@ -276,6 +276,7 @@ export interface SalesOverviewData {
 
 export interface ProductPerformanceData {
   name: string;
+  brandName?: string | null;
   category: string;
   quantity: number;
   revenue: number;
