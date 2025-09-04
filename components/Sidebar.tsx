@@ -246,7 +246,7 @@ const Sidebar = () => {
           <Link
             href="/settings/manage-staff"
             className={`${baseLinkClasses} ${
-              isActive('/settings/manage-staff')
+              isActive('/manage-staff')
                 ? submenuActiveClasses
                 : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
             }`}
