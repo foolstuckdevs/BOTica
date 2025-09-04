@@ -32,12 +32,6 @@ import {
   X,
 } from 'lucide-react';
 import type { InventoryProductRow } from '@/types';
-import {
-  exportToExcel,
-  exportToPDF,
-  exportFormatters,
-  type ExportTable,
-} from '@/lib/exporters';
 
 interface Props {
   products: InventoryProductRow[];
@@ -92,68 +86,19 @@ export function InactiveProductsTable({
     { header: 'Brand', key: 'brandName' },
     { header: 'Category', key: 'categoryName' },
     { header: 'Lot #', key: 'lotNumber' },
-    {
-      header: 'Expiry',
-      key: 'expiryDate',
-      formatter: (v: unknown) => exportFormatters.date(v),
-    },
+    { header: 'Expiry', key: 'expiryDate' },
     { header: 'Qty', key: 'quantity' },
     { header: 'Unit', key: 'unit' },
-    {
-      header: 'Cost Price',
-      key: 'costPrice',
-      formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-    },
-    {
-      header: 'Selling Price',
-      key: 'sellingPrice',
-      formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-    },
-    {
-      header: 'Deleted At',
-      key: 'deletedAt',
-      formatter: (v: unknown) => (v ? exportFormatters.date(v) : '-'),
-    },
+    { header: 'Cost Price', key: 'costPrice' },
+    { header: 'Selling Price', key: 'sellingPrice' },
+    { header: 'Deleted At', key: 'deletedAt' },
   ];
-
-  const buildExport = (): ExportTable[] => {
-    const rows = filtered.map((p) => ({
-      name: p.name,
-      brandName: p.brandName || '',
-      categoryName: p.categoryName,
-      lotNumber: p.lotNumber,
-      expiryDate: p.expiryDate,
-      quantity: p.quantity,
-      unit: p.unit || '',
-      costPrice: p.costPrice,
-      sellingPrice: p.sellingPrice,
-      deletedAt: p.deletedAt ?? '',
-    }));
-    return [{ name: 'Inactive Products', columns, rows }];
+  const onExportPDF = () => {
+    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
   };
-
-  const getSubtitle = () => {
-    const categoryLabel =
-      categoryFilter !== 'all' ? ` • Category: ${categoryFilter}` : '';
-    return `Filter: All Inactive${categoryLabel}${
-      searchTerm ? ` • Search: "${searchTerm}"` : ''
-    } • ${filtered.length} item${filtered.length !== 1 ? 's' : ''} found`;
+  const onExportExcel = () => {
+    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
   };
-
-  const onExportPDF = () =>
-    exportToPDF({
-      title: 'Inactive Products',
-      subtitle: getSubtitle(),
-      tables: buildExport(),
-      filename: 'inactive-products.pdf',
-      orientation: 'landscape',
-    });
-
-  const onExportExcel = () =>
-    exportToExcel({
-      filename: 'inactive-products.xlsx',
-      sheets: buildExport(),
-    });
 
   return (
     <div className="flex flex-col space-y-2">
@@ -281,18 +226,28 @@ export function InactiveProductsTable({
                     <td className="py-3 px-4">{p.categoryName}</td>
                     <td className="py-3 px-4">{p.lotNumber}</td>
                     <td className="py-3 px-4">
-                      {exportFormatters.date(p.expiryDate)}
+                      {p.expiryDate
+                        ? new Date(p.expiryDate).toISOString().slice(0, 10)
+                        : ''}
                     </td>
                     <td className="py-3 px-4">{p.quantity}</td>
                     <td className="py-3 px-4">{p.unit || '-'}</td>
                     <td className="py-3 px-4">
-                      {exportFormatters.phpCurrency(p.costPrice)}
+                      {p.costPrice.toLocaleString('en-PH', {
+                        style: 'currency',
+                        currency: 'PHP',
+                      })}
                     </td>
                     <td className="py-3 px-4">
-                      {exportFormatters.phpCurrency(p.sellingPrice)}
+                      {p.sellingPrice.toLocaleString('en-PH', {
+                        style: 'currency',
+                        currency: 'PHP',
+                      })}
                     </td>
                     <td className="py-3 px-4">
-                      {p.deletedAt ? exportFormatters.date(p.deletedAt) : '-'}
+                      {p.deletedAt
+                        ? new Date(p.deletedAt).toISOString().slice(0, 10)
+                        : '-'}
                     </td>
                   </tr>
                 ))}

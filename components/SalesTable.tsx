@@ -32,12 +32,6 @@ import {
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
 import { formatInTimeZone } from 'date-fns-tz';
 import type { ProductPerformanceData } from '@/types';
-import {
-  exportToExcel,
-  exportToPDF,
-  exportFormatters,
-  type ExportTable,
-} from '@/lib/exporters';
 
 type Props = {
   comprehensiveProductData: Array<ProductPerformanceData & { date: string }>;
@@ -142,79 +136,17 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = aggregated.slice(startIndex, endIndex);
 
-  const subtitle = (() => {
-    if (customDateRange?.from && customDateRange?.to) {
-      const from = formatInTimeZone(
-        customDateRange.from,
-        'Asia/Manila',
-        'yyyy-MM-dd',
-      );
-      const to = formatInTimeZone(
-        customDateRange.to,
-        'Asia/Manila',
-        'yyyy-MM-dd',
-      );
-      return `Custom range: ${from} to ${to}`;
-    }
-    const label =
-      timePeriod === 'week'
-        ? 'This week'
-        : timePeriod === 'month'
-        ? 'This month'
-        : 'Today';
-    return label;
-  })();
+  // Subtitle omitted while export is disabled
 
-  const buildExport = (): ExportTable[] => {
-    const columns = [
-      { header: 'Product', key: 'name' },
-      { header: 'Category', key: 'category' },
-      { header: 'Unit', key: 'unit' },
-      { header: 'Quantity', key: 'quantity' },
-      {
-        header: 'Avg Price',
-        key: 'avgPrice',
-        formatter: exportFormatters.phpCurrency,
-      },
-      {
-        header: 'Revenue',
-        key: 'revenue',
-        formatter: exportFormatters.phpCurrency,
-      },
-      { header: 'Cost', key: 'cost', formatter: exportFormatters.phpCurrency },
-      {
-        header: 'Profit',
-        key: 'profit',
-        formatter: exportFormatters.phpCurrency,
-      },
-    ];
-    const rows = aggregated.map((p) => {
-      const cost = p.revenue - p.profit;
-      const avgPrice = p.quantity > 0 ? p.revenue / p.quantity : 0;
-      return {
-        name: p.brandName ? `${p.name} — ${p.brandName}` : p.name,
-        category: p.category,
-        quantity: p.quantity,
-        revenue: p.revenue,
-        profit: p.profit,
-        cost,
-        avgPrice,
-        unit: p.unit ?? '',
-      };
-    });
-    return [{ name: 'Sales (Products)', columns, rows }];
+  // Placeholder export handlers (to be implemented)
+  const onExportPDF = () => {
+    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
+  };
+  const onExportExcel = () => {
+    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
   };
 
-  const onExportPDF = () =>
-    exportToPDF({
-      title: 'Sales',
-      subtitle,
-      tables: buildExport(),
-      filename: 'sales.pdf',
-      orientation: 'landscape',
-    });
-  const onExportExcel = () =>
-    exportToExcel({ filename: 'sales.xlsx', sheets: buildExport() });
+  // ...rest of component uses onExportPDF/onExportExcel in the dropdown
 
   const hasActiveFilters =
     timePeriod !== 'today' || !!(customDateRange?.from && customDateRange?.to);

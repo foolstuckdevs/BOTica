@@ -32,12 +32,7 @@ import {
 import { ProductPerformanceData } from '@/types';
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
 import { formatInTimeZone } from 'date-fns-tz';
-import {
-  exportToExcel,
-  exportToPDF,
-  exportFormatters,
-  type ExportTable,
-} from '@/lib/exporters';
+// Export temporarily disabled for this report
 
 interface ProductPerformanceTableProps {
   productData: {
@@ -171,75 +166,16 @@ export const ProductPerformanceTable = ({
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = currentData.slice(startIndex, endIndex);
 
-  // Build export data from current filtered dataset (not paginated)
-  const buildExport = (): ExportTable[] => {
-    const columns = [
-      { header: 'Product', key: 'name' },
-      { header: 'Category', key: 'category' },
-      { header: 'Quantity', key: 'quantity' },
-      {
-        header: 'Revenue',
-        key: 'revenue',
-        formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-      },
-      {
-        header: 'Profit',
-        key: 'profit',
-        formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-      },
-    ];
-    const rows = currentData.map((p) => ({
-      name: p.brandName ? `${p.name} — ${p.brandName}` : p.name,
-      category: p.category,
-      quantity: p.quantity,
-      revenue: p.revenue,
-      profit: p.profit,
-    }));
-    return [
-      {
-        name: 'Product Performance',
-        columns,
-        rows,
-      },
-    ];
+  // Export placeholders
+  const onExportPDF = () => {
+    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
+  };
+  const onExportExcel = () => {
+    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
   };
 
-  const subtitle = (() => {
-    if (customDateRange?.from && customDateRange?.to) {
-      const from = formatInTimeZone(
-        customDateRange.from,
-        'Asia/Manila',
-        'yyyy-MM-dd',
-      );
-      const to = formatInTimeZone(
-        customDateRange.to,
-        'Asia/Manila',
-        'yyyy-MM-dd',
-      );
-      return `Custom range: ${from} to ${to}`;
-    }
-    const label =
-      timePeriod === 'week'
-        ? 'This week'
-        : timePeriod === 'month'
-        ? 'This month'
-        : 'Today';
-    return `${label}${category !== 'all' ? ` · Category: ${category}` : ''}`;
-  })();
+  // Subtitle omitted while export is disabled
 
-  const onExportPDF = () =>
-    exportToPDF({
-      title: 'Product Performance',
-      subtitle,
-      tables: buildExport(),
-      filename: 'product-performance.pdf',
-      orientation: 'landscape',
-    });
-  const onExportExcel = () =>
-    exportToExcel({
-      filename: 'product-performance.xlsx',
-      sheets: buildExport(),
-    });
   const hasActiveFilters =
     (timePeriod !== 'today' && !customDateRange) ||
     !!(customDateRange?.from && customDateRange?.to) ||

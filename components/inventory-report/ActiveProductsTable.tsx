@@ -32,12 +32,6 @@ import {
   X,
 } from 'lucide-react';
 import type { InventoryProductRow } from '@/types';
-import {
-  exportToExcel,
-  exportToPDF,
-  exportFormatters,
-  type ExportTable,
-} from '@/lib/exporters';
 
 interface Props {
   products: InventoryProductRow[];
@@ -92,59 +86,22 @@ export function ActiveProductsTable({
     { header: 'Brand', key: 'brandName' },
     { header: 'Category', key: 'categoryName' },
     { header: 'Lot #', key: 'lotNumber' },
-    {
-      header: 'Expiry',
-      key: 'expiryDate',
-      formatter: (v: unknown) => exportFormatters.date(v),
-    },
+    { header: 'Expiry', key: 'expiryDate' },
     { header: 'Qty', key: 'quantity' },
     { header: 'Unit', key: 'unit' },
-    {
-      header: 'Cost Price',
-      key: 'costPrice',
-      formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-    },
-    {
-      header: 'Selling Price',
-      key: 'sellingPrice',
-      formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-    },
+    { header: 'Cost Price', key: 'costPrice' },
+    { header: 'Selling Price', key: 'sellingPrice' },
   ];
 
-  const buildExport = (): ExportTable[] => {
-    const rows = filtered.map((p) => ({
-      name: p.name,
-      brandName: p.brandName || '',
-      categoryName: p.categoryName,
-      lotNumber: p.lotNumber,
-      expiryDate: p.expiryDate,
-      quantity: p.quantity,
-      unit: p.unit || '',
-      costPrice: p.costPrice,
-      sellingPrice: p.sellingPrice,
-    }));
-    return [{ name: 'Active Products', columns, rows }];
+  // Export placeholders
+  const onExportPDF = () => {
+    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
+  };
+  const onExportExcel = () => {
+    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
   };
 
-  const getSubtitle = () => {
-    const categoryLabel =
-      categoryFilter !== 'all' ? ` • Category: ${categoryFilter}` : '';
-    return `Filter: All Active${categoryLabel}${
-      searchTerm ? ` • Search: "${searchTerm}"` : ''
-    } • ${filtered.length} item${filtered.length !== 1 ? 's' : ''} found`;
-  };
-
-  const onExportPDF = () =>
-    exportToPDF({
-      title: 'Active Products',
-      subtitle: getSubtitle(),
-      tables: buildExport(),
-      filename: 'active-products.pdf',
-      orientation: 'landscape',
-    });
-
-  const onExportExcel = () =>
-    exportToExcel({ filename: 'active-products.xlsx', sheets: buildExport() });
+  // Subtitle + builder removed while export is disabled
 
   return (
     <div className="flex flex-col space-y-2">
@@ -272,15 +229,23 @@ export function ActiveProductsTable({
                     <td className="py-3 px-4">{p.categoryName}</td>
                     <td className="py-3 px-4">{p.lotNumber}</td>
                     <td className="py-3 px-4">
-                      {exportFormatters.date(p.expiryDate)}
+                      {p.expiryDate
+                        ? new Date(p.expiryDate).toISOString().slice(0, 10)
+                        : ''}
                     </td>
                     <td className="py-3 px-4">{p.quantity}</td>
                     <td className="py-3 px-4">{p.unit || '-'}</td>
                     <td className="py-3 px-4">
-                      {exportFormatters.phpCurrency(p.costPrice)}
+                      {p.costPrice.toLocaleString('en-PH', {
+                        style: 'currency',
+                        currency: 'PHP',
+                      })}
                     </td>
                     <td className="py-3 px-4">
-                      {exportFormatters.phpCurrency(p.sellingPrice)}
+                      {p.sellingPrice.toLocaleString('en-PH', {
+                        style: 'currency',
+                        currency: 'PHP',
+                      })}
                     </td>
                   </tr>
                 ))}

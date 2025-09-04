@@ -26,12 +26,6 @@ import {
 } from 'lucide-react';
 import { BatchProfitData } from '@/types';
 import {
-  exportToExcel,
-  exportToPDF,
-  exportFormatters,
-  type ExportTable,
-} from '@/lib/exporters';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -198,73 +192,13 @@ export const BatchProfitTable = ({
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString();
 
-  // Build export tables for current filtered dataset (not paginated)
-  const buildExport = (): ExportTable[] => {
-    const columns = [
-      { header: 'Product', key: 'productName' },
-      { header: 'Category', key: 'categoryName' },
-      { header: 'Batch', key: 'batch' },
-      {
-        header: 'Expiry',
-        key: 'expiry',
-        formatter: (v: unknown) => exportFormatters.date(v),
-      },
-      { header: 'Qty Sold', key: 'qtySold' },
-      { header: 'Qty Remaining', key: 'qtyRemaining' },
-      {
-        header: 'Cost',
-        key: 'cost',
-        formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-      },
-      {
-        header: 'Revenue',
-        key: 'revenue',
-        formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-      },
-      {
-        header: 'Profit',
-        key: 'profit',
-        formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-      },
-      { header: 'Margin %', key: 'margin' },
-    ];
-    const rows = filteredData.map((r) => ({
-      productName: r.productName,
-      categoryName: r.categoryName || 'Uncategorized',
-      batch: r.batch,
-      expiry: r.expiry,
-      qtySold: r.qtySold,
-      qtyRemaining: r.qtyRemaining ?? 0,
-      cost: r.cost,
-      revenue: r.revenue,
-      profit: r.profit,
-      margin: r.margin,
-    }));
-    return [{ name: 'Batch Profit', columns, rows }];
+  // Placeholder export handlers (export functionality temporarily disabled)
+  const onExportPDF = () => {
+    alert('Export to PDF coming soon');
   };
-
-  const subtitle = (() => {
-    const filterLabel =
-      profitFilter === 'profitable'
-        ? 'Profitable only'
-        : profitFilter === 'loss'
-        ? 'Loss/Break-even'
-        : 'All';
-    return `Filter: ${filterLabel}${
-      searchTerm ? ` · Search: ${searchTerm}` : ''
-    }`;
-  })();
-
-  const onExportPDF = () =>
-    exportToPDF({
-      title: 'Batch Profit',
-      subtitle,
-      tables: buildExport(),
-      filename: 'batch-profit.pdf',
-      orientation: 'landscape',
-    });
-  const onExportExcel = () =>
-    exportToExcel({ filename: 'batch-profit.xlsx', sheets: buildExport() });
+  const onExportExcel = () => {
+    alert('Export to Excel coming soon');
+  };
 
   return (
     <Card>

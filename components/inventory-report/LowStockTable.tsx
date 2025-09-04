@@ -32,12 +32,6 @@ import {
   X,
 } from 'lucide-react';
 import type { LowStockProductData } from '@/types';
-import {
-  exportToExcel,
-  exportToPDF,
-  exportFormatters,
-  type ExportTable,
-} from '@/lib/exporters';
 
 interface Props {
   products: LowStockProductData[];
@@ -81,76 +75,15 @@ export function LowStockTable({
   const endIndex = startIndex + itemsPerPage;
   const paginated = products.slice(startIndex, endIndex);
 
-  // Build export data
-  const buildExport = (): ExportTable[] => {
-    const columns = [
-      { header: 'Product Name', key: 'name' },
-      { header: 'Brand', key: 'brandName' },
-      { header: 'Category', key: 'categoryName' },
-      { header: 'Lot Number', key: 'lotNumber' },
-      { header: 'Quantity', key: 'quantity' },
-      { header: 'Unit', key: 'unit' },
-      { header: 'Minimum Qty', key: 'reorderPoint' },
-      {
-        header: 'Total Value',
-        key: 'value',
-        formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-      },
-      { header: 'Supplier', key: 'supplierName' },
-      { header: 'Status', key: 'status' },
-    ];
-
-    const rows = products.map((product) => ({
-      name: product.name,
-      brandName: product.brandName || '',
-      categoryName: product.categoryName,
-      lotNumber: product.lotNumber,
-      quantity: product.quantity,
-      unit: product.unit || '',
-      reorderPoint: product.reorderPoint,
-      value: product.value,
-      supplierName: product.supplierName,
-      status:
-        product.status === 'out_of_stock'
-          ? 'Out of Stock'
-          : product.status === 'critical'
-          ? 'Critical'
-          : 'Low',
-    }));
-
-    return [{ name: 'Low Stock Products', columns, rows }];
+  // Export placeholders
+  const onExportPDF = () => {
+    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
+  };
+  const onExportExcel = () => {
+    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
   };
 
-  const getSubtitle = () => {
-    const filterLabel = {
-      all: 'All Low Stock',
-      out_of_stock: 'Out of Stock Only',
-      critical: 'Critical Level Only',
-      low: 'Low Level Only',
-    }[statusFilter];
-
-    const categoryLabel =
-      categoryFilter !== 'all' ? ` • Category: ${categoryFilter}` : '';
-
-    return `Filter: ${filterLabel}${categoryLabel}${
-      searchTerm ? ` • Search: "${searchTerm}"` : ''
-    } • ${products.length} product${products.length !== 1 ? 's' : ''} found`;
-  };
-
-  const onExportPDF = () =>
-    exportToPDF({
-      title: 'Low Stock Products Report',
-      subtitle: getSubtitle(),
-      tables: buildExport(),
-      filename: 'low-stock-products.pdf',
-      orientation: 'landscape',
-    });
-
-  const onExportExcel = () =>
-    exportToExcel({
-      filename: 'low-stock-products.xlsx',
-      sheets: buildExport(),
-    });
+  // Subtitle omitted while export is disabled
 
   return (
     <div className="flex flex-col space-y-2">

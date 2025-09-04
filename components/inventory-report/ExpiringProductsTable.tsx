@@ -33,12 +33,6 @@ import {
 } from '@/components/ui/popover';
 import type { ExpiringProductData } from '@/types';
 import { format } from 'date-fns';
-import {
-  exportToExcel,
-  exportToPDF,
-  exportFormatters,
-  type ExportTable,
-} from '@/lib/exporters';
 
 interface Props {
   products: ExpiringProductData[];
@@ -134,101 +128,15 @@ export function ExpiringProductsTable({
   const endIndex = startIndex + itemsPerPage;
   const paginated = products.slice(startIndex, endIndex);
 
-  // Build export data
-  const buildExport = (): ExportTable[] => {
-    const columns = [
-      { header: 'Product Name', key: 'name' },
-      { header: 'Brand', key: 'brandName' },
-      { header: 'Category', key: 'categoryName' },
-      { header: 'Lot Number', key: 'lotNumber' },
-      { header: 'Quantity', key: 'quantity' },
-      { header: 'Unit', key: 'unit' },
-      {
-        header: 'Cost Price',
-        key: 'costPrice',
-        formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-      },
-      {
-        header: 'Selling Price',
-        key: 'sellingPrice',
-        formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-      },
-      {
-        header: 'Total Value',
-        key: 'value',
-        formatter: (v: unknown) => exportFormatters.phpCurrency(v),
-      },
-      {
-        header: 'Expiry Date',
-        key: 'expiryDate',
-        formatter: (v: unknown) => exportFormatters.date(v),
-      },
-      {
-        header: 'Days Remaining',
-        key: 'daysRemaining',
-        formatter: (v: unknown) => ((v as number) < 0 ? '0 days' : `${v} days`),
-      },
-      {
-        header: 'Status',
-        key: 'status',
-      },
-    ];
-
-    const rows = products.map((product) => ({
-      name: product.name,
-      brandName: product.brandName || '',
-      categoryName: product.categoryName,
-      lotNumber: product.lotNumber,
-      quantity: product.quantity,
-      unit: product.unit || '',
-      costPrice: product.costPrice,
-      sellingPrice: product.sellingPrice,
-      value: product.value,
-      expiryDate: product.expiryDate,
-      daysRemaining: product.daysRemaining,
-      status: getDisplayStatus(product.urgency, product.daysRemaining).text,
-    }));
-
-    return [{ name: 'Expiring Products', columns, rows }];
+  // Export placeholders
+  const onExportPDF = () => {
+    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
+  };
+  const onExportExcel = () => {
+    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
   };
 
-  const getSubtitle = () => {
-    const filterLabel = {
-      all: 'All Products',
-      '30days': 'Expiring in 30 Days',
-      '60days': 'Expiring in 60 Days',
-      '90days': 'Expiring in 90 Days',
-    }[expiryFilter];
-
-    const statusLabel =
-      statusFilter !== 'all'
-        ? ` • Status: ${
-            statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)
-          }`
-        : '';
-
-    const categoryLabel =
-      categoryFilter !== 'all' ? ` • Category: ${categoryFilter}` : '';
-
-    return `Filter: ${filterLabel}${statusLabel}${categoryLabel}${
-      searchTerm ? ` • Search: "${searchTerm}"` : ''
-    } • ${products.length} product${products.length !== 1 ? 's' : ''} found`;
-  };
-
-  const onExportPDF = () =>
-    exportToPDF({
-      title: 'Expiring Products Report',
-      subtitle: getSubtitle(),
-      tables: buildExport(),
-      filename: 'expiring-products.pdf',
-      orientation: 'landscape',
-    });
-
-  const onExportExcel = () =>
-    exportToExcel({
-      filename: 'expiring-products.xlsx',
-      sheets: buildExport(),
-    });
+  // Subtitle omitted while export is disabled
 
   return (
     <div className="flex flex-col space-y-2">
