@@ -1,7 +1,7 @@
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Settings, User, ShoppingCart, Bell } from 'lucide-react';
+import { User, ShoppingCart, Bell } from 'lucide-react';
 import React from 'react';
 import { Button } from './ui/button';
 import { Session } from 'next-auth';
@@ -92,14 +92,12 @@ const Header = ({ session }: { session: Session }) => {
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-gray-100/70" />
             <DropdownMenuGroup className="px-1 py-1">
-              <DropdownMenuItem className="px-2 py-1.5 text-sm rounded-md hover:bg-gray-50 focus:bg-gray-50">
-                <User className="mr-2 h-4 w-4 text-gray-500" />
-                <span className="text-gray-700">Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="px-2 py-1.5 text-sm rounded-md hover:bg-gray-50 focus:bg-gray-50">
-                <Settings className="mr-2 h-4 w-4 text-gray-500" />
-                <span className="text-gray-700">Settings</span>
-              </DropdownMenuItem>
+              <Link href="/profile">
+                <DropdownMenuItem className="px-2 py-1.5 text-sm rounded-md hover:bg-gray-50 focus:bg-gray-50">
+                  <User className="mr-2 h-4 w-4 text-gray-500" />
+                  <span className="text-gray-700">Profile</span>
+                </DropdownMenuItem>
+              </Link>
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="bg-gray-100/70" />
             <SignOutForm />

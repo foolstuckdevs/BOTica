@@ -98,9 +98,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
+      // Always hydrate latest user info from DB so profile changes reflect immediately
+      if (session.user && token.id) {
+        try {
+          const dbUser = await db
+            .select({
+              id: users.id,
+              fullName: users.fullName,
+              email: users.email,
+              role: users.role,
+              pharmacyId: users.pharmacyId,
+            })
+            .from(users)
+            .where(eq(users.id, token.id as string))
+            .limit(1);
+
+          if (dbUser[0]) {
+            session.user.id = dbUser[0].id as string;
+            session.user.name = dbUser[0].fullName as string;
+            session.user.email = dbUser[0].email as string;
+            session.user.role = dbUser[0].role;
+            session.user.pharmacyId = dbUser[0].pharmacyId as number;
+            return session;
+          }
+        } catch {
+          // fallback to token if db fails
+        }
         session.user.id = token.id as string;
-        session.user.name = token.name as string;
+        session.user.name = (token.name as string) || session.user.name;
         session.user.role = token.role;
         session.user.pharmacyId = token.pharmacyId as number;
       }

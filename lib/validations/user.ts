@@ -16,3 +16,21 @@ export const signUpSchema = z.object({
       'Password must contain uppercase, lowercase, number, and a special character',
     ),
 });
+
+// Profile update schema (reuse signUp rules for name/email)
+export const profileUpdateSchema = z.object({
+  fullName: signUpSchema.shape.fullName,
+  email: signUpSchema.shape.email,
+});
+
+// Password change schema (current/new/confirm with strong rules)
+export const passwordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: signUpSchema.shape.password,
+    confirmPassword: z.string().min(1, 'Please confirm your new password'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'New passwords do not match.',
+    path: ['confirmPassword'],
+  });

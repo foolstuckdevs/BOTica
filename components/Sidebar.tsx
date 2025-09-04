@@ -14,7 +14,6 @@ import {
   User,
   ListOrdered,
   ClipboardList,
-  Settings,
   BarChart2,
   FileText,
   // Layers,
@@ -35,9 +34,6 @@ const Sidebar = () => {
   const [salesOpen, setSalesOpen] = useState(pathname.startsWith('/sales'));
   const [reportsOpen, setReportsOpen] = useState(
     pathname.startsWith('/reports'),
-  );
-  const [settingsOpen, setSettingsOpen] = useState(
-    pathname.startsWith('/settings'),
   );
 
   const isActive = (path: string) => pathname === path;
@@ -245,54 +241,20 @@ const Sidebar = () => {
           )}
         </div>
 
-        {/* Settings */}
-        <div className="flex flex-col">
-          <button
-            onClick={() => setSettingsOpen(!settingsOpen)}
+        {/* Top-level: Manage Staff (Admin only) */}
+        {session?.user?.role === 'Admin' && (
+          <Link
+            href="/settings/manage-staff"
             className={`${baseLinkClasses} ${
-              isChildActive('/settings')
-                ? parentActiveClasses
+              isActive('/settings/manage-staff')
+                ? submenuActiveClasses
                 : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
             }`}
           >
-            <Settings className="w-5 h-5" />
-            Settings
-            {settingsOpen ? (
-              <ChevronDown className="ml-auto w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronRight className="ml-auto w-4 h-4 text-gray-400" />
-            )}
-          </button>
-          {settingsOpen && (
-            <div className="flex flex-col mt-1 space-y-0.5 ml-1">
-              {[
-                // Staff Management - Admin Only
-                ...(session?.user?.role === 'Admin'
-                  ? [
-                      {
-                        href: '/settings/manage-staff',
-                        label: 'Staff Management',
-                        icon: <Users className="w-4 h-4" />,
-                      },
-                    ]
-                  : []),
-              ].map(({ href, label, icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`${submenuLinkClasses} ${
-                    isActive(href)
-                      ? submenuActiveClasses
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
-                  }`}
-                >
-                  {icon}
-                  {label}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+            <Users className="w-5 h-5" />
+            Manage Staff
+          </Link>
+        )}
       </nav>
     </aside>
   );
