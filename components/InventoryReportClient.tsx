@@ -3,22 +3,34 @@
 import React, { useMemo, useState } from 'react';
 import InventoryReportHeader from '@/components/InventoryReportHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  LayoutDashboard,
+  PackageOpen,
+  Hourglass,
+  TrendingDown,
+  PackageX,
+} from 'lucide-react';
 import type {
   ExpiringProductData,
   InventoryOverviewData,
   LowStockProductData,
+  InventoryProductRow,
 } from '@/types';
 import { InventoryOverview } from '@/components/inventory-report/Overview';
 import { ExpiringProductsTable } from '@/components/inventory-report/ExpiringProductsTable';
 import { LowStockTable } from '@/components/inventory-report/LowStockTable';
+import { ActiveProductsTable } from './inventory-report/ActiveProductsTable';
+import { InactiveProductsTable } from './inventory-report/InactiveProductsTable';
 
-type TabKey = 'overview' | 'expiring' | 'low-stock';
+type TabKey = 'overview' | 'expiring' | 'low-stock' | 'active' | 'inactive';
 
 interface Props {
   inventoryData: {
     overview: InventoryOverviewData;
     expiringProducts: ExpiringProductData[];
     lowStockProducts: LowStockProductData[];
+    activeProducts: InventoryProductRow[];
+    inactiveProducts: InventoryProductRow[];
   };
   initialTab?: TabKey;
 }
@@ -29,7 +41,13 @@ export default function InventoryReportClient({
 }: Props) {
   const [, setActiveTab] = useState<TabKey>(initialTab);
   const handleTabChange = (value: string) => {
-    if (value === 'overview' || value === 'expiring' || value === 'low-stock') {
+    if (
+      value === 'overview' ||
+      value === 'expiring' ||
+      value === 'low-stock' ||
+      value === 'active' ||
+      value === 'inactive'
+    ) {
       setActiveTab(value);
     }
   };
@@ -98,14 +116,23 @@ export default function InventoryReportClient({
           className="w-full"
         >
           <div className="border-b bg-gray-50 dark:bg-gray-800/50">
-            <TabsList className="grid w-full grid-cols-3 bg-transparent p-2 h-auto gap-1">
+            <TabsList className="grid w-full grid-cols-5 bg-transparent p-2 h-auto gap-1">
               <TabsTrigger
                 value="overview"
                 className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-blue-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <LayoutDashboard className="w-4 h-4 text-blue-600" />
                   <span>Overview</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
+                value="active"
+                className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-emerald-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
+              >
+                <div className="flex items-center gap-3">
+                  <PackageOpen className="w-4 h-4 text-emerald-600" />
+                  <span>Active Products</span>
                 </div>
               </TabsTrigger>
               <TabsTrigger
@@ -113,7 +140,7 @@ export default function InventoryReportClient({
                 className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-amber-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                  <Hourglass className="w-4 h-4 text-amber-600" />
                   <span>Expiring Products</span>
                   {expiringCount > 0 && (
                     <span className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 text-xs px-2 py-1 rounded-full font-semibold">
@@ -127,13 +154,22 @@ export default function InventoryReportClient({
                 className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-orange-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  <TrendingDown className="w-4 h-4 text-orange-600" />
                   <span>Low Stock</span>
                   {filteredLowStockProducts.length > 0 && (
                     <span className="bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 text-xs px-2 py-1 rounded-full font-semibold">
                       {filteredLowStockProducts.length}
                     </span>
                   )}
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
+                value="inactive"
+                className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-gray-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
+              >
+                <div className="flex items-center gap-3">
+                  <PackageX className="w-4 h-4 text-gray-600" />
+                  <span>Inactive Products</span>
                 </div>
               </TabsTrigger>
             </TabsList>
@@ -164,6 +200,26 @@ export default function InventoryReportClient({
                 onSearchChange={setSearchTerm}
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={setCategoryFilter}
+              />
+            </TabsContent>
+
+            <TabsContent value="active" className="m-0">
+              <ActiveProductsTable
+                products={inventoryData.activeProducts}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                categoryFilter={categoryFilter}
+                onCategoryFilterChange={setCategoryFilter}
+              />
+            </TabsContent>
+
+            <TabsContent value="inactive" className="m-0">
+              <InactiveProductsTable
+                products={inventoryData.inactiveProducts}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
                 categoryFilter={categoryFilter}
                 onCategoryFilterChange={setCategoryFilter}
               />

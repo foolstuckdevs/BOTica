@@ -9,6 +9,7 @@ import {
   InventoryOverviewData,
   ExpiringProductData,
   LowStockProductData,
+  InventoryProductRow,
 } from '@/types';
 import { db } from '@/database/drizzle';
 
@@ -24,11 +25,12 @@ export async function getInventoryReportData(pharmacyId: number) {
   const thirtyDaysFromNow = addDays(today, 30);
   const ninetyDaysFromNow = addDays(today, 90);
 
-  // 1. Get overview data (total products, value)
+  // 1. Get overview data (totals and values)
   const overviewResults = await db
     .select({
       totalProducts: count(products.id),
       totalValue: sql<string>`COALESCE(SUM(${products.quantity} * ${products.costPrice}), 0)`,
+      totalUnitsInStock: sql<string>`COALESCE(SUM(${products.quantity}), 0)`,
       lowStockCount: count(
         sql`CASE WHEN ${products.quantity} <= ${products.minStockLevel} THEN 1 END`,
       ),
@@ -42,6 +44,13 @@ export async function getInventoryReportData(pharmacyId: number) {
       outOfStockCount: count(
         sql`CASE WHEN ${products.quantity} = 0 THEN 1 END`,
       ),
+      expiredCount: count(
+        sql`CASE WHEN ${products.expiryDate} < ${today.toISOString()} AND ${
+          products.quantity
+        } > 0 THEN 1 END`,
+      ),
+      inventoryCostValue: sql<string>`COALESCE(SUM(${products.quantity} * ${products.costPrice}), 0)`,
+      inventoryRetailValue: sql<string>`COALESCE(SUM(${products.quantity} * ${products.sellingPrice}), 0)`,
     })
     .from(products)
     .where(
@@ -110,15 +119,73 @@ export async function getInventoryReportData(pharmacyId: number) {
     )
     .orderBy(asc(products.quantity));
 
+  // 4. Get active products (not soft-deleted)
+  const activeResults = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      brandName: products.brandName,
+      lotNumber: products.lotNumber,
+      expiryDate: products.expiryDate,
+      quantity: products.quantity,
+      unit: products.unit,
+      costPrice: products.costPrice,
+      sellingPrice: products.sellingPrice,
+      categoryName: categories.name,
+      deletedAt: products.deletedAt,
+    })
+    .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .where(
+      and(
+        eq(products.pharmacyId, pharmacyId),
+        sql`${products.deletedAt} IS NULL`,
+      ),
+    )
+    .orderBy(asc(products.name));
+
+  // 5. Get inactive products (soft-deleted)
+  const inactiveResults = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      brandName: products.brandName,
+      lotNumber: products.lotNumber,
+      expiryDate: products.expiryDate,
+      quantity: products.quantity,
+      unit: products.unit,
+      costPrice: products.costPrice,
+      sellingPrice: products.sellingPrice,
+      categoryName: categories.name,
+      deletedAt: products.deletedAt,
+    })
+    .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .where(
+      and(
+        eq(products.pharmacyId, pharmacyId),
+        sql`${products.deletedAt} IS NOT NULL`,
+      ),
+    )
+    .orderBy(asc(products.name));
+
   // Note: Category breakdown and value-by-range are intentionally omitted for a simpler report
 
   // Process overview data
   const overview: InventoryOverviewData = {
     totalProducts: Number(overviewResults[0]?.totalProducts || 0),
     totalValue: parseFloat(overviewResults[0]?.totalValue || '0'),
+    totalUnitsInStock: Number(overviewResults[0]?.totalUnitsInStock || 0),
     lowStockCount: Number(overviewResults[0]?.lowStockCount || 0),
     expiringCount: Number(overviewResults[0]?.expiringCount || 0),
     outOfStockCount: Number(overviewResults[0]?.outOfStockCount || 0),
+    expiredCount: Number(overviewResults[0]?.expiredCount || 0),
+    inventoryCostValue: parseFloat(
+      overviewResults[0]?.inventoryCostValue || '0',
+    ),
+    inventoryRetailValue: parseFloat(
+      overviewResults[0]?.inventoryRetailValue || '0',
+    ),
   };
 
   // Process expiring products
@@ -171,9 +238,40 @@ export async function getInventoryReportData(pharmacyId: number) {
     }),
   );
 
+  // Process active/inactive products
+  const activeProducts: InventoryProductRow[] = activeResults.map((r) => ({
+    id: r.id,
+    name: r.name,
+    brandName: r.brandName,
+    categoryName: r.categoryName || 'Uncategorized',
+    lotNumber: r.lotNumber,
+    expiryDate: r.expiryDate,
+    quantity: r.quantity,
+    unit: r.unit,
+    costPrice: parseFloat(r.costPrice || '0'),
+    sellingPrice: parseFloat(r.sellingPrice || '0'),
+    deletedAt: r.deletedAt ? String(r.deletedAt) : null,
+  }));
+
+  const inactiveProducts: InventoryProductRow[] = inactiveResults.map((r) => ({
+    id: r.id,
+    name: r.name,
+    brandName: r.brandName,
+    categoryName: r.categoryName || 'Uncategorized',
+    lotNumber: r.lotNumber,
+    expiryDate: r.expiryDate,
+    quantity: r.quantity,
+    unit: r.unit,
+    costPrice: parseFloat(r.costPrice || '0'),
+    sellingPrice: parseFloat(r.sellingPrice || '0'),
+    deletedAt: r.deletedAt ? String(r.deletedAt) : null,
+  }));
+
   return {
     overview,
     expiringProducts,
     lowStockProducts,
+    activeProducts,
+    inactiveProducts,
   };
 }

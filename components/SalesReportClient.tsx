@@ -6,6 +6,13 @@ import { SalesReportOverview } from '@/components/SalesReportOverview';
 import { ProductPerformanceTable } from '@/components/ProductPerformanceTable';
 import { BatchProfitTable } from '@/components/BatchProfitTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  LayoutDashboard,
+  Receipt,
+  LineChart,
+  PackageSearch,
+} from 'lucide-react';
+import SalesTable from '@/components/SalesTable';
 import type {
   SalesOverviewData,
   ProductPerformanceData,
@@ -49,14 +56,23 @@ export default function SalesReportClient({
       <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-lg overflow-hidden">
         <Tabs defaultValue="overview" className="w-full">
           <div className="border-b bg-gray-50 dark:bg-gray-800/50">
-            <TabsList className="grid w-full grid-cols-3 bg-transparent p-2 h-auto gap-1">
+            <TabsList className="grid w-full grid-cols-4 bg-transparent p-2 h-auto gap-1">
               <TabsTrigger
                 value="overview"
                 className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-blue-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <LayoutDashboard className="w-4 h-4 text-blue-600" />
                   <span>Overview</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
+                value="sales"
+                className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-indigo-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
+              >
+                <div className="flex items-center gap-3">
+                  <Receipt className="w-4 h-4 text-indigo-600" />
+                  <span>Sales</span>
                 </div>
               </TabsTrigger>
               <TabsTrigger
@@ -64,7 +80,7 @@ export default function SalesReportClient({
                 className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-green-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <LineChart className="w-4 h-4 text-green-600" />
                   <span>Product Performance</span>
                 </div>
               </TabsTrigger>
@@ -73,7 +89,7 @@ export default function SalesReportClient({
                 className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-purple-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  <PackageSearch className="w-4 h-4 text-purple-600" />
                   <span>Batch Profit</span>
                 </div>
               </TabsTrigger>
@@ -86,6 +102,10 @@ export default function SalesReportClient({
                 salesData={salesData}
                 comprehensiveSalesData={comprehensiveSalesData}
               />
+            </TabsContent>
+
+            <TabsContent value="sales" className="m-0">
+              <SalesTable comprehensiveProductData={comprehensiveProductData} />
             </TabsContent>
 
             <TabsContent value="products" className="m-0">

@@ -200,6 +200,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
         totalQuantity: sum(saleItems.quantity),
         totalRevenue: sum(saleItems.subtotal),
         costPrice: products.costPrice,
+        unit: products.unit,
       })
       .from(saleItems)
       .innerJoin(sales, eq(saleItems.saleId, sales.id))
@@ -219,6 +220,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
         products.brandName,
         categories.name,
         products.costPrice,
+        products.unit,
       )
       .orderBy(
         sql`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`,
@@ -278,6 +280,7 @@ function processSalesReportData(
     totalQuantity: string | null;
     totalRevenue: string | null;
     costPrice: string | null;
+    unit: string | null;
   }>,
   today: Date,
   weekStart: Date,
@@ -443,6 +446,7 @@ function generateComprehensiveProductData(
     totalQuantity: string | null;
     totalRevenue: string | null;
     costPrice: string | null;
+    unit: string | null;
   }>,
 ) {
   return productResults.map((item) => {
@@ -460,6 +464,7 @@ function generateComprehensiveProductData(
       quantity,
       revenue: Number(revenue.toFixed(2)),
       profit: Number(profit.toFixed(2)),
+      unit: item.unit,
     };
   });
 }

@@ -281,6 +281,7 @@ export interface ProductPerformanceData {
   quantity: number;
   revenue: number;
   profit: number;
+  unit?: string | null;
 }
 
 export interface BatchProfitData {
@@ -319,10 +320,14 @@ export interface ChartMetrics {
 // INVENTORY REPORTS
 export interface InventoryOverviewData {
   totalProducts: number;
-  totalValue: number;
+  totalValue: number; // kept for backward compatibility (cost value)
+  totalUnitsInStock?: number;
   lowStockCount: number;
   expiringCount: number;
   outOfStockCount: number;
+  expiredCount?: number;
+  inventoryCostValue?: number;
+  inventoryRetailValue?: number;
 }
 
 export interface ExpiringProductData {
@@ -372,4 +377,19 @@ export interface InventoryValueData {
   range: string;
   count: number;
   totalValue: number;
+}
+
+// INVENTORY PRODUCTS LISTS FOR INACTIVE PRODUCTS
+export interface InventoryProductRow {
+  id: number;
+  name: string;
+  brandName?: string | null;
+  categoryName: string;
+  lotNumber: string;
+  expiryDate: string;
+  quantity: number;
+  unit?: string | null;
+  costPrice: number;
+  sellingPrice: number;
+  deletedAt?: string | null;
 }
