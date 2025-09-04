@@ -16,7 +16,6 @@ import {
   ClipboardList,
   BarChart2,
   FileText,
-  // Layers,
   RefreshCw,
   Pill,
   Users,
@@ -244,7 +243,7 @@ const Sidebar = () => {
         {/* Top-level: Manage Staff (Admin only) */}
         {session?.user?.role === 'Admin' && (
           <Link
-            href="/settings/manage-staff"
+            href="/manage-staff"
             className={`${baseLinkClasses} ${
               isActive('/manage-staff')
                 ? submenuActiveClasses

@@ -4,6 +4,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import { StaffActions } from '@/components/StaffActions';
 import { StaffMember } from '@/types';
+import { formatDatePH } from '@/lib/date-format';
 
 export const columns: ColumnDef<StaffMember>[] = [
   {
@@ -44,8 +45,8 @@ export const columns: ColumnDef<StaffMember>[] = [
       <DataTableColumnHeader column={column} title="Created" />
     ),
     cell: ({ row }) => {
-      const date = row.getValue('createdAt') as Date | null;
-      return date ? new Date(date).toLocaleDateString() : 'N/A';
+      const date = row.getValue('createdAt') as Date | string | null;
+      return formatDatePH(date);
     },
   },
   {

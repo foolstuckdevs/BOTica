@@ -17,6 +17,7 @@ import { Supplier, Product } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { formatDatePH } from '@/lib/date-format';
 import {
   Select,
   SelectTrigger,
@@ -346,14 +347,7 @@ const PurchaseOrderForm = ({
                               )}
                               {product.expiryDate && (
                                 <span className="text-amber-600">
-                                  Exp:{' '}
-                                  {new Date(
-                                    product.expiryDate,
-                                  ).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                  })}
+                                  Exp: {formatDatePH(product.expiryDate)}
                                 </span>
                               )}
                             </div>

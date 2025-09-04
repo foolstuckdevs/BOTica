@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { UserCheck, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DeleteDialog } from '@/components/DeleteDialog';
-import { updateStaffStatus } from '@/lib/actions/settings';
+import { updateStaffStatus } from '@/lib/actions/staff';
 import { StaffMember } from '@/types';
 
 export function StaffActions({ user }: { user: StaffMember }) {

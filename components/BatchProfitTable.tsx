@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { FileDown, Filter } from 'lucide-react';
+import { formatDatePH } from '@/lib/date-format';
 import {
   Popover,
   PopoverContent,
@@ -189,8 +190,7 @@ export const BatchProfitTable = ({
   };
 
   const formatCurrency = (amount: number) => `₱${amount.toFixed(2)}`;
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString();
+  const formatDate = (dateStr: string) => formatDatePH(dateStr);
 
   // Placeholder export handlers (export functionality temporarily disabled)
   const onExportPDF = () => {

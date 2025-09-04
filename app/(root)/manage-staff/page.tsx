@@ -1,6 +1,6 @@
 import { DataTable } from '@/components/DataTable';
 import { auth } from '@/auth';
-import { getStaffMembers } from '@/lib/actions/settings';
+import { getStaffMembers } from '@/lib/actions/staff';
 import { columns } from './columns';
 import { UserForm } from '@/components/UserForm';
 

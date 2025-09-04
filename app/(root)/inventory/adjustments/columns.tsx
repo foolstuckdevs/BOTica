@@ -4,6 +4,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import { Adjustment } from '@/types';
 import AdjustmentActions from '@/components/AdjustmentActions';
+import { formatDateTimePH } from '@/lib/date-format';
 
 export const columns: ColumnDef<Adjustment>[] = [
   {
@@ -126,16 +127,10 @@ export const columns: ColumnDef<Adjustment>[] = [
       <DataTableColumnHeader column={column} title="Date" />
     ),
     cell: ({ getValue }) => {
-      const date = new Date(getValue<string>());
+      const dateStr = getValue<string>();
       return (
         <span className="text-sm text-muted-foreground">
-          {date.toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric',
-          })}
+          {formatDateTimePH(dateStr)}
         </span>
       );
     },

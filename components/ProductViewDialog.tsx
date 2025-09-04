@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
+import { formatDatePH } from '@/lib/date-format';
 
 interface ProductViewDialogProps {
   product: Product;
@@ -106,9 +107,7 @@ const ProductViewDialog = ({
               <InfoBlock
                 label="Expiry Date"
                 value={
-                  product.expiryDate
-                    ? new Date(product.expiryDate).toLocaleDateString()
-                    : 'N/A'
+                  product.expiryDate ? formatDatePH(product.expiryDate) : 'N/A'
                 }
               />
               <InfoBlock label="Quantity" value={product.quantity} />

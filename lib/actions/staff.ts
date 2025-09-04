@@ -11,6 +11,7 @@ import {
   createStaffSchema,
   updateStaffStatusSchema,
 } from '@/lib/validations';
+import { canEditMasterData } from '@/lib/helpers/rbac';
 
 // Get staff members (pharmacists only, exclude current admin)
 export const getStaffMembers = async (
@@ -18,7 +19,6 @@ export const getStaffMembers = async (
   pharmacyId: number,
 ): Promise<StaffMember[]> => {
   try {
-    // Validate input parameters
     const validatedParams = staffMemberParamsSchema.parse({
       currentUserId,
       pharmacyId,
@@ -36,7 +36,6 @@ export const getStaffMembers = async (
       .from(users)
       .where(
         and(
-          // Only show Pharmacists from the same pharmacy, exclude current admin
           eq(users.pharmacyId, validatedParams.pharmacyId),
           eq(users.role, 'Pharmacist'),
           ne(users.id, validatedParams.currentUserId),
@@ -44,7 +43,6 @@ export const getStaffMembers = async (
       )
       .orderBy(users.createdAt);
 
-    // Map to ensure isActive is never null
     return userList.map((user) => ({
       ...user,
       isActive: user.isActive ?? true,
@@ -65,7 +63,11 @@ export const createStaffMember = async (
   adminPharmacyId: number,
 ) => {
   try {
-    // Validate input data
+    // RBAC: Admin-only for staff management mutations
+    if (!(await canEditMasterData())) {
+      return { success: false, error: 'Unauthorized' } as const;
+    }
+
     const validatedInput = createStaffSchema.parse({
       data,
       adminPharmacyId,
@@ -74,7 +76,6 @@ export const createStaffMember = async (
     const { data: validatedData, adminPharmacyId: validatedPharmacyId } =
       validatedInput;
 
-    // Check if staff member already exists
     const existingUser = await db
       .select()
       .from(users)
@@ -85,13 +86,11 @@ export const createStaffMember = async (
       return {
         success: false,
         error: 'Staff member with this email already exists',
-      };
+      } as const;
     }
 
-    // Hash password
     const hashedPassword = await hash(validatedData.password, 10);
 
-    // Create staff member (always Pharmacist role, with admin's pharmacy)
     await db.insert(users).values({
       fullName: validatedData.fullName,
       email: validatedData.email,
@@ -100,7 +99,7 @@ export const createStaffMember = async (
       pharmacyId: validatedPharmacyId,
     });
 
-    return { success: true };
+    return { success: true } as const;
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error('Validation error in createStaffMember:', error.issues);
@@ -108,35 +107,38 @@ export const createStaffMember = async (
       return {
         success: false,
         error: firstIssue?.message || 'Invalid input data',
-      };
+      } as const;
     }
     console.error('Error creating staff member:', error);
-    return { success: false, error: 'Failed to create staff member' };
+    return { success: false, error: 'Failed to create staff member' } as const;
   }
 };
 
 // Update staff member status (admin only)
 export const updateStaffStatus = async (userId: string, isActive: boolean) => {
   try {
-    // Validate input
+    // RBAC: Admin-only for staff management mutations
+    if (!(await canEditMasterData())) {
+      return { success: false, error: 'Unauthorized' } as const;
+    }
+
     const validatedInput = updateStaffStatusSchema.parse({ userId, isActive });
 
-    // Update staff member status
     await db
       .update(users)
       .set({ isActive: validatedInput.isActive })
       .where(eq(users.id, validatedInput.userId));
 
-    return { success: true };
+    return { success: true } as const;
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error('Validation error in updateStaffStatus:', error.issues);
       return {
         success: false,
         error: 'Invalid input provided',
-      };
+      } as const;
     }
     console.error('Error updating staff status:', error);
-    return { success: false, error: 'Failed to update staff status' };
+    return { success: false, error: 'Failed to update staff status' } as const;
   }
 };

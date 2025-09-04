@@ -26,7 +26,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { createStaffMember } from '@/lib/actions/settings';
+import { createStaffMember } from '@/lib/actions/staff';
 
 const staffFormSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),

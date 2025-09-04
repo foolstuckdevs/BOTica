@@ -16,6 +16,7 @@ import {
   Mail,
 } from 'lucide-react';
 import Link from 'next/link';
+import { formatDatePH } from '@/lib/date-format';
 
 interface PurchaseOrdersOverviewProps {
   orders: PurchaseOrder[];
@@ -196,7 +197,7 @@ const PurchaseOrdersOverview: React.FC<PurchaseOrdersOverviewProps> = ({
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {order.createdAt
-                        ? new Date(order.createdAt).toLocaleDateString()
+                        ? formatDatePH(order.createdAt)
                         : 'Unknown date'}
                     </div>
                   </div>
