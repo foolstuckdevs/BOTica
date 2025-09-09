@@ -4,20 +4,10 @@ import React from 'react';
 import { SalesReportHeader } from '@/components/SalesReportHeader';
 import { SalesReportOverview } from '@/components/SalesReportOverview';
 import { ProductPerformanceTable } from '@/components/ProductPerformanceTable';
-import { BatchProfitTable } from '@/components/BatchProfitTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  LayoutDashboard,
-  Receipt,
-  LineChart,
-  PackageSearch,
-} from 'lucide-react';
+import { LayoutDashboard, Receipt, LineChart } from 'lucide-react';
 import SalesTable from '@/components/SalesTable';
-import type {
-  SalesOverviewData,
-  ProductPerformanceData,
-  BatchProfitData,
-} from '@/types';
+import type { SalesOverviewData, ProductPerformanceData } from '@/types';
 
 interface Props {
   salesData: {
@@ -30,7 +20,6 @@ interface Props {
     week: ProductPerformanceData[];
     month: ProductPerformanceData[];
   };
-  batchProfitData: BatchProfitData[];
   comprehensiveSalesData?: Array<SalesOverviewData & { date: string }>;
   comprehensiveProductData?: Array<{
     date: string;
@@ -46,7 +35,6 @@ interface Props {
 export default function SalesReportClient({
   salesData,
   productData,
-  batchProfitData,
   comprehensiveSalesData = [],
   comprehensiveProductData = [],
 }: Props) {
@@ -56,7 +44,7 @@ export default function SalesReportClient({
       <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-lg overflow-hidden">
         <Tabs defaultValue="overview" className="w-full">
           <div className="border-b bg-gray-50 dark:bg-gray-800/50">
-            <TabsList className="grid w-full grid-cols-4 bg-transparent p-2 h-auto gap-1">
+            <TabsList className="grid w-full grid-cols-3 bg-transparent p-2 h-auto gap-1">
               <TabsTrigger
                 value="overview"
                 className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-blue-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
@@ -84,15 +72,6 @@ export default function SalesReportClient({
                   <span>Product Performance</span>
                 </div>
               </TabsTrigger>
-              <TabsTrigger
-                value="batches"
-                className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-purple-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
-              >
-                <div className="flex items-center gap-3">
-                  <PackageSearch className="w-4 h-4 text-purple-600" />
-                  <span>Batch Profit</span>
-                </div>
-              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -113,10 +92,6 @@ export default function SalesReportClient({
                 productData={productData}
                 comprehensiveProductData={comprehensiveProductData}
               />
-            </TabsContent>
-
-            <TabsContent value="batches" className="m-0">
-              <BatchProfitTable batchData={batchProfitData} loading={false} />
             </TabsContent>
           </div>
         </Tabs>

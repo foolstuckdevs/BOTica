@@ -284,20 +284,6 @@ export interface ProductPerformanceData {
   unit?: string | null;
 }
 
-export interface BatchProfitData {
-  id: string;
-  productName: string;
-  categoryName?: string;
-  batch: string;
-  expiry: string;
-  qtySold: number;
-  qtyRemaining?: number; // Optional for backward compatibility
-  cost: number;
-  revenue: number;
-  profit: number;
-  margin: number;
-}
-
 export interface ChartDataPoint {
   date: string;
   sales: number;

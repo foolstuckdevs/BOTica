@@ -22,7 +22,6 @@ const page = async () => {
     const {
       salesData,
       productData,
-      batchProfitData,
       comprehensiveSalesData,
       comprehensiveProductData,
     } = await getSalesReportData(pharmacyId);
@@ -33,7 +32,6 @@ const page = async () => {
           <SalesReportClient
             salesData={salesData}
             productData={productData}
-            batchProfitData={batchProfitData}
             comprehensiveSalesData={comprehensiveSalesData}
             comprehensiveProductData={comprehensiveProductData}
           />
@@ -80,7 +78,6 @@ const page = async () => {
           <SalesReportClient
             salesData={fallbackData}
             productData={fallbackProductData}
-            batchProfitData={[]}
             comprehensiveSalesData={[]}
             comprehensiveProductData={[]}
           />

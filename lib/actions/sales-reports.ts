@@ -3,123 +3,7 @@
 import { db } from '@/database/drizzle';
 import { sales, saleItems, products, categories } from '@/database/schema';
 import { eq, and, gte, lte, sum, count, sql, desc } from 'drizzle-orm';
-import { getBatchProfitDataSchema } from '@/lib/validations';
-import {
-  PeriodType,
-  SalesOverviewData,
-  ProductPerformanceData,
-  BatchProfitData,
-} from '@/types';
-
-export async function getBatchProfitData(
-  pharmacyId: number,
-  period: PeriodType = 'month',
-): Promise<BatchProfitData[]> {
-  try {
-    // Validate input with Zod
-    const validatedData = getBatchProfitDataSchema.parse({
-      pharmacyId,
-      period,
-    });
-
-    // Calculate date ranges for batch profit (simplified for month only)
-    const now = new Date();
-    const philippinesOffset = 8 * 60;
-    const localTime = new Date(now.getTime() + philippinesOffset * 60 * 1000);
-
-    const monthStart = new Date(
-      Date.UTC(
-        localTime.getUTCFullYear(),
-        localTime.getUTCMonth(),
-        1,
-        0,
-        0,
-        0,
-        0,
-      ),
-    );
-    monthStart.setTime(monthStart.getTime() - philippinesOffset * 60 * 1000);
-
-    const monthEnd = new Date(
-      Date.UTC(
-        localTime.getUTCFullYear(),
-        localTime.getUTCMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-        999,
-      ),
-    );
-    monthEnd.setTime(monthEnd.getTime() - philippinesOffset * 60 * 1000);
-
-    // Query to get batch profit data
-    const result = await db
-      .select({
-        productId: products.id,
-        productName: products.name,
-        categoryName: categories.name,
-        batch: products.lotNumber,
-        expiry: products.expiryDate,
-        costPrice: products.costPrice,
-        sellingPrice: products.sellingPrice,
-        currentQuantity: products.quantity,
-        qtySold: sum(saleItems.quantity),
-        totalRevenue: sum(saleItems.subtotal),
-      })
-      .from(saleItems)
-      .innerJoin(products, eq(saleItems.productId, products.id))
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .innerJoin(sales, eq(saleItems.saleId, sales.id))
-      .where(
-        and(
-          eq(products.pharmacyId, validatedData.pharmacyId),
-          gte(sales.createdAt, monthStart),
-          lte(sales.createdAt, monthEnd),
-        ),
-      )
-      .groupBy(
-        products.id,
-        products.name,
-        categories.name,
-        products.lotNumber,
-        products.expiryDate,
-        products.costPrice,
-        products.sellingPrice,
-        products.quantity,
-      )
-      .orderBy(desc(sum(saleItems.subtotal)));
-
-    // Transform the data to match our interface
-    const batchData: BatchProfitData[] = result.map((row) => {
-      const qtySold = Number(row.qtySold) || 0;
-      const revenue = Number(row.totalRevenue) || 0;
-      const costPrice = Number(row.costPrice) || 0;
-      const cost = qtySold * costPrice;
-      const profit = revenue - cost;
-      const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-
-      return {
-        id: `${row.productId}-${row.batch}`,
-        productName: row.productName,
-        categoryName: row.categoryName || 'Uncategorized',
-        batch: row.batch || 'N/A',
-        expiry: row.expiry || 'N/A',
-        qtySold,
-        qtyRemaining: Number(row.currentQuantity) || 0,
-        cost,
-        revenue,
-        profit,
-        margin,
-      };
-    });
-
-    return batchData;
-  } catch (error) {
-    console.error('Error fetching batch profit data:', error);
-    return [];
-  }
-}
+import { SalesOverviewData, ProductPerformanceData } from '@/types';
 
 // OPTIMIZED: Consolidated sales report data fetcher - replaces multiple separate calls
 export const getSalesReportData = async (pharmacyId: number) => {
@@ -227,17 +111,11 @@ export const getSalesReportData = async (pharmacyId: number) => {
         desc(sum(saleItems.quantity)),
       );
 
-    // Batch profit data query (keep existing logic)
-    const batchProfitQuery = getBatchProfitData(pharmacyId, 'month');
-
-    // Execute all queries in parallel
-    const [salesResults, costResults, productResults, batchProfitData] =
-      await Promise.all([
-        salesOverviewQuery,
-        costAndItemsQuery,
-        productPerformanceQuery,
-        batchProfitQuery,
-      ]);
+    const [salesResults, costResults, productResults] = await Promise.all([
+      salesOverviewQuery,
+      costAndItemsQuery,
+      productPerformanceQuery,
+    ]);
 
     // Process results into structured format
     const processedData = processSalesReportData(
@@ -251,7 +129,6 @@ export const getSalesReportData = async (pharmacyId: number) => {
 
     return {
       ...processedData,
-      batchProfitData,
     };
   } catch (error) {
     console.error('Error fetching consolidated sales report data:', error);

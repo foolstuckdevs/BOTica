@@ -51,16 +51,6 @@ export const getProductPerformanceSchema = z.object({
   period: periodSchema,
 });
 
-export const getBatchProfitDataSchema = z.object({
-  pharmacyId: z.number().int().positive(),
-  period: periodSchema.optional().default('month'),
-});
-
-export const getBatchProfitSummarySchema = z.object({
-  pharmacyId: z.number().int().positive(),
-  period: periodSchema.optional().default('month'),
-});
-
 // TRANSACTION SCHEMA
 
 export const getTransactionsSchema = z.object({
