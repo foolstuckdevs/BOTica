@@ -174,14 +174,12 @@ export function InventoryOverview({ overview, expiringCount }: Props) {
           </div>
         </CardContent>
       </Card>
-
-      {/* Inventory Value (Retail) */}
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Inventory Value (Retail)
+                Estimated Inventory Value (Retail)
               </p>
               <p className="text-2xl font-bold">
                 {formatCurrency(overview.inventoryRetailValue ?? 0)}

@@ -19,8 +19,8 @@ import type {
 import { InventoryOverview } from '@/components/inventory-report/Overview';
 import { ExpiringProductsTable } from '@/components/inventory-report/ExpiringProductsTable';
 import { LowStockTable } from '@/components/inventory-report/LowStockTable';
-import { ActiveProductsTable } from './inventory-report/ActiveProductsTable';
 import { InactiveProductsTable } from './inventory-report/InactiveProductsTable';
+import { AvailableProductsTable } from './inventory-report/AvailableProductsTable';
 
 type TabKey = 'overview' | 'expiring' | 'low-stock' | 'active' | 'inactive';
 
@@ -132,7 +132,7 @@ export default function InventoryReportClient({
               >
                 <div className="flex items-center gap-3">
                   <PackageOpen className="w-4 h-4 text-emerald-600" />
-                  <span>Active Products</span>
+                  <span>Available Products</span>
                 </div>
               </TabsTrigger>
               <TabsTrigger
@@ -206,7 +206,7 @@ export default function InventoryReportClient({
             </TabsContent>
 
             <TabsContent value="active" className="m-0">
-              <ActiveProductsTable
+              <AvailableProductsTable
                 products={inventoryData.activeProducts}
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}

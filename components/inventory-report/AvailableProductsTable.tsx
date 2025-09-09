@@ -41,7 +41,7 @@ interface Props {
   onCategoryFilterChange?: (v: string) => void;
 }
 
-export function ActiveProductsTable({
+export function AvailableProductsTable({
   products,
   searchTerm,
   onSearchChange,
@@ -112,7 +112,7 @@ export function ActiveProductsTable({
               <PackageOpen className="h-5 w-5 text-muted-foreground" />
               <div>
                 <CardTitle className="text-lg font-semibold">
-                  Active Products
+                  Available Products
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Currently available (not soft-deleted)
