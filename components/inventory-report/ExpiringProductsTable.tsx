@@ -35,9 +35,10 @@ interface Props {
   onSearchChange: (v: string) => void;
   expiryFilter: 'all' | '30days' | '60days' | '90days';
   onExpiryFilterChange: (v: 'all' | '30days' | '60days' | '90days') => void;
-  statusFilter?: 'all' | 'expired' | 'critical' | 'warning' | 'normal';
+  // New status taxonomy: expired (<=0), expiring (1-90), warning (91-180), return (181-210)
+  statusFilter?: 'all' | 'expired' | 'expiring' | 'warning' | 'return';
   onStatusFilterChange?: (
-    v: 'all' | 'expired' | 'critical' | 'warning' | 'normal',
+    v: 'all' | 'expired' | 'expiring' | 'warning' | 'return',
   ) => void;
   categoryFilter?: string;
   onCategoryFilterChange?: (v: string) => void;
@@ -76,39 +77,52 @@ export function ExpiringProductsTable({
     searchTerm !== '';
 
   // Helper functions for display logic
-  const getDisplayDaysRemaining = (daysRemaining: number): string => {
-    return daysRemaining < 0 ? '0 days' : `${daysRemaining} days`;
+  const getDisplayDaysRemaining = (daysRemaining: number): string =>
+    daysRemaining < 0 ? '0 days' : `${daysRemaining} days`;
+
+  // Map daysRemaining to status token
+  const getStatusToken = (
+    daysRemaining: number,
+  ): 'expired' | 'expiring' | 'warning' | 'return' | 'exclude' => {
+    if (daysRemaining <= 0) return 'expired';
+    if (daysRemaining <= 90) return 'expiring';
+    if (daysRemaining <= 180) return 'warning';
+    if (daysRemaining <= 210) return 'return';
+    return 'exclude'; // beyond 7 months, excluded from report
   };
 
-  const getDisplayStatus = (
-    urgency: string,
-    daysRemaining: number,
-  ): { text: string; className: string } => {
-    if (daysRemaining < 0) {
-      return {
-        text: 'Expired',
-        className: 'bg-red-100 text-red-800',
-      };
-    }
+  const statusMeta: Record<
+    'expired' | 'expiring' | 'warning' | 'return',
+    { text: string; className: string }
+  > = {
+    expired: { text: 'Expired', className: 'bg-red-100 text-red-800' },
+    expiring: {
+      text: 'Expiring Soon',
+      className: 'bg-yellow-100 text-yellow-800',
+    },
+    warning: { text: 'Warning', className: 'bg-amber-100 text-amber-800' },
+    return: { text: 'For Return', className: 'bg-indigo-100 text-indigo-800' },
+  };
 
-    // Use original urgency for non-expired products
-    switch (urgency) {
-      case 'critical':
-        return {
-          text: 'Critical',
-          className: 'bg-red-100 text-red-800',
-        };
-      case 'warning':
-        return {
-          text: 'Warning',
-          className: 'bg-amber-100 text-amber-800',
-        };
-      default:
-        return {
-          text: 'Normal',
-          className: 'bg-green-100 text-green-800',
-        };
-    }
+  const getDisplayStatus = (daysRemaining: number) => {
+    const token = getStatusToken(daysRemaining);
+    if (token === 'exclude')
+      return { text: 'N/A', className: 'bg-muted text-muted-foreground' };
+    return statusMeta[token];
+  };
+
+  // Internal unmanaged state fallbacks if parent did not pass handlers
+  const [internalStatusFilter, setInternalStatusFilter] = React.useState<
+    'all' | 'expired' | 'expiring' | 'warning' | 'return'
+  >(statusFilter);
+  const effectiveStatusFilter = onStatusFilterChange
+    ? statusFilter
+    : internalStatusFilter;
+  const handleStatusChange = (
+    v: 'all' | 'expired' | 'expiring' | 'warning' | 'return',
+  ) => {
+    if (onStatusFilterChange) onStatusFilterChange(v);
+    else setInternalStatusFilter(v);
   };
 
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -118,25 +132,41 @@ export function ExpiringProductsTable({
     setCurrentPage(1);
   }, [searchTerm, expiryFilter, statusFilter, categoryFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(products.length / itemsPerPage));
+  // Apply status + exclusion filtering (exclude > 210 days)
+  const filteredProducts = React.useMemo(() => {
+    return products.filter((p) => {
+      const token = getStatusToken(p.daysRemaining);
+      if (token === 'exclude') return false;
+      if (effectiveStatusFilter === 'all') return true;
+      return token === effectiveStatusFilter;
+    });
+  }, [products, effectiveStatusFilter]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / itemsPerPage),
+  );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginated = products.slice(startIndex, endIndex);
+  const paginated = filteredProducts.slice(startIndex, endIndex);
 
   // Build export data (full filtered list, not paginated)
-  const exportRows = products.map((p) => ({
-    name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
-    brandName: p.brandName,
-    categoryName: p.categoryName,
-    lotNumber: p.lotNumber,
-    expiryDate: p.expiryDate,
-    daysRemaining: p.daysRemaining,
-    urgency: p.urgency,
-    quantity: p.quantity,
-    unit: p.unit,
-    costPrice: p.costPrice,
-    sellingPrice: p.sellingPrice,
-  }));
+  const exportRows = filteredProducts.map((p) => {
+    const status = getDisplayStatus(p.daysRemaining).text;
+    return {
+      name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
+      brandName: p.brandName,
+      categoryName: p.categoryName,
+      lotNumber: p.lotNumber,
+      expiryDate: p.expiryDate,
+      daysRemaining: Math.max(0, p.daysRemaining),
+      status,
+      quantity: p.quantity,
+      unit: p.unit,
+      costPrice: p.costPrice,
+      sellingPrice: p.sellingPrice,
+    };
+  });
   const exportColumns = [
     { header: 'Product', key: 'name' },
     { header: 'Brand', key: 'brandName' },
@@ -144,22 +174,30 @@ export function ExpiringProductsTable({
     { header: 'Lot #', key: 'lotNumber' },
     { header: 'Expiry', key: 'expiryDate' },
     { header: 'Days Rem', key: 'daysRemaining', numeric: true },
-    { header: 'Urgency', key: 'urgency' },
+    { header: 'Status', key: 'status' },
     { header: 'Qty', key: 'quantity', numeric: true },
     { header: 'Unit', key: 'unit' },
     { header: 'Cost Price', key: 'costPrice', currency: true },
     { header: 'Selling Price', key: 'sellingPrice', currency: true },
   ];
+  const statusLabelMap: Record<
+    'all' | 'expired' | 'expiring' | 'warning' | 'return',
+    string
+  > = {
+    all: 'All',
+    expired: 'Expired',
+    expiring: 'Expiring Soon',
+    warning: 'Warning',
+    return: 'For Return',
+  };
   const filterSubtitle = buildFilterSubtitle(
     [
       ['Expiry', expiryFilter],
-      ['Status', statusFilter],
+      ['Status', statusLabelMap[effectiveStatusFilter]],
       ['Category', categoryFilter],
     ],
     { searchTerm },
   );
-
-  // Subtitle omitted while export is disabled
 
   return (
     <div className="flex flex-col space-y-2">
@@ -173,7 +211,7 @@ export function ExpiringProductsTable({
                   Expiring Products
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Monitor product expiry dates and inventory health
+                  Monitor product expiry dates
                 </p>
               </div>
             </div>
@@ -233,8 +271,15 @@ export function ExpiringProductsTable({
                           Status
                         </label>
                         <Select
-                          value={statusFilter}
-                          onValueChange={onStatusFilterChange}
+                          value={effectiveStatusFilter}
+                          onValueChange={(
+                            v:
+                              | 'all'
+                              | 'expired'
+                              | 'expiring'
+                              | 'warning'
+                              | 'return',
+                          ) => handleStatusChange(v)}
                         >
                           <SelectTrigger className="h-8 w-full text-xs px-2 py-1 mt-1">
                             <SelectValue placeholder="Filter by urgency" />
@@ -242,9 +287,15 @@ export function ExpiringProductsTable({
                           <SelectContent>
                             <SelectItem value="all">All Status</SelectItem>
                             <SelectItem value="expired">Expired</SelectItem>
-                            <SelectItem value="critical">Critical</SelectItem>
-                            <SelectItem value="warning">Warning</SelectItem>
-                            <SelectItem value="normal">Normal</SelectItem>
+                            <SelectItem value="expiring">
+                              Expiring Soon (≤ 3 mo)
+                            </SelectItem>
+                            <SelectItem value="warning">
+                              Warning (3–6 mo)
+                            </SelectItem>
+                            <SelectItem value="return">
+                              For Return (6–7 mo)
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -349,7 +400,6 @@ export function ExpiringProductsTable({
                       <td className="py-3 px-4">
                         {(() => {
                           const statusInfo = getDisplayStatus(
-                            product.urgency,
                             product.daysRemaining,
                           );
                           return (
@@ -375,7 +425,7 @@ export function ExpiringProductsTable({
                 )}
               </tbody>
               <tfoot>
-                {products.length > 0 && (
+                {filteredProducts.length > 0 && (
                   <tr>
                     <td colSpan={8} className="py-2 px-2">
                       <div className="flex items-center justify-between">

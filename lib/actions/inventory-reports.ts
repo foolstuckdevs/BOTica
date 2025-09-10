@@ -23,7 +23,8 @@ export async function getInventoryReportData(pharmacyId: number) {
   const now = new Date();
   const today = new Date(formatInTimeZone(now, 'Asia/Manila', 'yyyy-MM-dd'));
   const thirtyDaysFromNow = addDays(today, 30);
-  const ninetyDaysFromNow = addDays(today, 90);
+  // Extended window for expiring products report (up to 7 months / 210 days)
+  const twoHundredTenDaysFromNow = addDays(today, 210);
 
   // 1. Get overview data (totals and values)
   const overviewResults = await db
@@ -60,7 +61,7 @@ export async function getInventoryReportData(pharmacyId: number) {
       ),
     );
 
-  // 2. Get expiring products (next 30/90 days)
+  // 2. Get expiring products (now through 210 days ~7 months)
   const expiringResults = await db
     .select({
       id: products.id,
@@ -85,7 +86,7 @@ export async function getInventoryReportData(pharmacyId: number) {
       and(
         eq(products.pharmacyId, pharmacyId),
         gte(products.quantity, 1),
-        lte(products.expiryDate, ninetyDaysFromNow.toISOString()),
+        lte(products.expiryDate, twoHundredTenDaysFromNow.toISOString()),
       ),
     )
     .orderBy(asc(products.expiryDate));

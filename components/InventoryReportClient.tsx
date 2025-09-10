@@ -55,16 +55,19 @@ export default function InventoryReportClient({
     'all' | '30days' | '60days' | '90days'
   >('all');
   const [statusFilter, setStatusFilter] = useState<
-    'all' | 'out_of_stock' | 'critical' | 'low'
+    'all' | 'out_of_stock' | 'low'
   >('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredExpiringProducts = useMemo(() => {
     return inventoryData.expiringProducts.filter((product) => {
+      // Exclude beyond 210 days (7 months) automatically
+      if (product.daysRemaining > 210) return false;
       const matchesSearch = product.name
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
+      // Keep existing expiry quick filters for <= 90 day granular selection
       const matchesFilter =
         expiryFilter === 'all' ||
         (expiryFilter === '30days' && product.daysRemaining <= 30) ||
@@ -87,8 +90,8 @@ export default function InventoryReportClient({
         statusFilter === 'all' ||
         (statusFilter === 'out_of_stock' &&
           product.status === 'out_of_stock') ||
-        (statusFilter === 'critical' && product.status === 'critical') ||
-        (statusFilter === 'low' && product.status === 'low');
+        (statusFilter === 'low' &&
+          (product.status === 'low' || product.status === 'critical'));
       const matchesCategory =
         categoryFilter === 'all' || product.categoryName === categoryFilter;
       return matchesSearch && matchesStatus && matchesCategory;

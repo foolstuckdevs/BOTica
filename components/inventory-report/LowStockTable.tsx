@@ -32,10 +32,8 @@ interface Props {
   products: LowStockProductData[];
   searchTerm: string;
   onSearchChange: (v: string) => void;
-  statusFilter?: 'all' | 'out_of_stock' | 'critical' | 'low';
-  onStatusFilterChange?: (
-    v: 'all' | 'out_of_stock' | 'critical' | 'low',
-  ) => void;
+  statusFilter?: 'all' | 'out_of_stock' | 'low';
+  onStatusFilterChange?: (v: 'all' | 'out_of_stock' | 'low') => void;
   categoryFilter?: string;
   onCategoryFilterChange?: (v: string) => void;
 }
@@ -79,7 +77,7 @@ export function LowStockTable({
     quantity: p.quantity,
     reorderPoint: p.reorderPoint,
     supplierName: p.supplierName,
-    status: p.status,
+    status: p.status === 'out_of_stock' ? 'Out of Stock' : 'Low',
     unit: p.unit,
   }));
   const exportColumns = [
@@ -164,7 +162,6 @@ export function LowStockTable({
                             <SelectItem value="out_of_stock">
                               Out of Stock
                             </SelectItem>
-                            <SelectItem value="critical">Critical</SelectItem>
                             <SelectItem value="low">Low</SelectItem>
                           </SelectContent>
                         </Select>
@@ -262,15 +259,11 @@ export function LowStockTable({
                           className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
                             product.status === 'out_of_stock'
                               ? 'bg-gray-100 text-gray-800'
-                              : product.status === 'critical'
-                              ? 'bg-red-100 text-red-800'
                               : 'bg-blue-100 text-blue-800'
                           }`}
                         >
                           {product.status === 'out_of_stock'
                             ? 'Out of Stock'
-                            : product.status === 'critical'
-                            ? 'Critical'
                             : 'Low'}
                         </span>
                       </td>

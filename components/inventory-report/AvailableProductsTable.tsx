@@ -127,7 +127,7 @@ export function AvailableProductsTable({
                   Available Products
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Currently available (not soft-deleted)
+                  Currently available
                 </p>
               </div>
             </div>
