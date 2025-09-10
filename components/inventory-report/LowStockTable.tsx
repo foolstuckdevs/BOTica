@@ -11,12 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { TableExportMenu } from '@/components/TableExportMenu';
+import { buildFilterSubtitle } from '@/lib/filterSubtitle';
 import {
   Popover,
   PopoverContent,
@@ -27,7 +23,6 @@ import {
   ChevronRight,
   Search,
   Package2,
-  FileDown,
   Filter,
   X,
 } from 'lucide-react';
@@ -75,15 +70,35 @@ export function LowStockTable({
   const endIndex = startIndex + itemsPerPage;
   const paginated = products.slice(startIndex, endIndex);
 
-  // Export placeholders
-  const onExportPDF = () => {
-    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
-  };
-  const onExportExcel = () => {
-    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
-  };
-
-  // Subtitle omitted while export is disabled
+  // Build export data (full list respects current filters already applied upstream if any)
+  const exportRows = products.map((p) => ({
+    name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
+    brandName: p.brandName,
+    categoryName: p.categoryName,
+    lotNumber: p.lotNumber,
+    quantity: p.quantity,
+    reorderPoint: p.reorderPoint,
+    supplierName: p.supplierName,
+    status: p.status,
+    unit: p.unit,
+  }));
+  const exportColumns = [
+    { header: 'Product', key: 'name' },
+    { header: 'Brand', key: 'brandName' },
+    { header: 'Category', key: 'categoryName' },
+    { header: 'Lot #', key: 'lotNumber' },
+    { header: 'Qty', key: 'quantity', numeric: true },
+    { header: 'Reorder Pt', key: 'reorderPoint', numeric: true },
+    { header: 'Supplier', key: 'supplierName' },
+    { header: 'Status', key: 'status' },
+  ];
+  const filterSubtitle = buildFilterSubtitle(
+    [
+      ['Status', statusFilter],
+      ['Category', categoryFilter],
+    ],
+    { searchTerm },
+  );
 
   return (
     <div className="flex flex-col space-y-2">
@@ -111,26 +126,14 @@ export function LowStockTable({
                   className="h-8 w-[240px] text-sm py-2 pl-10 pr-3"
                 />
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-2.5 text-sm"
-                  >
-                    <FileDown className="h-4 w-4 mr-1.5" />
-                    Export
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={onExportPDF}>
-                    Export as PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onExportExcel}>
-                    Export as Excel
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <TableExportMenu
+                title="Low Stock Products"
+                subtitle="Below minimum quantity"
+                dynamicSubtitle={`Filters: ${filterSubtitle}`}
+                filenameBase="low-stock-products"
+                columns={exportColumns}
+                rows={exportRows as unknown as Record<string, unknown>[]}
+              />
               <Popover>
                 <PopoverTrigger asChild>
                   <Button

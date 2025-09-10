@@ -40,7 +40,9 @@ export default function SalesReportClient({
 }: Props) {
   return (
     <div className="space-y-6">
-      <SalesReportHeader />
+      <div className="flex flex-col gap-4">
+        <SalesReportHeader />
+      </div>
       <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-lg overflow-hidden">
         <Tabs defaultValue="overview" className="w-full">
           <div className="border-b bg-gray-50 dark:bg-gray-800/50">
@@ -76,10 +78,11 @@ export default function SalesReportClient({
           </div>
 
           <div className="p-6">
-            <TabsContent value="overview" className="m-0">
+            <TabsContent value="overview" className="m-0 space-y-4">
               <SalesReportOverview
                 salesData={salesData}
                 comprehensiveSalesData={comprehensiveSalesData}
+                onStateChange={() => {}}
               />
             </TabsContent>
 

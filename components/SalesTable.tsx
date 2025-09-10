@@ -4,19 +4,12 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  FileDown,
   Filter,
   ShoppingCart,
   X,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
@@ -32,6 +25,7 @@ import {
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
 import { formatInTimeZone } from 'date-fns-tz';
 import type { ProductPerformanceData } from '@/types';
+import { TableExportMenu } from '@/components/TableExportMenu';
 
 type Props = {
   comprehensiveProductData: Array<ProductPerformanceData & { date: string }>;
@@ -136,15 +130,83 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = aggregated.slice(startIndex, endIndex);
 
-  // Subtitle omitted while export is disabled
+  // Build a more descriptive range label for export headers
+  const rangeLabel = React.useMemo(() => {
+    if (customDateRange?.from && customDateRange?.to) {
+      return `${bounds.from} to ${bounds.to}`;
+    }
+    if (timePeriod === 'week')
+      return `Last 7 days (${bounds.from} - ${bounds.to})`;
+    if (timePeriod === 'month')
+      return `Last 30 days (${bounds.from} - ${bounds.to})`;
+    return `Today (${bounds.from})`;
+  }, [
+    customDateRange?.from,
+    customDateRange?.to,
+    bounds.from,
+    bounds.to,
+    timePeriod,
+  ]);
 
-  // Placeholder export handlers (to be implemented)
-  const onExportPDF = () => {
-    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
-  };
-  const onExportExcel = () => {
-    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
-  };
+  // Build export rows for current filtered aggregate (not just current page)
+  const exportRows = aggregated.map((p) => {
+    const cost = p.revenue - p.profit;
+    const avgPrice = p.quantity > 0 ? p.revenue / p.quantity : 0;
+    return {
+      name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
+      category: p.category,
+      unit: p.unit ?? '-',
+      quantity: p.quantity,
+      avgPrice,
+      revenue: p.revenue,
+      cost,
+      profit: p.profit,
+    };
+  });
+
+  // Totals row for export (not shown in on-screen table)
+  const totals = React.useMemo(() => {
+    return exportRows.reduce(
+      (acc, r) => {
+        acc.quantity += (r.quantity as number) || 0;
+        acc.revenue += (r.revenue as number) || 0;
+        acc.cost += (r.cost as number) || 0;
+        acc.profit += (r.profit as number) || 0;
+        return acc;
+      },
+      { quantity: 0, revenue: 0, cost: 0, profit: 0 },
+    );
+  }, [exportRows]);
+
+  const totalRow = React.useMemo(() => {
+    const avgPrice = totals.quantity > 0 ? totals.revenue / totals.quantity : 0;
+    return {
+      name: 'TOTAL',
+      category: '',
+      unit: '',
+      quantity: totals.quantity,
+      avgPrice,
+      revenue: totals.revenue,
+      cost: totals.cost,
+      profit: totals.profit,
+    };
+  }, [totals]);
+
+  const exportRowsWithTotals = React.useMemo(
+    () => [...exportRows, totalRow],
+    [exportRows, totalRow],
+  );
+
+  const tableExportColumns = [
+    { header: 'Product', key: 'name' },
+    { header: 'Category', key: 'category' },
+    { header: 'Unit', key: 'unit' },
+    { header: 'Qty', key: 'quantity', numeric: true },
+    { header: 'Avg Price', key: 'avgPrice', currency: true },
+    { header: 'Revenue', key: 'revenue', currency: true },
+    { header: 'Cost', key: 'cost', currency: true },
+    { header: 'Profit', key: 'profit', currency: true },
+  ];
 
   // ...rest of component uses onExportPDF/onExportExcel in the dropdown
 
@@ -169,20 +231,16 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 px-2.5">
-                  <FileDown className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={onExportPDF}>PDF</DropdownMenuItem>
-                <DropdownMenuItem onClick={onExportExcel}>
-                  Excel
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <TableExportMenu
+              title="Sales by Product"
+              subtitle="Includes totals for Quantity, Revenue, Cost & Profit"
+              dynamicSubtitle={`Period: ${rangeLabel}`}
+              filenameBase="sales-by-product"
+              columns={tableExportColumns}
+              rows={
+                exportRowsWithTotals as unknown as Record<string, unknown>[]
+              }
+            />
 
             <Popover>
               <PopoverTrigger asChild>

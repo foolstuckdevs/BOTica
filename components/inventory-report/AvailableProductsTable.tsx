@@ -11,12 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { TableExportMenu } from '@/components/TableExportMenu';
+import { buildFilterSubtitle } from '@/lib/filterSubtitle';
 import {
   Popover,
   PopoverContent,
@@ -26,7 +22,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  FileDown,
   PackageOpen,
   Filter,
   X,
@@ -93,15 +88,32 @@ export function AvailableProductsTable({
     { header: 'Selling Price', key: 'sellingPrice' },
   ];
 
-  // Export placeholders
-  const onExportPDF = () => {
-    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
-  };
-  const onExportExcel = () => {
-    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
-  };
+  const exportRows = filtered.map((p) => ({
+    name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
+    brandName: p.brandName,
+    categoryName: p.categoryName,
+    lotNumber: p.lotNumber,
+    expiryDate: p.expiryDate,
+    quantity: p.quantity,
+    unit: p.unit,
+    costPrice: p.costPrice,
+    sellingPrice: p.sellingPrice,
+  }));
+  const exportColumns = [
+    { header: 'Product', key: 'name' },
+    { header: 'Brand', key: 'brandName' },
+    { header: 'Category', key: 'categoryName' },
+    { header: 'Lot #', key: 'lotNumber' },
+    { header: 'Expiry', key: 'expiryDate' },
+    { header: 'Qty', key: 'quantity', numeric: true },
+    { header: 'Unit', key: 'unit' },
+    { header: 'Cost Price', key: 'costPrice', currency: true },
+    { header: 'Selling Price', key: 'sellingPrice', currency: true },
+  ];
 
-  // Subtitle + builder removed while export is disabled
+  const filterSubtitle = buildFilterSubtitle([['Category', categoryFilter]], {
+    searchTerm,
+  });
 
   return (
     <div className="flex flex-col space-y-2">
@@ -129,25 +141,14 @@ export function AvailableProductsTable({
                   className="h-8 w-[240px] text-sm py-2 pl-10 pr-3"
                 />
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-2.5 text-sm"
-                  >
-                    <FileDown className="h-4 w-4 mr-1.5" /> Export
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={onExportPDF}>
-                    Export as PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onExportExcel}>
-                    Export as Excel
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <TableExportMenu
+                title="Available Products"
+                subtitle="Inventory availability"
+                dynamicSubtitle={`Filters: ${filterSubtitle}`}
+                filenameBase="available-products"
+                columns={exportColumns}
+                rows={exportRows as unknown as Record<string, unknown>[]}
+              />
               <Popover>
                 <PopoverTrigger asChild>
                   <Button

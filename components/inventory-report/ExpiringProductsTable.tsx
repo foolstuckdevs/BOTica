@@ -15,17 +15,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  FileDown,
   Filter,
   Package2,
   X,
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { TableExportMenu } from '@/components/TableExportMenu';
+import { buildFilterSubtitle } from '@/lib/filterSubtitle';
 import {
   Popover,
   PopoverContent,
@@ -128,13 +123,41 @@ export function ExpiringProductsTable({
   const endIndex = startIndex + itemsPerPage;
   const paginated = products.slice(startIndex, endIndex);
 
-  // Export placeholders
-  const onExportPDF = () => {
-    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
-  };
-  const onExportExcel = () => {
-    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
-  };
+  // Build export data (full filtered list, not paginated)
+  const exportRows = products.map((p) => ({
+    name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
+    brandName: p.brandName,
+    categoryName: p.categoryName,
+    lotNumber: p.lotNumber,
+    expiryDate: p.expiryDate,
+    daysRemaining: p.daysRemaining,
+    urgency: p.urgency,
+    quantity: p.quantity,
+    unit: p.unit,
+    costPrice: p.costPrice,
+    sellingPrice: p.sellingPrice,
+  }));
+  const exportColumns = [
+    { header: 'Product', key: 'name' },
+    { header: 'Brand', key: 'brandName' },
+    { header: 'Category', key: 'categoryName' },
+    { header: 'Lot #', key: 'lotNumber' },
+    { header: 'Expiry', key: 'expiryDate' },
+    { header: 'Days Rem', key: 'daysRemaining', numeric: true },
+    { header: 'Urgency', key: 'urgency' },
+    { header: 'Qty', key: 'quantity', numeric: true },
+    { header: 'Unit', key: 'unit' },
+    { header: 'Cost Price', key: 'costPrice', currency: true },
+    { header: 'Selling Price', key: 'sellingPrice', currency: true },
+  ];
+  const filterSubtitle = buildFilterSubtitle(
+    [
+      ['Expiry', expiryFilter],
+      ['Status', statusFilter],
+      ['Category', categoryFilter],
+    ],
+    { searchTerm },
+  );
 
   // Subtitle omitted while export is disabled
 
@@ -164,26 +187,14 @@ export function ExpiringProductsTable({
                   className="h-8 w-[240px] text-sm py-2 pl-10 pr-3"
                 />
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-2.5 text-sm"
-                  >
-                    <FileDown className="h-4 w-4 mr-1.5" />
-                    Export
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={onExportPDF}>
-                    Export as PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onExportExcel}>
-                    Export as Excel
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <TableExportMenu
+                title="Expiring Products"
+                subtitle="Expiry monitoring"
+                dynamicSubtitle={`Filters: ${filterSubtitle}`}
+                filenameBase="expiring-products"
+                columns={exportColumns}
+                rows={exportRows as unknown as Record<string, unknown>[]}
+              />
               <Popover>
                 <PopoverTrigger asChild>
                   <Button

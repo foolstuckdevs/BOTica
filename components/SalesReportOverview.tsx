@@ -15,11 +15,16 @@ interface SalesReportOverviewProps {
     month: SalesOverviewData;
   };
   comprehensiveSalesData?: Array<SalesOverviewData & { date: string }>;
+  onStateChange?: (state: {
+    period: string;
+    customDateRange?: DateRange;
+  }) => void;
 }
 
 export const SalesReportOverview = ({
   salesData,
   comprehensiveSalesData = [],
+  onStateChange,
 }: SalesReportOverviewProps) => {
   const [selectedPeriod, setSelectedPeriod] = React.useState('today');
   const [customDateRange, setCustomDateRange] = React.useState<
@@ -93,12 +98,16 @@ export const SalesReportOverview = ({
   const handleQuickPeriod = (period: string) => {
     setSelectedPeriod(period);
     setCustomDateRange(undefined); // Clear custom range when using quick periods
+    onStateChange?.({ period, customDateRange: undefined });
   };
 
   const handleCustomDateChange = (range: DateRange | undefined) => {
     setCustomDateRange(range);
     if (range?.from && range?.to) {
       setSelectedPeriod(''); // Clear quick period when using custom range
+      onStateChange?.({ period: 'custom', customDateRange: range });
+    } else {
+      onStateChange?.({ period: selectedPeriod, customDateRange: range });
     }
   };
 

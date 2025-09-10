@@ -4,6 +4,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { TableExportMenu } from '@/components/TableExportMenu';
+import { buildFilterSubtitle } from '@/lib/filterSubtitle';
 import {
   Select,
   SelectContent,
@@ -11,12 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Popover,
   PopoverContent,
@@ -26,7 +22,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  FileDown,
   PackageX,
   Filter,
   X,
@@ -93,12 +88,33 @@ export function InactiveProductsTable({
     { header: 'Selling Price', key: 'sellingPrice' },
     { header: 'Deleted At', key: 'deletedAt' },
   ];
-  const onExportPDF = () => {
-    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
-  };
-  const onExportExcel = () => {
-    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
-  };
+  const exportRows = filtered.map((p) => ({
+    name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
+    brandName: p.brandName,
+    categoryName: p.categoryName,
+    lotNumber: p.lotNumber,
+    expiryDate: p.expiryDate,
+    quantity: p.quantity,
+    unit: p.unit,
+    costPrice: p.costPrice,
+    sellingPrice: p.sellingPrice,
+    deletedAt: p.deletedAt,
+  }));
+  const exportColumns = [
+    { header: 'Product', key: 'name' },
+    { header: 'Brand', key: 'brandName' },
+    { header: 'Category', key: 'categoryName' },
+    { header: 'Lot #', key: 'lotNumber' },
+    { header: 'Expiry', key: 'expiryDate' },
+    { header: 'Qty', key: 'quantity', numeric: true },
+    { header: 'Unit', key: 'unit' },
+    { header: 'Cost Price', key: 'costPrice', currency: true },
+    { header: 'Selling Price', key: 'sellingPrice', currency: true },
+    { header: 'Deleted At', key: 'deletedAt' },
+  ];
+  const filterSubtitle = buildFilterSubtitle([['Category', categoryFilter]], {
+    searchTerm,
+  });
 
   return (
     <div className="flex flex-col space-y-2">
@@ -126,25 +142,14 @@ export function InactiveProductsTable({
                   className="h-8 w-[240px] text-sm py-2 pl-10 pr-3"
                 />
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-2.5 text-sm"
-                  >
-                    <FileDown className="h-4 w-4 mr-1.5" /> Export
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={onExportPDF}>
-                    Export as PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onExportExcel}>
-                    Export as Excel
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <TableExportMenu
+                title="Inactive Products"
+                subtitle="Soft-deleted inventory"
+                dynamicSubtitle={`Filters: ${filterSubtitle}`}
+                filenameBase="inactive-products"
+                columns={exportColumns}
+                rows={exportRows as unknown as Record<string, unknown>[]}
+              />
               <Popover>
                 <PopoverTrigger asChild>
                   <Button

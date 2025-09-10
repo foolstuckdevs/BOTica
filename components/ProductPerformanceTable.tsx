@@ -3,14 +3,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  Package,
-  ChevronLeft,
-  ChevronRight,
-  FileDown,
-  Filter,
-  X,
-} from 'lucide-react';
+import { Package, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -19,17 +12,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { ProductPerformanceData } from '@/types';
+import { TableExportMenu } from '@/components/TableExportMenu';
+import { buildFilterSubtitle } from '@/lib/filterSubtitle';
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
 import { formatInTimeZone } from 'date-fns-tz';
 // Export temporarily disabled for this report
@@ -166,15 +155,59 @@ export const ProductPerformanceTable = ({
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = currentData.slice(startIndex, endIndex);
 
-  // Export placeholders
-  const onExportPDF = () => {
-    if (typeof window !== 'undefined') alert('Export to PDF coming soon');
-  };
-  const onExportExcel = () => {
-    if (typeof window !== 'undefined') alert('Export to Excel coming soon');
-  };
+  // Build export dataset (full currentData, not just current page)
+  const exportRows = currentData.map((p) => ({
+    name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
+    category: p.category,
+    quantity: p.quantity,
+    revenue: p.revenue,
+    profit: p.profit,
+  }));
 
-  // Subtitle omitted while export is disabled
+  // Total profit (and related aggregate values if needed later)
+  const totals = React.useMemo(() => {
+    return exportRows.reduce(
+      (acc, r) => {
+        acc.quantity += (r.quantity as number) || 0;
+        acc.revenue += (r.revenue as number) || 0;
+        acc.profit += (r.profit as number) || 0;
+        return acc;
+      },
+      { quantity: 0, revenue: 0, profit: 0 },
+    );
+  }, [exportRows]);
+
+  const totalRow = React.useMemo(
+    () => ({
+      name: 'TOTAL',
+      category: '',
+      quantity: totals.quantity,
+      revenue: totals.revenue,
+      profit: totals.profit,
+    }),
+    [totals],
+  );
+
+  const exportRowsWithTotals = React.useMemo(
+    () => [...exportRows, totalRow],
+    [exportRows, totalRow],
+  );
+
+  const tableExportColumns = [
+    { header: 'Product', key: 'name' },
+    { header: 'Category', key: 'category' },
+    { header: 'Quantity', key: 'quantity', numeric: true },
+    { header: 'Revenue', key: 'revenue', currency: true },
+    { header: 'Profit', key: 'profit', currency: true },
+  ];
+
+  const filterSubtitle = buildFilterSubtitle([
+    [
+      'Period',
+      customDateRange?.from && customDateRange?.to ? 'custom' : timePeriod,
+    ],
+    ['Category', category],
+  ]);
 
   const hasActiveFilters =
     (timePeriod !== 'today' && !customDateRange) ||
@@ -204,20 +237,16 @@ export const ProductPerformanceTable = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 px-2.5">
-                  <FileDown className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={onExportPDF}>PDF</DropdownMenuItem>
-                <DropdownMenuItem onClick={onExportExcel}>
-                  Excel
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <TableExportMenu
+              title="Product Performance (Top Selling Products)"
+              subtitle="Includes total Quantity, Revenue & Profit"
+              dynamicSubtitle={`Filters: ${filterSubtitle}`}
+              filenameBase="product-performance"
+              columns={tableExportColumns}
+              rows={
+                exportRowsWithTotals as unknown as Record<string, unknown>[]
+              }
+            />
 
             <Popover>
               <PopoverTrigger asChild>
