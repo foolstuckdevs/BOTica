@@ -21,10 +21,12 @@ import {
   Users,
   Layers,
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 const Sidebar = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
 
   const [inventoryOpen, setInventoryOpen] = useState(
@@ -46,6 +48,12 @@ const Sidebar = () => {
   const parentActiveClasses = 'bg-blue-50 text-blue-600 font-medium';
   const submenuActiveClasses =
     'bg-blue-50/70 text-blue-600 font-medium border-l-2 border-blue-500 pl-[calc(2.75rem-2px)]';
+
+  // Prefetch hottest routes for snappy navigation
+  useEffect(() => {
+    router.prefetch('/');
+    router.prefetch('/inventory/products');
+  }, [router]);
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white text-gray-800 p-4 border-r border-gray-100/70 z-40">

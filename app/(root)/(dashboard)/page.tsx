@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { LowStockAlerts } from '@/components/LowStockAlerts';
 import { SectionCards } from '@/components/SectionsCards';
 import { SalesChart } from '@/components/SalesChart';
@@ -26,34 +27,116 @@ const Page = async () => {
 
   const pharmacyId = session.user.pharmacyId;
 
-  const [
-    productStats,
-    salesComparison,
-    topSellingProducts,
-    lowStockProducts,
-    chartData,
-  ] = await Promise.all([
-    getProductStockSummaries(pharmacyId),
-    getSalesComparison(pharmacyId),
-    getTopSellingProducts(pharmacyId, 6),
-    getLowStockProducts(pharmacyId, 5),
-    getChartData(pharmacyId, 30), // Default to 30 days
-  ]);
+  const productStatsPromise = getProductStockSummaries(pharmacyId);
+  const salesComparisonPromise = getSalesComparison(pharmacyId);
+  const topSellingProductsPromise = getTopSellingProducts(pharmacyId, 6);
+  const lowStockProductsPromise = getLowStockProducts(pharmacyId, 5);
+  const chartDataPromise = getChartData(pharmacyId, 30);
 
   return (
     <main className="flex flex-col gap-6 py-5">
-      <SectionCards
-        productStats={productStats}
-        salesComparison={salesComparison}
-      />
-      <SalesChart chartData={chartData} />
+      <Suspense
+        fallback={
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-10 animate-pulse">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-40 rounded-lg border bg-muted/40 dark:bg-muted/20"
+              />
+            ))}
+          </div>
+        }
+      >
+        <CardsSection
+          productStatsPromise={productStatsPromise}
+          salesComparisonPromise={salesComparisonPromise}
+        />
+      </Suspense>
+      <Suspense
+        fallback={
+          <div className="h-72 rounded-lg border bg-muted/40 dark:bg-muted/20 animate-pulse" />
+        }
+      >
+        <ChartSection chartDataPromise={chartDataPromise} />
+      </Suspense>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <LowStockAlerts lowStockProducts={lowStockProducts} />
-        <TopSellingProducts products={topSellingProducts} />
+        <Suspense
+          fallback={
+            <div className="h-64 rounded-lg border bg-muted/40 dark:bg-muted/20 animate-pulse" />
+          }
+        >
+          <LowStockSection lowStockProductsPromise={lowStockProductsPromise} />
+        </Suspense>
+        <Suspense
+          fallback={
+            <div className="h-64 rounded-lg border bg-muted/40 dark:bg-muted/20 animate-pulse" />
+          }
+        >
+          <TopSellingSection
+            topSellingProductsPromise={topSellingProductsPromise}
+          />
+        </Suspense>
       </div>
-      <RecentActivity pharmacyId={pharmacyId} />
+      <Suspense
+        fallback={
+          <div className="h-72 rounded-lg border bg-muted/40 dark:bg-muted/20 animate-pulse" />
+        }
+      >
+        <ActivitySection pharmacyId={pharmacyId} />
+      </Suspense>
     </main>
   );
 };
+
+// Async server component sections
+async function CardsSection({
+  productStatsPromise,
+  salesComparisonPromise,
+}: {
+  productStatsPromise: ReturnType<typeof getProductStockSummaries>;
+  salesComparisonPromise: ReturnType<typeof getSalesComparison>;
+}) {
+  const [productStats, salesComparison] = await Promise.all([
+    productStatsPromise,
+    salesComparisonPromise,
+  ]);
+  return (
+    <SectionCards
+      productStats={productStats}
+      salesComparison={salesComparison}
+    />
+  );
+}
+
+async function ChartSection({
+  chartDataPromise,
+}: {
+  chartDataPromise: ReturnType<typeof getChartData>;
+}) {
+  const chartData = await chartDataPromise;
+  return <SalesChart chartData={chartData} />;
+}
+
+async function LowStockSection({
+  lowStockProductsPromise,
+}: {
+  lowStockProductsPromise: ReturnType<typeof getLowStockProducts>;
+}) {
+  const lowStockProducts = await lowStockProductsPromise;
+  return <LowStockAlerts lowStockProducts={lowStockProducts} />;
+}
+
+async function TopSellingSection({
+  topSellingProductsPromise,
+}: {
+  topSellingProductsPromise: ReturnType<typeof getTopSellingProducts>;
+}) {
+  const topSellingProducts = await topSellingProductsPromise;
+  return <TopSellingProducts products={topSellingProducts} />;
+}
+
+async function ActivitySection({ pharmacyId }: { pharmacyId: number }) {
+  return <RecentActivity pharmacyId={pharmacyId} />;
+}
 
 export default Page;
