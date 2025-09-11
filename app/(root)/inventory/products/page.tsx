@@ -18,9 +18,11 @@ const ProductsPage = async () => {
   }
 
   const pharmacyId = session.user.pharmacyId;
-  const products = await getProducts(pharmacyId);
-  const categories = await getCategories(pharmacyId);
-  const suppliers = await getSuppliers(pharmacyId);
+  const [products, categories, suppliers] = await Promise.all([
+    getProducts(pharmacyId),
+    getCategories(pharmacyId),
+    getSuppliers(pharmacyId),
+  ]);
 
   // Hydrate filter state client-side
   // Use a client wrapper for filter state

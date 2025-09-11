@@ -53,6 +53,10 @@ const Sidebar = () => {
   useEffect(() => {
     router.prefetch('/');
     router.prefetch('/inventory/products');
+    router.prefetch('/inventory/categories');
+    router.prefetch('/inventory/suppliers');
+    router.prefetch('/inventory/adjustments');
+    router.prefetch('/inventory/purchase-order');
   }, [router]);
 
   return (
