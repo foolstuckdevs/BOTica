@@ -249,6 +249,9 @@ const ProductForm = ({
                               <SelectItem value="VIAL">Vial</SelectItem>
                               <SelectItem value="SACHET">Sachet</SelectItem>
                               <SelectItem value="TUBE">Tube</SelectItem>
+                              <SelectItem value="BOX">Box</SelectItem>
+                              <SelectItem value="PACK">Pack</SelectItem>
+                              <SelectItem value="BLISTER">Blister</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>
@@ -309,6 +312,25 @@ const ProductForm = ({
                                 Injection
                               </SelectItem>
                               <SelectItem value="OINTMENT">Ointment</SelectItem>
+                              <SelectItem value="CREAM">Cream</SelectItem>
+                              <SelectItem value="GEL">Gel</SelectItem>
+                              <SelectItem value="DROPS">Drops</SelectItem>
+                              <SelectItem value="INHALER">Inhaler</SelectItem>
+                              <SelectItem value="SPRAY">Spray</SelectItem>
+                              <SelectItem value="PATCH">Patch</SelectItem>
+                              <SelectItem value="SUPPOSITORY">
+                                Suppository
+                              </SelectItem>
+                              <SelectItem value="SOLUTION">Solution</SelectItem>
+                              <SelectItem value="LOTION">Lotion</SelectItem>
+                              <SelectItem value="POWDER">Powder</SelectItem>
+                              {/* Removed GRANULES & NEBULIZER_SOLUTION per updated enum */}
+                              <SelectItem value="MOUTHWASH">
+                                Mouthwash
+                              </SelectItem>
+                              <SelectItem value="OTHER">
+                                Other / Non-med
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>

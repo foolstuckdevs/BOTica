@@ -72,7 +72,15 @@ export interface SupplierParams {
 
 // PRODUCT TYPES & ENUMS
 
-export type UnitType = 'PIECE' | 'BOTTLE' | 'VIAL' | 'SACHET' | 'TUBE';
+export type UnitType =
+  | 'PIECE'
+  | 'BOTTLE'
+  | 'VIAL'
+  | 'SACHET'
+  | 'TUBE'
+  | 'BOX'
+  | 'PACK'
+  | 'BLISTER';
 
 export type DosageFormType =
   | 'TABLET'
@@ -80,7 +88,19 @@ export type DosageFormType =
   | 'SYRUP'
   | 'SUSPENSION'
   | 'INJECTION'
-  | 'OINTMENT';
+  | 'OINTMENT'
+  | 'CREAM'
+  | 'GEL'
+  | 'DROPS'
+  | 'INHALER'
+  | 'SPRAY'
+  | 'PATCH'
+  | 'SUPPOSITORY'
+  | 'SOLUTION'
+  | 'LOTION'
+  | 'POWDER'
+  | 'MOUTHWASH'
+  | 'OTHER';
 
 export interface Product {
   id: number;

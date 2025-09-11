@@ -19,9 +19,30 @@ export const dosageFormSchema = z.enum([
   'SUSPENSION',
   'INJECTION',
   'OINTMENT',
+  'CREAM',
+  'GEL',
+  'DROPS',
+  'INHALER',
+  'SPRAY',
+  'PATCH',
+  'SUPPOSITORY',
+  'SOLUTION',
+  'LOTION',
+  'POWDER',
+  'MOUTHWASH',
+  'OTHER',
 ]);
 
-export const unitSchema = z.enum(['PIECE', 'BOTTLE', 'VIAL', 'SACHET', 'TUBE']);
+export const unitSchema = z.enum([
+  'PIECE',
+  'BOTTLE',
+  'VIAL',
+  'SACHET',
+  'TUBE',
+  'BOX',
+  'PACK',
+  'BLISTER',
+]);
 
 export const paymentMethodSchema = z.enum(['CASH', 'GCASH']);
 
