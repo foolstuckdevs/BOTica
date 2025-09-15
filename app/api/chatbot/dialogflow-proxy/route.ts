@@ -1,5 +1,6 @@
 // Allows frontend (chatbot UI) to send user messages to Dialogflow, get the response, and return it to the client.
 import { NextResponse } from 'next/server';
+import { createPrivateKey } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import type { protos } from '@google-cloud/dialogflow';
 
@@ -29,15 +30,59 @@ async function getDialogflowClient() {
     );
   }
 
+  // Normalize common formatting issues
+  let normalizedKey = privateKey.trim();
+  if (normalizedKey.startsWith('"') && normalizedKey.endsWith('"')) {
+    normalizedKey = normalizedKey.slice(1, -1);
+  }
+  normalizedKey = normalizedKey.includes('\\n')
+    ? normalizedKey.replace(/\\n/g, '\n')
+    : normalizedKey;
+
+  // Validate PEM parseability to provide clearer errors
+  const debug = process.env.DEBUG_DIALOGFLOW === '1';
+  try {
+    createPrivateKey({ key: normalizedKey, format: 'pem' });
+  } catch (e) {
+    if (debug) {
+      throw new Error(
+        'Private key is not valid PEM. Remove quotes and ensure newlines are encoded as \\n in the env var.',
+      );
+    }
+    throw e;
+  }
+
   const { SessionsClient } = await import('@google-cloud/dialogflow');
   const client = new SessionsClient({
     credentials: {
       client_email: clientEmail,
-      private_key: privateKey.replace(/\\n/g, '\n'),
+      private_key: normalizedKey,
     },
     projectId,
   });
   return { client, projectId };
+}
+
+export async function GET() {
+  // Health check and env validation. Detailed output only when DEBUG_DIALOGFLOW=1
+  const debug = process.env.DEBUG_DIALOGFLOW === '1';
+  const projectId = getEnv('DIALOGFLOW_PROJECT_ID');
+  const clientEmail = getEnv('DIALOGFLOW_CLIENT_EMAIL');
+  const privateKey = getEnv('DIALOGFLOW_PRIVATE_KEY');
+  const missing = [
+    !projectId && 'DIALOGFLOW_PROJECT_ID',
+    !clientEmail && 'DIALOGFLOW_CLIENT_EMAIL',
+    !privateKey && 'DIALOGFLOW_PRIVATE_KEY',
+  ].filter(Boolean);
+
+  if (missing.length && !debug) {
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    missing: debug ? missing : undefined,
+  });
 }
 
 export async function POST(req: Request) {
@@ -74,8 +119,9 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error('Dialogflow proxy error:', error);
+    const debug = process.env.DEBUG_DIALOGFLOW === '1';
     const message =
-      process.env.NODE_ENV !== 'production' && error instanceof Error
+      debug && error instanceof Error
         ? error.message
         : 'Failed to contact Dialogflow';
     return NextResponse.json({ error: message }, { status: 500 });

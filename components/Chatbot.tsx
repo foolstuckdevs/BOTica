@@ -85,7 +85,9 @@ export default function Chatbot() {
       const botReply: Message = {
         sender: 'bot',
         content:
-          'Sorry, I had trouble connecting to the assistant. Please try again.',
+          e instanceof Error
+            ? `Assistant error: ${e.message}`
+            : 'Sorry, I had trouble connecting to the assistant. Please try again.',
       };
       setMessages((prev) => [...prev, botReply]);
     } finally {
