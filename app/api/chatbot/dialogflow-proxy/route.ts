@@ -74,9 +74,10 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error('Dialogflow proxy error:', error);
-    return NextResponse.json(
-      { error: 'Failed to contact Dialogflow' },
-      { status: 500 },
-    );
+    const message =
+      process.env.NODE_ENV !== 'production' && error instanceof Error
+        ? error.message
+        : 'Failed to contact Dialogflow';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

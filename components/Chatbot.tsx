@@ -40,7 +40,7 @@ export default function Chatbot() {
       if (!sessionRef.current) {
         sessionRef.current = Math.random().toString(36).slice(2);
       }
-      const res = await fetch('/api/chatbot/dialogflow', {
+      const res = await fetch('/api/chatbot/dialogflow-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -49,12 +49,31 @@ export default function Chatbot() {
           languageCode: 'en',
         }),
       });
-      const data = (await res.json()) as {
-        fulfillmentText?: string;
-        sessionId?: string;
-        intent?: string | null;
-      };
+      // Try to parse JSON only if possible
+      const data =
+        (await (async () => {
+          try {
+            return (await res.json()) as {
+              fulfillmentText?: string;
+              sessionId?: string;
+              intent?: string | null;
+              error?: string;
+            };
+          } catch {
+            return undefined;
+          }
+        })()) ||
+        ({} as {
+          fulfillmentText?: string;
+          sessionId?: string;
+          intent?: string | null;
+          error?: string;
+        });
       if (data?.sessionId) sessionRef.current = data.sessionId;
+      if (!res.ok) {
+        const errorMsg = data?.error || 'Assistant is unavailable right now.';
+        throw new Error(errorMsg);
+      }
       const content =
         data?.fulfillmentText || "I didn't catch that. Could you rephrase?";
       const botReply: Message = { sender: 'bot', content };
