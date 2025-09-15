@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Bot, SendHorizonal, X } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -16,7 +16,7 @@ export default function Chatbot() {
     {
       sender: 'bot',
       content:
-        'Hi! I’m BOTica, your pharmacy assistant. for now you can ask me about checking stock',
+        'Hi! I’m BOTica, your pharmacy assistant. How can I help you today?',
       ts: Date.now(),
     },
   ]);
@@ -104,16 +104,16 @@ export default function Chatbot() {
     <div className="fixed bottom-6 right-6 z-50">
       {isOpen ? (
         <Card className="w-[380px] h-[560px] rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col">
-          <CardHeader className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-blue-500 text-white p-2 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-blue-700">
-                <Bot className="w-5 h-5" />
+          <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-3 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-full bg-blue-700">
+                <Bot className="w-4 h-4" />
               </div>
-              <div>
-                <CardTitle className="text-base font-semibold">
+              <div className="leading-tight">
+                <div className="text-[13px] font-semibold">
                   BOTica Assistant
-                </CardTitle>
-                <p className="text-xs text-blue-100">
+                </div>
+                <p className="text-[11px] text-blue-100">
                   {isTyping ? 'Typing…' : 'Online'}
                 </p>
               </div>
@@ -121,18 +121,18 @@ export default function Chatbot() {
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-blue-500/20 rounded-full"
+              className="text-white hover:bg-white/10 rounded-full h-7 w-7"
               onClick={() => setIsOpen(false)}
               aria-label="Close chat"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </Button>
-          </CardHeader>
+          </div>
 
           <CardContent className="flex-1 p-0 bg-white flex min-h-0">
             <div
               ref={scrollerRef}
-              className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-2 bg-gray-50"
+              className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-1.5 bg-gray-50"
               role="log"
               aria-live="polite"
             >
@@ -145,7 +145,7 @@ export default function Chatbot() {
                 >
                   <div className="max-w-[85%]">
                     <div
-                      className={`rounded-2xl px-4 py-2 text-sm shadow-sm whitespace-pre-line ${
+                      className={`rounded-2xl px-3 py-1.5 text-[13px] leading-snug shadow-sm whitespace-pre-line ${
                         m.sender === 'user'
                           ? 'bg-blue-600 text-white rounded-tr-none'
                           : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
@@ -154,7 +154,7 @@ export default function Chatbot() {
                       {m.content}
                     </div>
                     <div
-                      className={`mt-1 text-[10px] ${
+                      className={`mt-0.5 text-[10px] ${
                         m.sender === 'user'
                           ? 'text-blue-300 text-right'
                           : 'text-gray-400'
@@ -182,7 +182,7 @@ export default function Chatbot() {
               )}
 
               {showScrollDown && (
-                <div className="sticky bottom-2 flex justify-end pointer-events-none">
+                <div className="sticky bottom-1 flex justify-end pointer-events-none">
                   <Button
                     type="button"
                     size="sm"
@@ -202,19 +202,19 @@ export default function Chatbot() {
               e.preventDefault();
               sendMessage();
             }}
-            className="sticky bottom-0 bg-white flex items-center gap-2 border-t border-gray-200 px-3 py-3"
+            className="sticky bottom-0 bg-white flex items-center gap-2 border-t border-gray-200 px-3 py-2"
           >
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message…"
-              className="flex-1 text-sm rounded-full bg-gray-100 border-none focus-visible:ring-1 focus-visible:ring-blue-500"
+              className="flex-1 text-sm rounded-full bg-gray-100 border-none focus-visible:ring-1 focus-visible:ring-blue-500 h-9"
               aria-label="Message"
             />
             <Button
               type="submit"
               size="sm"
-              className="rounded-full bg-blue-600 hover:bg-blue-700"
+              className="rounded-full bg-blue-600 hover:bg-blue-700 h-9 px-3"
               disabled={!input.trim()}
               aria-label="Send message"
             >
