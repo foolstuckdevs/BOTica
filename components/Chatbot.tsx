@@ -24,22 +24,54 @@ export default function Chatbot() {
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = () => {
+  const sessionRef = useRef<string>('');
+
+  const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userMessage: Message = { sender: 'user', content: input };
+    const outgoing = input;
+    const userMessage: Message = { sender: 'user', content: outgoing };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
+    try {
+      // Initialize a session id once per widget lifetime
+      if (!sessionRef.current) {
+        sessionRef.current = Math.random().toString(36).slice(2);
+      }
+      const res = await fetch('/api/chatbot/dialogflow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: outgoing,
+          sessionId: sessionRef.current,
+          languageCode: 'en',
+        }),
+      });
+      const data = (await res.json()) as {
+        fulfillmentText?: string;
+        sessionId?: string;
+        intent?: string | null;
+      };
+      if (data?.sessionId) sessionRef.current = data.sessionId;
+      const content =
+        data?.fulfillmentText || "I didn't catch that. Could you rephrase?";
+      const botReply: Message = { sender: 'bot', content };
+      setMessages((prev) => [...prev, botReply]);
+    } catch (e: unknown) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Chatbot send error:', e);
+      }
       const botReply: Message = {
         sender: 'bot',
-        content: `I'm still learning! For now, you asked about: "${input}". Please contact our support for detailed inquiries.`,
+        content:
+          'Sorry, I had trouble connecting to the assistant. Please try again.',
       };
       setMessages((prev) => [...prev, botReply]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   useEffect(() => {
