@@ -49,6 +49,7 @@ export const UNIT_ENUM = pgEnum('unit', [
 
 export const NOTIFICATION_TYPE_ENUM = pgEnum('notification_type', [
   'LOW_STOCK',
+  'OUT_OF_STOCK',
   'EXPIRING',
   'EXPIRED',
 ]);

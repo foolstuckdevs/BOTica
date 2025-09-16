@@ -33,11 +33,15 @@ interface Props {
     inactiveProducts: InventoryProductRow[];
   };
   initialTab?: TabKey;
+  initialLowStockStatus?: 'all' | 'out_of_stock' | 'low';
+  initialExpiringStatus?: 'all' | 'expired' | 'expiring' | 'warning' | 'return';
 }
 
 export default function InventoryReportClient({
   inventoryData,
   initialTab = 'overview',
+  initialLowStockStatus,
+  initialExpiringStatus,
 }: Props) {
   const [, setActiveTab] = useState<TabKey>(initialTab);
   const handleTabChange = (value: string) => {
@@ -56,7 +60,7 @@ export default function InventoryReportClient({
   >('all');
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'out_of_stock' | 'low'
-  >('all');
+  >(initialLowStockStatus ?? 'all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -193,6 +197,8 @@ export default function InventoryReportClient({
                 onSearchChange={setSearchTerm}
                 expiryFilter={expiryFilter}
                 onExpiryFilterChange={setExpiryFilter}
+                statusFilter={initialExpiringStatus ?? 'all'}
+                onStatusFilterChange={() => {}}
               />
             </TabsContent>
 

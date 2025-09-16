@@ -399,3 +399,27 @@ export interface InventoryProductRow {
   sellingPrice: number;
   deletedAt?: string | null;
 }
+
+// NOTIFICATION TYPES
+
+export interface Notification {
+  id: number;
+  type: 'LOW_STOCK' | 'OUT_OF_STOCK' | 'EXPIRING' | 'EXPIRED';
+  productId?: number | null;
+  message: string;
+  isRead: boolean;
+  pharmacyId: number;
+  createdAt: Date;
+  product?: {
+    id: number;
+    name: string;
+    brandName?: string | null;
+  } | null;
+}
+
+export type NotificationParams = {
+  type: 'LOW_STOCK' | 'OUT_OF_STOCK' | 'EXPIRING' | 'EXPIRED';
+  productId?: number;
+  message: string;
+  pharmacyId: number;
+};

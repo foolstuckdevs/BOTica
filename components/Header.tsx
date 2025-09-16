@@ -1,7 +1,7 @@
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, ShoppingCart, Bell } from 'lucide-react';
+import { User, ShoppingCart } from 'lucide-react';
 import React from 'react';
 import { Button } from './ui/button';
 import { Session } from 'next-auth';
@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { SignOutForm } from './SignOutForm';
 import { usePathname } from 'next/navigation';
 import getPageTitle from '@/lib/helpers/getPageTitle';
+import { Notification } from './Notification';
 
 const Header = ({ session }: { session: Session }) => {
   const pathname = usePathname();
@@ -45,14 +46,10 @@ const Header = ({ session }: { session: Session }) => {
           </Button>
         </Link>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-50/50"
-        >
-          <Bell className="h-[1.2rem] w-[1.2rem]" />
-          <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full border border-white"></span>
-        </Button>
+        {/* Notifications */}
+        <Notification
+          pharmacyId={session.user.pharmacyId as unknown as number}
+        />
 
         {/* User Dropdown */}
         <DropdownMenu>
