@@ -153,7 +153,7 @@ export function Notification({ pharmacyId }: NotificationProps) {
         sideOffset={8}
       >
         <Card className="border-0 shadow-none">
-          <CardHeader className="pb-3">
+          <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-semibold">
                 Notifications
