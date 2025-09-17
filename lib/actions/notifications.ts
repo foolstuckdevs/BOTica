@@ -19,7 +19,8 @@ export const getNotifications = async (pharmacyId: number) => {
       throw new Error('Unauthorized access to pharmacy data');
     }
 
-    // Sync has been decoupled from read path for performance; handled by cron/events
+    // Sync notifications based on current inventory state
+    await syncInventoryNotifications(pharmacyId);
 
     const result = await db
       .select({
