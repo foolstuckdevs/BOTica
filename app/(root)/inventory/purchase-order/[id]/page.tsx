@@ -3,6 +3,7 @@ import { getPurchaseOrderById } from '@/lib/actions/purchase-order';
 import { getSuppliers } from '@/lib/actions/suppliers';
 import { getOrderableProducts } from '@/lib/actions/purchase-order';
 import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
 
 const Page = async ({ params }: { params: { id: string } }) => {
   const awaitedParams = await Promise.resolve(params);
@@ -12,7 +13,7 @@ const Page = async ({ params }: { params: { id: string } }) => {
 
   // Middleware ensures session exists for protected routes
   if (!session?.user) {
-    throw new Error('Unauthorized: session missing. Check auth middleware.');
+    redirect('/sign-in');
   }
 
   if (!session.user.pharmacyId) {

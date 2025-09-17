@@ -49,15 +49,19 @@ const Sidebar = () => {
   const submenuActiveClasses =
     'bg-blue-50/70 text-blue-600 font-medium border-l-2 border-blue-500 pl-[calc(2.75rem-2px)]';
 
+  const isAdmin = session?.user?.role === 'Admin';
+
   // Prefetch hottest routes for snappy navigation
   useEffect(() => {
-    router.prefetch('/');
+    router.prefetch('/dashboard');
     router.prefetch('/inventory/products');
     router.prefetch('/inventory/categories');
-    router.prefetch('/inventory/suppliers');
-    router.prefetch('/inventory/adjustments');
-    router.prefetch('/inventory/purchase-order');
-  }, [router]);
+    if (isAdmin) {
+      router.prefetch('/inventory/suppliers');
+      router.prefetch('/inventory/adjustments');
+      router.prefetch('/inventory/purchase-order');
+    }
+  }, [router, isAdmin]);
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-white text-gray-800 p-4 border-r border-gray-100/70 z-40">
@@ -74,9 +78,9 @@ const Sidebar = () => {
       <nav className="space-y-1">
         {/* Dashboard */}
         <Link
-          href="/"
+          href="/dashboard"
           className={`${baseLinkClasses} ${
-            isActive('/')
+            isActive('/dashboard')
               ? submenuActiveClasses
               : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
           }`}
@@ -84,7 +88,6 @@ const Sidebar = () => {
           <LayoutDashboard className="w-5 h-5" />
           Dashboard
         </Link>
-
         {/* Inventory */}
         <div className="flex flex-col">
           <button
@@ -105,46 +108,72 @@ const Sidebar = () => {
           </button>
           {inventoryOpen && (
             <div className="flex flex-col mt-1 space-y-0.5 ml-1">
-              {[
-                {
-                  href: '/inventory/products',
-                  label: 'Products',
-                  icon: <Package className="w-4 h-4" />,
-                },
-                {
-                  href: '/inventory/categories',
-                  label: 'Categories',
-                  icon: <Tag className="w-4 h-4" />,
-                },
-                {
-                  href: '/inventory/suppliers',
-                  label: 'Suppliers',
-                  icon: <User className="w-4 h-4" />,
-                },
-                {
-                  href: '/inventory/adjustments',
-                  label: 'Adjustments',
-                  icon: <RefreshCw className="w-4 h-4" />,
-                },
-                {
-                  href: '/inventory/purchase-order',
-                  label: 'Purchase Orders',
-                  icon: <ClipboardList className="w-4 h-4" />,
-                },
-              ].map(({ href, label, icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`${submenuLinkClasses} ${
-                    isActive(href)
-                      ? submenuActiveClasses
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
-                  }`}
-                >
-                  {icon}
-                  {label}
-                </Link>
-              ))}
+              {/* Products - label varies by role */}
+              <Link
+                href="/inventory/products"
+                className={`${submenuLinkClasses} ${
+                  isActive('/inventory/products')
+                    ? submenuActiveClasses
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                }`}
+              >
+                <Package className="w-4 h-4" />
+                {isAdmin ? 'Products' : 'View Products'}
+              </Link>
+
+              {/* Categories - visible to all */}
+              <Link
+                href="/inventory/categories"
+                className={`${submenuLinkClasses} ${
+                  isActive('/inventory/categories')
+                    ? submenuActiveClasses
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                }`}
+              >
+                <Tag className="w-4 h-4" />
+                Categories
+              </Link>
+
+              {/* Admin-only: Suppliers, Adjustments, Purchase Orders */}
+              {isAdmin && (
+                <>
+                  <Link
+                    href="/inventory/suppliers"
+                    className={`${submenuLinkClasses} ${
+                      isActive('/inventory/suppliers')
+                        ? submenuActiveClasses
+                        : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                    }`}
+                  >
+                    <User className="w-4 h-4" />
+                    Suppliers
+                  </Link>
+
+                  <Link
+                    href="/inventory/adjustments"
+                    className={`${submenuLinkClasses} ${
+                      isActive('/inventory/adjustments')
+                        ? submenuActiveClasses
+                        : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                    }`}
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Adjustments
+                  </Link>
+
+                  <Link
+                    href="/inventory/purchase-order"
+                    className={`${submenuLinkClasses} ${
+                      isActive('/inventory/purchase-order')
+                        ? submenuActiveClasses
+                        : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                    }`}
+                  >
+                    <ClipboardList className="w-4 h-4" />
+                    Purchase Orders
+                  </Link>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -195,65 +224,67 @@ const Sidebar = () => {
           )}
         </div>
 
-        {/* Reports */}
-        <div className="flex flex-col">
-          <button
-            onClick={() => setReportsOpen(!reportsOpen)}
-            className={`${baseLinkClasses} ${
-              isChildActive('/reports')
-                ? parentActiveClasses
-                : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
-            }`}
-          >
-            <BarChart2 className="w-5 h-5" />
-            Reports
-            {reportsOpen ? (
-              <ChevronDown className="ml-auto w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronRight className="ml-auto w-4 h-4 text-gray-400" />
+        {/* Reports (Admin only) */}
+        {isAdmin && (
+          <div className="flex flex-col">
+            <button
+              onClick={() => setReportsOpen(!reportsOpen)}
+              className={`${baseLinkClasses} ${
+                isChildActive('/reports')
+                  ? parentActiveClasses
+                  : 'hover:bg-gray-50 hover:text-blue-600 text-gray-600'
+              }`}
+            >
+              <BarChart2 className="w-5 h-5" />
+              Reports
+              {reportsOpen ? (
+                <ChevronDown className="ml-auto w-4 h-4 text-gray-400" />
+              ) : (
+                <ChevronRight className="ml-auto w-4 h-4 text-gray-400" />
+              )}
+            </button>
+            {reportsOpen && (
+              <div className="flex flex-col mt-1 space-y-0.5 ml-1">
+                <Link
+                  href="/reports/sales"
+                  className={`${submenuLinkClasses} ${
+                    isActive('/reports/sales')
+                      ? submenuActiveClasses
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                  Sales Report
+                </Link>
+                <Link
+                  href="/reports/inventory"
+                  className={`${submenuLinkClasses} ${
+                    isActive('/reports/inventory')
+                      ? submenuActiveClasses
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                  }`}
+                >
+                  <Layers className="w-4 h-4" />
+                  Inventory Report
+                </Link>
+                <Link
+                  href="/reports/activity-log"
+                  className={`${submenuLinkClasses} ${
+                    isActive('/reports/activity-log')
+                      ? submenuActiveClasses
+                      : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                  }`}
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  Activity Log
+                </Link>
+              </div>
             )}
-          </button>
-          {reportsOpen && (
-            <div className="flex flex-col mt-1 space-y-0.5 ml-1">
-              <Link
-                href="/reports/sales"
-                className={`${submenuLinkClasses} ${
-                  isActive('/reports/sales')
-                    ? submenuActiveClasses
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                Sales Report
-              </Link>
-              <Link
-                href="/reports/inventory"
-                className={`${submenuLinkClasses} ${
-                  isActive('/reports/inventory')
-                    ? submenuActiveClasses
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                Inventory Report
-              </Link>
-              <Link
-                href="/reports/activity-log"
-                className={`${submenuLinkClasses} ${
-                  isActive('/reports/activity-log')
-                    ? submenuActiveClasses
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
-                }`}
-              >
-                <ClipboardList className="w-4 h-4" />
-                Activity Log
-              </Link>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Top-level: Manage Staff (Admin only) */}
-        {session?.user?.role === 'Admin' && (
+        {isAdmin && (
           <Link
             href="/manage-staff"
             className={`${baseLinkClasses} ${

@@ -10,14 +10,20 @@ export default auth((req) => {
   const publicRoutes = ['/sign-in', '/forgot-password'];
 
   // Admin-only routes that require Admin role
-  const adminOnlyRoutes = ['/settings/manage-staff'];
+  const adminOnlyRoutes = [
+    '/settings/manage-staff',
+    '/reports',
+    '/inventory/suppliers',
+    '/inventory/adjustments',
+    '/inventory/purchase-order',
+  ];
 
   // Check if current path is a public route
   const isPublicRoute = publicRoutes.some((route) =>
     pathname.startsWith(route),
   );
 
-  // Check if current path is an admin-only route
+  // Check if current path is an admin-only route (starts with any admin-only prefix)
   const isAdminOnlyRoute = adminOnlyRoutes.some((route) =>
     pathname.startsWith(route),
   );
@@ -33,7 +39,13 @@ export default auth((req) => {
 
   // If trying to access admin-only route without admin role
   if (isAuthenticated && isAdminOnlyRoute && userRole !== 'Admin') {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    // Determine a contextual safe destination and reason
+    const target = pathname.startsWith('/reports')
+      ? '/dashboard?denied=reports'
+      : pathname.startsWith('/settings/manage-staff')
+      ? '/dashboard?denied=staff'
+      : '/inventory/products?denied=inventory';
+    return NextResponse.redirect(new URL(target, req.url));
   }
 
   // If authenticated and trying to access auth pages, redirect to dashboard

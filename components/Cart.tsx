@@ -1,15 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import {
-  Trash2,
-  Plus,
-  Minus,
-  ShoppingCart,
-  Package,
-  Calendar,
-  Hash,
-} from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingCart, Package } from 'lucide-react';
 import React from 'react';
 import type { ProductPOS } from '@/types';
 import { getExpiryUrgency } from '@/lib/helpers/fefo-utils';
@@ -114,28 +106,6 @@ export const Cart: React.FC<CartProps> = ({
                           </span>
                         </div>
                       )}
-
-                      <div className="flex items-center gap-2 text-xs">
-                        <Hash className="w-3 h-3 text-amber-500 flex-shrink-0" />
-                        <span className="text-gray-600 font-mono">
-                          {item.lotNumber}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-xs">
-                        <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                        <span
-                          className={`font-medium ${
-                            urgency.level === 'expiring_soon'
-                              ? 'text-red-600'
-                              : urgency.level === 'moderately_close'
-                              ? 'text-yellow-600'
-                              : 'text-green-600'
-                          }`}
-                        >
-                          {urgency.days} days left
-                        </span>
-                      </div>
                     </div>
 
                     {/* Price and Stock */}

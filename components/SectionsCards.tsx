@@ -7,6 +7,7 @@ import {
   TrendingUpIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -31,6 +32,8 @@ export function SectionCards({
   productStats,
   salesComparison,
 }: SectionCardsProps) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'Admin';
   const now = new Date();
 
   const lowStockCount = productStats.filter(
@@ -83,14 +86,16 @@ export function SectionCards({
             {percentageChange.toFixed(1)}% vs yesterday
           </Badge>
         </CardHeader>
-        <CardFooter className="justify-end">
-          <Link
-            href="/reports/sales"
-            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-          >
-            View Report <ArrowRight className="w-3 h-3" />
-          </Link>
-        </CardFooter>
+        {isAdmin && (
+          <CardFooter className="justify-end">
+            <Link
+              href="/reports/sales"
+              className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+            >
+              View Report <ArrowRight className="w-3 h-3" />
+            </Link>
+          </CardFooter>
+        )}
       </Card>
 
       {/* Low Stock */}
@@ -110,14 +115,16 @@ export function SectionCards({
             Restock Soon
           </Badge>
         </CardHeader>
-        <CardFooter className="justify-end">
-          <Link
-            href="/reports/inventory?tab=low-stock"
-            className="text-xs text-yellow-800 hover:underline flex items-center gap-1"
-          >
-            View Report <ArrowRight className="w-3 h-3" />
-          </Link>
-        </CardFooter>
+        {isAdmin && (
+          <CardFooter className="justify-end">
+            <Link
+              href="/reports/inventory?tab=low-stock"
+              className="text-xs text-yellow-800 hover:underline flex items-center gap-1"
+            >
+              View Report <ArrowRight className="w-3 h-3" />
+            </Link>
+          </CardFooter>
+        )}
       </Card>
 
       {/* Expiring Soon */}
@@ -137,14 +144,16 @@ export function SectionCards({
             Urgent
           </Badge>
         </CardHeader>
-        <CardFooter className="justify-end">
-          <Link
-            href="/reports/inventory?tab=expiring"
-            className="text-xs text-red-700 hover:underline flex items-center gap-1"
-          >
-            View Expiry List <ArrowRight className="w-3 h-3" />
-          </Link>
-        </CardFooter>
+        {isAdmin && (
+          <CardFooter className="justify-end">
+            <Link
+              href="/reports/inventory?tab=expiring"
+              className="text-xs text-red-700 hover:underline flex items-center gap-1"
+            >
+              View Expiry List <ArrowRight className="w-3 h-3" />
+            </Link>
+          </CardFooter>
+        )}
       </Card>
 
       {/* Active Products */}
@@ -169,7 +178,8 @@ export function SectionCards({
             href="/inventory/products"
             className="text-xs text-green-700 hover:underline flex items-center gap-1"
           >
-            Manage Products <ArrowRight className="w-3 h-3" />
+            {isAdmin ? 'Manage Products' : 'View Products'}{' '}
+            <ArrowRight className="w-3 h-3" />
           </Link>
         </CardFooter>
       </Card>

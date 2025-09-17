@@ -16,7 +16,7 @@ import usePermissions from '@/hooks/use-permissions';
 export function CategoryActions({ category }: { category: Category }) {
   const router = useRouter();
   const { data: session } = useSession();
-  const { canEditMasterData } = usePermissions();
+  const { canEditMasterData, loaded } = usePermissions();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -40,7 +40,7 @@ export function CategoryActions({ category }: { category: Category }) {
   return (
     <>
       <div className="flex items-center gap-2">
-        {canEditMasterData && (
+        {loaded && canEditMasterData && (
           <>
             <Button
               variant="ghost"

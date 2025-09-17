@@ -7,13 +7,14 @@ import Link from 'next/link';
 import { getAdjustments } from '@/lib/actions/adjustment';
 import { auth } from '@/auth';
 import { Plus } from 'lucide-react';
+import { redirect } from 'next/navigation';
 
 const Page = async () => {
   const session = await auth();
 
   // Middleware ensures session exists for protected routes
   if (!session?.user) {
-    throw new Error('Unauthorized: session missing. Check auth middleware.');
+    redirect('/sign-in');
   }
 
   if (!session.user.pharmacyId) {

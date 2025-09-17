@@ -16,7 +16,7 @@ import usePermissions from '@/hooks/use-permissions';
 const ProductActions = ({ product }: { product: Product }) => {
   const router = useRouter();
   const { data: session } = useSession();
-  const { canEditMasterData } = usePermissions();
+  const { canEditMasterData, loaded } = usePermissions();
   const [viewOpen, setViewOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productDetails, setProductDetails] = useState<Product | null>(null);
@@ -63,7 +63,7 @@ const ProductActions = ({ product }: { product: Product }) => {
         <Button variant="ghost" size="icon" onClick={handleView} title="View">
           <Eye className="h-4 w-4 text-gray-600" />
         </Button>
-        {canEditMasterData && (
+        {loaded && canEditMasterData && (
           <>
             <Button
               variant="ghost"

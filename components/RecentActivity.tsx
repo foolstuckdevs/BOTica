@@ -10,6 +10,7 @@ import { getRecentActivity } from '@/lib/actions/activity';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { auth } from '@/auth';
 
 type Props = {
   pharmacyId: number;
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export default async function RecentActivity({ pharmacyId, limit = 8 }: Props) {
+  const session = await auth();
   const items = await getRecentActivity(pharmacyId, limit, [
     'PRODUCT_',
     'CATEGORY_',
@@ -32,12 +34,14 @@ export default async function RecentActivity({ pharmacyId, limit = 8 }: Props) {
       <CardHeader className="pt-2 pb-1">
         <CardTitle className="text-lg leading-tight">Recent Activity</CardTitle>
         <CardAction>
-          <Link
-            href="/reports/activity-log"
-            className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
-          >
-            View logs
-          </Link>
+          {session?.user?.role === 'Admin' && (
+            <Link
+              href="/reports/activity-log"
+              className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+            >
+              View logs
+            </Link>
+          )}
         </CardAction>
       </CardHeader>
       <CardContent className="pt-1">

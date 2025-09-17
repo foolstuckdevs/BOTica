@@ -21,7 +21,6 @@ import { FIELD_NAMES, FIELD_TYPES } from '@/constants';
 import Link from 'next/link';
 import { ZodType } from 'zod';
 import { Input } from '@/components/ui/input';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import {
@@ -56,7 +55,7 @@ const AuthForm = <T extends FieldValues>({
   defaultValues,
   onSubmit,
 }: Props<T>) => {
-  const router = useRouter();
+  // const router = useRouter();
   const isSignIn = type === 'SIGN_IN';
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -85,7 +84,10 @@ const AuthForm = <T extends FieldValues>({
           },
         );
 
-        setTimeout(() => router.push('/'), 1000);
+        // Use hard navigation to ensure fresh session is used immediately
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 600);
       } else {
         // Handle specific error cases
         const errorMessage =

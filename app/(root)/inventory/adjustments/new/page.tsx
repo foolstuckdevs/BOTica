@@ -1,12 +1,13 @@
 import AdjustmentForm from '@/components/AdjustmentForm';
 import { getProducts } from '@/lib/actions/products';
 import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
 
 export default async function AdjustmentPage() {
   const session = await auth();
 
   if (!session?.user) {
-    throw new Error('Unauthorized: session missing. Check auth middleware.');
+    redirect('/sign-in');
   }
 
   if (!session.user.pharmacyId) {

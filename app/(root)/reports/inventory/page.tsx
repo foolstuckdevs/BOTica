@@ -12,7 +12,7 @@ const page = async ({
   const session = await auth();
 
   if (!session?.user?.pharmacyId) {
-    redirect('/auth/sign-in');
+    redirect('/sign-in');
   }
 
   // Fetch inventory report data

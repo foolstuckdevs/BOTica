@@ -8,12 +8,7 @@ const Page = async () => {
   const session = await auth();
 
   if (!session?.user) {
-    throw new Error('Unauthorized: session missing. Check auth middleware.');
-  }
-
-  // Only admins can access staff management
-  if (session.user.role !== 'Admin') {
-    throw new Error('Unauthorized: admin access required.');
+    return null; // Middleware should have redirected unauthenticated users
   }
 
   const staffMembers = await getStaffMembers(

@@ -31,6 +31,7 @@ import {
 } from '@/lib/actions/notifications';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import type { Notification as AppNotification } from '@/types';
 
 interface NotificationProps {
@@ -314,6 +315,7 @@ function NotificationItem({
   onClose,
 }: NotificationItemProps) {
   const router = useRouter();
+  const { data: session } = useSession();
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'LOW_STOCK':
@@ -356,21 +358,28 @@ function NotificationItem({
           // Optimistically mark as read via parent handler
           await onMarkAsRead(notification.id);
         }
-        let href = '/reports/inventory?tab=overview';
+        const isAdmin = session?.user?.role === 'Admin';
+        let href = isAdmin
+          ? '/reports/inventory?tab=overview'
+          : '/inventory/products';
         if (
           notification.type === 'LOW_STOCK' ||
           notification.type === 'OUT_OF_STOCK'
         ) {
           const status =
             notification.type === 'OUT_OF_STOCK' ? 'out_of_stock' : 'low';
-          href = `/reports/inventory?tab=low-stock&status=${status}`;
+          href = isAdmin
+            ? `/reports/inventory?tab=low-stock&status=${status}`
+            : '/inventory/products';
         } else if (
           notification.type === 'EXPIRING' ||
           notification.type === 'EXPIRED'
         ) {
           const status =
             notification.type === 'EXPIRED' ? 'expired' : 'expiring';
-          href = `/reports/inventory?tab=expiring&status=${status}`;
+          href = isAdmin
+            ? `/reports/inventory?tab=expiring&status=${status}`
+            : '/inventory/products';
         }
         onClose();
         router.push(href);

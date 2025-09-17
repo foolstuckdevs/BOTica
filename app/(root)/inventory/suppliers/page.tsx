@@ -3,13 +3,14 @@ import { getSuppliers } from '@/lib/actions/suppliers';
 import { columns } from './columns';
 import SupplierForm from '@/components/SupplierForm';
 import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
 
 const Page = async () => {
   const session = await auth();
 
   // Middleware ensures session exists for protected routes
   if (!session?.user) {
-    throw new Error('Unauthorized: session missing. Check auth middleware.');
+    redirect('/sign-in');
   }
 
   if (!session.user.pharmacyId) {
