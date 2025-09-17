@@ -43,7 +43,6 @@ export class PrintUtility {
         throw new Error('Could not open print window - popup blocked?');
       }
 
-      // Disable browser extension communication to prevent proxy errors
       try {
         printWindow.document.write(printContent);
         printWindow.document.close();
@@ -65,7 +64,6 @@ export class PrintUtility {
           }
           hasExecuted = true;
 
-          // Clear any pending timeout
           if (timeoutId) {
             clearTimeout(timeoutId);
             timeoutId = null;
@@ -76,7 +74,6 @@ export class PrintUtility {
             printWindow.print();
             console.log('Print dialog opened');
 
-            // Close window and resolve after print dialog
             setTimeout(() => {
               printWindow.close();
               console.log('Print window closed');
@@ -91,13 +88,11 @@ export class PrintUtility {
           }
         };
 
-        // Set up onload handler
         printWindow.onload = () => {
           console.log('Print window loaded, executing print...');
           executePrint();
         };
 
-        // Set up fallback timeout only if onload hasn't fired
         timeoutId = setTimeout(() => {
           if (!hasExecuted) {
             console.log('Fallback timeout triggered');
@@ -131,109 +126,54 @@ export class PrintUtility {
   <title>Receipt - ${sale.invoiceNumber}</title>
   <style>
     @page {
-      size: 80mm ${contentHeight}mm;
+      size: 100mm ${contentHeight}mm;
       margin: 0;
     }
-    body {
+    body, div, span {
       font-family: 'Courier New', monospace;
-      font-size: 11px;
-      width: 80mm;
-      height: ${contentHeight}mm;
-      margin: 0;
-      padding: 3mm;
-      line-height: 1.2;
-      display: flex;
-      flex-direction: column;
+      font-size: 22px;
+      font-weight: bold;
+      line-height: 1.4;
+      color: #000;
     }
-    .header {
-      text-align: center;
-      margin-bottom: 3mm;
-      flex-shrink: 0;
+    .header, .footer, .invoice-info, .totals, .items-container {
+      font-size: 22px;
     }
     .temp-receipt {
-      border: 1px dashed #000;
-      padding: 2mm;
-      margin: 2mm 0;
-      text-align: center;
-      font-size: 10px;
+      font-size: 20px !important;
+      font-weight: bold !important;
       text-transform: uppercase;
-      letter-spacing: 1px;
     }
     .pharmacy-name {
-      font-weight: bold;
-      font-size: 14px;
-      margin-bottom: 1mm;
+      font-size: 26px !important;
     }
     .pharmacy-info {
-      font-size: 10px;
-      color: #666;
-    }
-    .divider {
-      border-top: 1px dashed #000;
-      margin: 3mm 0;
-      flex-shrink: 0;
-    }
-    .invoice-info {
-      text-align: center;
-      margin: 2mm 0;
-      flex-shrink: 0;
+      font-size: 20px !important;
+      font-weight: bold !important;
+      color: #000 !important;
     }
     .invoice-number {
-      font-weight: bold;
-      font-size: 12px;
-    }
-    .items-container {
-      flex-grow: 1;
-      overflow: hidden;
-    }
-    .item {
-      margin: 1.5mm 0;
-      page-break-inside: avoid;
+      font-size: 24px !important;
     }
     .item-main {
-      display: flex;
-      justify-content: space-between;
-      font-weight: bold;
+      font-size: 22px !important;
     }
     .item-details {
-      display: flex;
-      justify-content: space-between;
-      font-size: 9px;
-      color: #666;
-      margin-top: 0.5mm;
-      padding-left: 3mm;
-    }
-    .totals {
-      flex-shrink: 0;
-      margin-top: 2mm;
+      font-size: 20px !important;
+      font-weight: bold !important;
+      color: #000 !important;
     }
     .total-row {
-      display: flex;
-      justify-content: space-between;
-      margin: 1mm 0;
-      padding: 0.5mm 0;
+      font-size: 22px !important;
     }
     .total-main {
-      font-weight: bold;
-      font-size: 12px;
-      border-top: 1px solid #000;
-      border-bottom: 1px solid #000;
-      padding: 1mm 0;
-      margin: 1mm 0;
-    }
-    .payment-info {
-      margin-top: 2mm;
-      padding-top: 1mm;
-      border-top: 1px dashed #666;
+      font-size: 26px !important;
+      font-weight: bold !important;
+      border-top: 2px solid #000;
+      border-bottom: 2px solid #000;
     }
     .footer {
-      text-align: center;
-      margin-top: 3mm;
-      flex-shrink: 0;
-      font-size: 10px;
-    }
-    .bold {
-      font-weight: bold;
+      font-size: 22px !important;
     }
   </style>
 </head>
@@ -250,46 +190,31 @@ export class PrintUtility {
 
   <div class="invoice-info">
     <div class="invoice-number">RECEIPT #${sale.invoiceNumber}</div>
-    <div style="font-size: 10px;">${new Date(sale.createdAt).toLocaleString(
-      'en-US',
-      {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-      },
-    )}</div>
-    <div style="font-size: 10px;">Cashier: ${
-      sale.user?.fullName || 'Unknown'
-    }</div>
+    <div>${new Date(sale.createdAt).toLocaleString('en-US',{
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })}</div>
+    <div>Cashier: ${sale.user?.fullName || 'Unknown'}</div>
   </div>
 
   <div class="divider"></div>
 
   <div class="items-container">
-    ${items
-      .map(
-        (item, index) => `
+    ${items.map((item, index) => `
       <div class="item">
         <div class="item-main">
           <span>${index + 1}. ${item.productName}</span>
-          <span>₱${(parseFloat(item.unitPrice) * item.quantity).toFixed(
-            2,
-          )}</span>
+          <span>₱${(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}</span>
         </div>
         <div class="item-details">
-          <span>${item.quantity} × ₱${parseFloat(item.unitPrice).toFixed(
-          2,
-        )}</span>
-          <span>Subtotal: ₱${(
-            parseFloat(item.unitPrice) * item.quantity
-          ).toFixed(2)}</span>
+          <span>${item.quantity} × ₱${parseFloat(item.unitPrice).toFixed(2)}</span>
+          <span>Subtotal: ₱${(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}</span>
         </div>
       </div>
-    `,
-      )
-      .join('')}
+    `).join('')}
   </div>
 
   <div class="divider"></div>
@@ -299,15 +224,11 @@ export class PrintUtility {
       <span>Subtotal:</span>
       <span>₱${subtotal.toFixed(2)}</span>
     </div>
-    ${
-      discountAmount > 0
-        ? `
+    ${discountAmount > 0 ? `
       <div class="total-row">
         <span>Discount:</span>
-        <span style="color: #d00;">-₱${discountAmount.toFixed(2)}</span>
-      </div>`
-        : ''
-    }
+        <span>-₱${discountAmount.toFixed(2)}</span>
+      </div>` : ''}
     <div class="total-row total-main">
       <span>TOTAL:</span>
       <span>₱${total.toFixed(2)}</span>
@@ -316,15 +237,11 @@ export class PrintUtility {
     <div class="payment-info">
       <div class="total-row">
         <span>Cash Received:</span>
-        <span>₱${parseFloat(sale.amountReceived?.toString() ?? '0').toFixed(
-          2,
-        )}</span>
+        <span>₱${parseFloat(sale.amountReceived?.toString() ?? '0').toFixed(2)}</span>
       </div>
       <div class="total-row">
         <span>Change:</span>
-        <span>₱${parseFloat(sale.changeDue?.toString() ?? '0').toFixed(
-          2,
-        )}</span>
+        <span>₱${parseFloat(sale.changeDue?.toString() ?? '0').toFixed(2)}</span>
       </div>
     </div>
   </div>
@@ -332,9 +249,9 @@ export class PrintUtility {
   <div class="divider"></div>
 
   <div class="footer">
-    <div class="bold">Thank you for your purchase!</div>
+    <div>Thank you for your purchase!</div>
     <div style="margin: 2mm 0;">Visit us again soon!</div>
-    <div style="font-size: 10px;">${new Date().toLocaleString()}</div>
+    <div>${new Date().toLocaleString()}</div>
   </div>
 </body>
 </html>`;
