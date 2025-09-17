@@ -87,6 +87,7 @@ export async function getInventoryReportData(pharmacyId: number) {
         eq(products.pharmacyId, pharmacyId),
         gte(products.quantity, 1),
         lte(products.expiryDate, twoHundredTenDaysFromNow.toISOString()),
+        sql`${products.deletedAt} IS NULL`,
       ),
     )
     .orderBy(asc(products.expiryDate));

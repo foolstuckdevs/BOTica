@@ -43,17 +43,27 @@ export function Notification({ pharmacyId }: NotificationProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Initial unread count on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const count = await getUnreadNotificationCount(pharmacyId);
+        setUnreadCount(count);
+      } catch (e) {
+        console.error('Failed to load unread count', e);
+      }
+    })();
+  }, [pharmacyId]);
+
   useEffect(() => {
     if (!isOpen) return;
-
-    const fetchNotifications = async () => {
+    (async () => {
       try {
         setLoading(true);
         const [notificationsData, unreadCountData] = await Promise.all([
           getNotifications(pharmacyId),
           getUnreadNotificationCount(pharmacyId),
         ]);
-
         setNotifications(notificationsData as AppNotification[]);
         setUnreadCount(unreadCountData);
       } catch (error) {
@@ -61,13 +71,26 @@ export function Notification({ pharmacyId }: NotificationProps) {
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchNotifications();
+    })();
   }, [isOpen, pharmacyId]);
 
   // Poll for new notifications every 5 minutes when not open
   useEffect(() => {
+    // Quick refresh via custom event broadcast from POS or others
+    const onRefresh = async () => {
+      try {
+        const count = await getUnreadNotificationCount(pharmacyId);
+        setUnreadCount(count);
+        if (isOpen) {
+          const list = await getNotifications(pharmacyId);
+          setNotifications(list as AppNotification[]);
+        }
+      } catch (error) {
+        console.error('Error refreshing notifications via event:', error);
+      }
+    };
+    window.addEventListener('notifications:refresh', onRefresh);
+
     const interval = setInterval(async () => {
       if (!isOpen) {
         try {
@@ -79,7 +102,10 @@ export function Notification({ pharmacyId }: NotificationProps) {
       }
     }, 5 * 60 * 1000); // 5 minutes
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notifications:refresh', onRefresh);
+    };
   }, [isOpen, pharmacyId]);
 
   const handleMarkAsRead = async (notificationId: number) => {
@@ -91,6 +117,11 @@ export function Notification({ pharmacyId }: NotificationProps) {
         ),
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
+      // Refresh list when popover remains open
+      if (isOpen) {
+        const list = await getNotifications(pharmacyId);
+        setNotifications(list as AppNotification[]);
+      }
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -103,6 +134,10 @@ export function Notification({ pharmacyId }: NotificationProps) {
         prev.map((notif) => ({ ...notif, isRead: true })),
       );
       setUnreadCount(0);
+      if (isOpen) {
+        const list = await getNotifications(pharmacyId);
+        setNotifications(list as AppNotification[]);
+      }
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
     }
@@ -120,6 +155,10 @@ export function Notification({ pharmacyId }: NotificationProps) {
 
       if (deletedNotification && !deletedNotification.isRead) {
         setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+      if (isOpen) {
+        const list = await getNotifications(pharmacyId);
+        setNotifications(list as AppNotification[]);
       }
     } catch (error) {
       console.error('Error deleting notification:', error);

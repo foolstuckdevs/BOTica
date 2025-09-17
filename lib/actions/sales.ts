@@ -1,12 +1,21 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { products, saleItems, sales, pharmacies } from '@/database/schema';
+import {
+  products,
+  saleItems,
+  sales,
+  pharmacies,
+  notifications,
+} from '@/database/schema';
 import type { Pharmacy } from '@/types';
-import { eq, and, gte, sql } from 'drizzle-orm';
+import { eq, and, gte, sql, gt } from 'drizzle-orm';
+import type { InferSelectModel } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from '@/lib/actions/activity';
 import { processSaleSchema, pharmacyIdSchema } from '@/lib/validations';
+
+type ProductRow = InferSelectModel<typeof products>;
 
 // Get all products for POS
 
@@ -112,8 +121,13 @@ export const processSale = async (
     }
 
     const result = await db.transaction(async (tx) => {
+      const transitionNotices: Array<{
+        type: 'LOW_STOCK' | 'OUT_OF_STOCK';
+        productId: number;
+        message: string;
+      }> = [];
       // 1. Validate and fetch product stocks
-      const validatedProducts = await Promise.all(
+      const validatedProducts: ProductRow[] = (await Promise.all(
         validatedData.cartItems.map(async (item) => {
           const found = await tx
             .select()
@@ -126,7 +140,7 @@ export const processSale = async (
               ),
             );
 
-          const product = found[0];
+          const product = found[0] as ProductRow;
           if (!product) {
             throw new Error(`Product ${item.productId} not found`);
           }
@@ -137,9 +151,9 @@ export const processSale = async (
             );
           }
 
-          return product;
+          return product as ProductRow;
         }),
-      );
+      )) as ProductRow[];
 
       // 2. Insert into sales table
       const [newSale] = await tx
@@ -159,6 +173,12 @@ export const processSale = async (
       // 3. Insert sale items and update product stock
       for (const item of validatedData.cartItems) {
         const product = validatedProducts.find((p) => p.id === item.productId)!;
+        const prevQty: number = product.quantity as number;
+        const newQty: number = prevQty - item.quantity;
+        const minLevel: number = (product.minStockLevel as number) ?? 10;
+        const label = `${product.name}${
+          product.brandName ? ` (${product.brandName})` : ''
+        }`;
 
         await tx.insert(saleItems).values({
           saleId: newSale.id,
@@ -179,13 +199,71 @@ export const processSale = async (
               eq(products.pharmacyId, validatedData.pharmacyId),
             ),
           );
+
+        // Determine threshold crossings for targeted notifications
+        if (prevQty > 0 && newQty <= 0) {
+          transitionNotices.push({
+            type: 'OUT_OF_STOCK',
+            productId: item.productId,
+            message: `${label} is out of stock.`,
+          });
+        } else if (prevQty > minLevel && newQty <= minLevel) {
+          transitionNotices.push({
+            type: 'LOW_STOCK',
+            productId: item.productId,
+            message: `${label} is low on stock.`,
+          });
+        }
       }
 
       return {
         sale: newSale,
         change,
+        transitionNotices,
       };
     });
+
+    // Create targeted notifications for threshold crossings (with 24h dedupe)
+    try {
+      const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      for (const n of result.transitionNotices) {
+        try {
+          const recent = await db
+            .select({ id: notifications.id })
+            .from(notifications)
+            .where(
+              and(
+                eq(notifications.pharmacyId, validatedData.pharmacyId),
+                eq(notifications.productId, n.productId),
+                eq(notifications.type, n.type),
+                gt(notifications.createdAt, recentCutoff),
+              ),
+            )
+            .limit(1);
+
+          if (recent.length === 0) {
+            await db.insert(notifications).values({
+              type: n.type,
+              productId: n.productId,
+              message: n.message,
+              pharmacyId: validatedData.pharmacyId,
+              isRead: false,
+            });
+          }
+        } catch (innerErr) {
+          console.error(
+            'Non-fatal: failed to create sale notification',
+            innerErr,
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Non-fatal: error during sale notifications dispatch', err);
+    }
+
+    // Note: we intentionally do NOT call a full inventory sync here to avoid
+    // re-creating notifications immediately after user deletes/marks them.
+    // Targeted notifications for threshold crossings were already inserted above with 24h dedupe.
 
     // Revalidate inventory and POS pages
     revalidatePath('/sales/pos');

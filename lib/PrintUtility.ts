@@ -8,6 +8,7 @@ export class PrintUtility {
     sale: Transaction,
     items: TransactionItem[],
     pharmacy: Pharmacy,
+    preOpenedWindow?: Window | null,
   ): Promise<boolean> {
     this.printCount++;
     console.log(
@@ -35,12 +36,14 @@ export class PrintUtility {
         contentHeight,
       );
 
-      // Create a new window for printing instead of iframe
-      const printWindow = window.open('', '_blank', 'width=800,height=1000');
+      // Use a pre-opened window if provided (avoids popup blockers), else try to open now
+      const printWindow =
+        preOpenedWindow || window.open('', '_blank', 'width=800,height=1000');
 
       if (!printWindow) {
+        console.warn('Could not open print window - popup may be blocked');
         this.isPrinting = false;
-        throw new Error('Could not open print window - popup blocked?');
+        return false;
       }
 
       try {
@@ -190,7 +193,7 @@ export class PrintUtility {
 
   <div class="invoice-info">
     <div class="invoice-number">RECEIPT #${sale.invoiceNumber}</div>
-    <div>${new Date(sale.createdAt).toLocaleString('en-US',{
+    <div>${new Date(sale.createdAt).toLocaleString('en-US', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -203,18 +206,28 @@ export class PrintUtility {
   <div class="divider"></div>
 
   <div class="items-container">
-    ${items.map((item, index) => `
+    ${items
+      .map(
+        (item, index) => `
       <div class="item">
         <div class="item-main">
           <span>${index + 1}. ${item.productName}</span>
-          <span>₱${(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}</span>
+          <span>₱${(parseFloat(item.unitPrice) * item.quantity).toFixed(
+            2,
+          )}</span>
         </div>
         <div class="item-details">
-          <span>${item.quantity} × ₱${parseFloat(item.unitPrice).toFixed(2)}</span>
-          <span>Subtotal: ₱${(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}</span>
+          <span>${item.quantity} × ₱${parseFloat(item.unitPrice).toFixed(
+          2,
+        )}</span>
+          <span>Subtotal: ₱${(
+            parseFloat(item.unitPrice) * item.quantity
+          ).toFixed(2)}</span>
         </div>
       </div>
-    `).join('')}
+    `,
+      )
+      .join('')}
   </div>
 
   <div class="divider"></div>
@@ -224,11 +237,15 @@ export class PrintUtility {
       <span>Subtotal:</span>
       <span>₱${subtotal.toFixed(2)}</span>
     </div>
-    ${discountAmount > 0 ? `
+    ${
+      discountAmount > 0
+        ? `
       <div class="total-row">
         <span>Discount:</span>
         <span>-₱${discountAmount.toFixed(2)}</span>
-      </div>` : ''}
+      </div>`
+        : ''
+    }
     <div class="total-row total-main">
       <span>TOTAL:</span>
       <span>₱${total.toFixed(2)}</span>
@@ -237,11 +254,15 @@ export class PrintUtility {
     <div class="payment-info">
       <div class="total-row">
         <span>Cash Received:</span>
-        <span>₱${parseFloat(sale.amountReceived?.toString() ?? '0').toFixed(2)}</span>
+        <span>₱${parseFloat(sale.amountReceived?.toString() ?? '0').toFixed(
+          2,
+        )}</span>
       </div>
       <div class="total-row">
         <span>Change:</span>
-        <span>₱${parseFloat(sale.changeDue?.toString() ?? '0').toFixed(2)}</span>
+        <span>₱${parseFloat(sale.changeDue?.toString() ?? '0').toFixed(
+          2,
+        )}</span>
       </div>
     </div>
   </div>

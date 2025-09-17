@@ -178,6 +178,13 @@ export default function POSPage({
     }
 
     setIsProcessing(true);
+    // Pre-open a print window synchronously to avoid popup blockers
+    let preOpened: Window | null = null;
+    try {
+      if (pharmacyInfo) {
+        preOpened = window.open('', '_blank', 'width=800,height=1000');
+      }
+    } catch {}
     try {
       const result = await processSale(
         cart.map((item) => ({
@@ -193,6 +200,10 @@ export default function POSPage({
       );
       if (result.success && result.data) {
         toast.success('Sale processed successfully');
+        // Let interested components (like Notification) know to refresh counts/lists
+        try {
+          window.dispatchEvent(new CustomEvent('notifications:refresh'));
+        } catch {}
         if (pharmacyInfo) {
           const printSuccess = await PrintUtility.printDynamicReceipt(
             {
@@ -217,6 +228,7 @@ export default function POSPage({
               subtotal: (item.unitPrice * item.quantity).toString(),
             })),
             pharmacyInfo,
+            preOpened,
           );
           if (!printSuccess) {
             toast.warning('Receipt printed with issues - sale was processed');

@@ -10,6 +10,8 @@ import {
   createAdjustmentSchema,
 } from '@/lib/validations';
 import { logActivity } from '@/lib/actions/activity';
+import { notifications } from '@/database/schema';
+import { gt } from 'drizzle-orm';
 
 /**
  * Get all inventory adjustments
@@ -136,6 +138,87 @@ export const createAdjustment = async ({
           sql`${products.deletedAt} IS NULL`,
         ),
       );
+
+    // Targeted notification on threshold crossing (24h dedupe)
+    const minLevel =
+      (product as { quantity: number }).quantity !== undefined
+        ? (
+            await db
+              .select({ min: products.minStockLevel })
+              .from(products)
+              .where(
+                and(
+                  eq(products.id, validatedData.productId),
+                  eq(products.pharmacyId, validatedData.pharmacyId),
+                ),
+              )
+          )[0]?.min ?? 10
+        : 10;
+    const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [pRow] = await db
+      .select({ name: products.name, brandName: products.brandName })
+      .from(products)
+      .where(eq(products.id, validatedData.productId));
+    const label = `${pRow?.name ?? 'Product'}${
+      pRow?.brandName ? ` (${pRow.brandName})` : ''
+    }`;
+
+    if (validatedData.quantityChange < 0) {
+      try {
+        if (product.quantity > 0 && newQuantity <= 0) {
+          const recent = await db
+            .select({ id: notifications.id })
+            .from(notifications)
+            .where(
+              and(
+                eq(notifications.pharmacyId, validatedData.pharmacyId),
+                eq(notifications.productId, validatedData.productId),
+                eq(notifications.type, 'OUT_OF_STOCK'),
+                gt(notifications.createdAt, recentCutoff),
+              ),
+            )
+            .limit(1);
+          if (recent.length === 0) {
+            await db.insert(notifications).values({
+              type: 'OUT_OF_STOCK',
+              productId: validatedData.productId,
+              message: `${label} is out of stock.`,
+              pharmacyId: validatedData.pharmacyId,
+              isRead: false,
+            });
+          }
+        } else if (product.quantity > minLevel && newQuantity <= minLevel) {
+          const recent = await db
+            .select({ id: notifications.id })
+            .from(notifications)
+            .where(
+              and(
+                eq(notifications.pharmacyId, validatedData.pharmacyId),
+                eq(notifications.productId, validatedData.productId),
+                eq(notifications.type, 'LOW_STOCK'),
+                gt(notifications.createdAt, recentCutoff),
+              ),
+            )
+            .limit(1);
+          if (recent.length === 0) {
+            await db.insert(notifications).values({
+              type: 'LOW_STOCK',
+              productId: validatedData.productId,
+              message: `${label} is low on stock.`,
+              pharmacyId: validatedData.pharmacyId,
+              isRead: false,
+            });
+          }
+        }
+      } catch (innerErr) {
+        console.error(
+          'Non-fatal: failed to create adjustment notification',
+          innerErr,
+        );
+      }
+    }
+
+    // Note: skip full inventory sync here to avoid instant re-creation of notifications
 
     revalidatePath('/products');
     revalidatePath('/adjustments');

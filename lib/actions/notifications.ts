@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, gt } from 'drizzle-orm';
 import { notifications, products } from '@/database/schema';
 import { NotificationParams } from '@/types';
 import { revalidatePath } from 'next/cache';
@@ -19,8 +19,7 @@ export const getNotifications = async (pharmacyId: number) => {
       throw new Error('Unauthorized access to pharmacy data');
     }
 
-    // Sync notifications based on current inventory state
-    await syncInventoryNotifications(pharmacyId);
+    // Decoupled: do not sync during read to avoid re-creating notifications on open
 
     const result = await db
       .select({
@@ -62,6 +61,7 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
     const today = new Date();
     const in30Days = new Date();
     in30Days.setDate(today.getDate() + 30);
+    const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24h throttle
 
     // Fetch all active products for this pharmacy
     const prodRows = await db
@@ -74,7 +74,12 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
         expiryDate: products.expiryDate,
       })
       .from(products)
-      .where(eq(products.pharmacyId, pharmacyId));
+      .where(
+        and(
+          eq(products.pharmacyId, pharmacyId),
+          sql`${products.deletedAt} IS NULL`,
+        ),
+      );
 
     // Utility to upsert a notification if not already present unread for same product/type
     const ensureNotification = async (
@@ -82,20 +87,21 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
       productId: number,
       message: string,
     ) => {
-      const existing = await db
-        .select({ id: notifications.id, isRead: notifications.isRead })
+      // Throttle: don't create if an entry exists in the last 24h for same product/type
+      const recent = await db
+        .select({ id: notifications.id })
         .from(notifications)
         .where(
           and(
             eq(notifications.pharmacyId, pharmacyId),
             eq(notifications.productId, productId),
             eq(notifications.type, type),
-            eq(notifications.isRead, false),
+            gt(notifications.createdAt, recentCutoff),
           ),
         )
         .limit(1);
 
-      if (existing.length === 0) {
+      if (recent.length === 0) {
         await db.insert(notifications).values({
           pharmacyId,
           productId,
@@ -119,7 +125,8 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
         continue; // out-of-stock supersedes low stock
       }
 
-      if (p.quantity <= p.minStockLevel) {
+      const minLevel = (p.minStockLevel as number) ?? 10;
+      if (p.quantity <= minLevel) {
         await ensureNotification(
           'LOW_STOCK',
           p.id,

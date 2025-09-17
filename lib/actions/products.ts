@@ -489,7 +489,11 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
     pharmacyIdSchema.parse(pharmacyId);
 
     const existingProduct = await db
-      .select({ id: products.id, name: products.name })
+      .select({
+        id: products.id,
+        name: products.name,
+        imageUrl: products.imageUrl,
+      })
       .from(products)
       .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
 
@@ -519,7 +523,10 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         .update(products)
         .set({ deletedAt: sql`NOW()` })
         .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
+      // Revalidate products and inventory report pages
       revalidatePath('/products');
+      revalidatePath('/inventory/products');
+      revalidatePath('/reports/inventory');
       await logActivity({
         action: 'PRODUCT_ARCHIVED',
         pharmacyId,
@@ -536,7 +543,21 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
       await db
         .delete(products)
         .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
+      // Cleanup image if any (only on hard delete)
+      const imageUrl = (existingProduct[0] as { imageUrl?: string | null })
+        ?.imageUrl;
+      if (imageUrl) {
+        try {
+          const { deleteImageFromSupabase } = await import('@/lib/utils');
+          await deleteImageFromSupabase(imageUrl);
+        } catch (e) {
+          console.warn('Failed to delete product image from storage:', e);
+        }
+      }
+      // Revalidate products and inventory report pages
       revalidatePath('/products');
+      revalidatePath('/inventory/products');
+      revalidatePath('/reports/inventory');
       await logActivity({
         action: 'PRODUCT_DELETED',
         pharmacyId,
@@ -551,7 +572,10 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         .update(products)
         .set({ deletedAt: sql`NOW()` })
         .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
+      // Revalidate products and inventory report pages
       revalidatePath('/products');
+      revalidatePath('/inventory/products');
+      revalidatePath('/reports/inventory');
       await logActivity({
         action: 'PRODUCT_ARCHIVED',
         pharmacyId,
