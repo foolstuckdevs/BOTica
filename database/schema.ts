@@ -266,3 +266,16 @@ export const purchaseOrderItems = pgTable('purchase_order_items', {
   receivedQuantity: integer('received_quantity').default(0).notNull(),
   unitCost: decimal('unit_cost', { precision: 10, scale: 2 }), // NULL until confirmed, then set by supplier
 });
+
+// Refresh Tokens (for session renewal / revocation)
+export const refreshTokens = pgTable('refresh_tokens', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id')
+    .references(() => users.id)
+    .notNull(),
+  tokenHash: varchar('token_hash', { length: 128 }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  createdAt: timestamp('created_at').defaultNow(),
+  replacedByTokenHash: varchar('replaced_by_token_hash', { length: 128 }),
+});

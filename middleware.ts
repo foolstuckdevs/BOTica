@@ -32,9 +32,16 @@ export default auth((req) => {
   const isProtectedRoute =
     pathname.startsWith('/') && !isPublicRoute && !pathname.startsWith('/api');
 
-  // If trying to access protected route without authentication
+  // Utility to clear stale refresh token cookie
+  const clearRt = () => {
+    const res = NextResponse.redirect(new URL('/sign-in', req.url));
+    res.cookies.set({ name: 'rt', value: '', path: '/', maxAge: 0 });
+    return res;
+  };
+
+  // If trying to access protected route without authentication: clear stale refresh cookie if present
   if (isProtectedRoute && !isAuthenticated) {
-    return NextResponse.redirect(new URL('/sign-in', req.url));
+    return clearRt();
   }
 
   // If trying to access admin-only route without admin role
@@ -51,6 +58,13 @@ export default auth((req) => {
   // If authenticated and trying to access auth pages, redirect to dashboard
   if (isAuthenticated && isPublicRoute) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
+  }
+
+  // If hitting auth page while unauthenticated: ensure no stale refresh cookie
+  if (!isAuthenticated && isPublicRoute) {
+    const res = NextResponse.next();
+    res.cookies.set({ name: 'rt', value: '', path: '/', maxAge: 0 });
+    return res;
   }
 
   return NextResponse.next();

@@ -2,6 +2,8 @@
 'use server';
 
 import { signIn } from '@/auth';
+import { cookies } from 'next/headers';
+import { createRefreshToken } from '@/lib/auth/refresh-tokens';
 import { db } from '@/database/drizzle';
 import { users } from '@/database/schema';
 import { AuthCredentials } from '@/types';
@@ -65,6 +67,27 @@ export const signInWithCredentials = async (
     if (result?.error) {
       console.log('NextAuth signIn error:', result.error);
       return { success: false, error: 'Authentication failed' };
+    }
+
+    // Issue refresh token + cookie (HttpOnly)
+    try {
+      const { token: rtRaw, expiresAt } = await createRefreshToken({
+        userId: userRecord[0].id,
+        rememberMe,
+      });
+      const store = await cookies();
+      store.set({
+        name: 'rt',
+        value: rtRaw,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV !== 'development',
+        path: '/',
+        expires: expiresAt,
+      });
+    } catch (e) {
+      console.error('Failed to create refresh token', e);
+      return { success: false, error: 'Failed to establish session (RT).' };
     }
 
     // Log sign in activity with verified user record (session may not be hydrated yet)

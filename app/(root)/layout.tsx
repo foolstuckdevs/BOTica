@@ -3,6 +3,8 @@ import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import Chatbot from '@/components/Chatbot';
 import { ReactNode } from 'react';
+import InactivityWatcher from '@/components/InactivityWatcher';
+import SessionLifecycle from '@/components/SessionLifecycle';
 
 const Layout = async ({ children }: { children: ReactNode }) => {
   const session = await auth();
@@ -24,6 +26,8 @@ const Layout = async ({ children }: { children: ReactNode }) => {
       <div className="fixed bottom-4 right-4 z-50">
         <Chatbot />
       </div>
+      <InactivityWatcher role={session.user.role} />
+      <SessionLifecycle />
     </div>
   );
 };
