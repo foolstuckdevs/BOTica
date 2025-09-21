@@ -1,25 +1,21 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { Search, Package, CheckCircle, X, ChevronLeft } from "lucide-react";
-import { createAdjustment } from "@/lib/actions/adjustment";
-import { adjustmentReasonSchema } from "@/lib/validations/common";
-import { Button } from "./ui/button";
-import { Product } from "@/types";
+import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Search, Package, CheckCircle, X, ChevronLeft } from 'lucide-react';
+import { createAdjustment } from '@/lib/actions/adjustment';
+import { adjustmentReasonSchema } from '@/lib/validations/common';
+import { Button } from './ui/button';
+import { Product } from '@/types';
 
 // Form schema for client-side validation (only fields user fills out)
-// ✅ Update schema to prevent reaching 10,000
 const adjustmentFormSchema = z.object({
   productId: z.number().int().positive(),
-  quantityChange: z
-    .number()
-    .int()
-    .max(9999, 'Quantity must be less than 10,000'),
+  quantityChange: z.number().int(),
   reason: adjustmentReasonSchema,
   notes: z.string().optional(),
 });
@@ -45,7 +41,7 @@ const AdjustmentForm = ({
   pharmacyId,
 }: AdjustmentFormProps) => {
   const router = useRouter();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [pendingAdjustments, setPendingAdjustments] = useState<
     PendingAdjustment[]
@@ -61,63 +57,11 @@ const AdjustmentForm = ({
     watch,
     formState: { errors },
     setValue,
-    trigger,
   } = useForm<AdjustmentFormValues>({
     resolver: zodResolver(adjustmentFormSchema),
-    defaultValues: {
-      quantityChange: 0,
-    },
   });
 
-  const quantityChange = watch("quantityChange") || 0;
-
-  // Format number with commas
-  const formatNumberWithCommas = (value: number): string => {
-    return Math.abs(value).toLocaleString();
-  };
-
-  // Parse input value to number (remove commas and parse sign)
-  const parseInputValue = (inputValue: string): number => {
-    // Remove all commas and any non-digit characters except minus sign
-    const cleanValue = inputValue.replace(/,/g, '').replace(/[^0-9-]/g, '');
-    
-    // Check if the value has a minus sign
-    const isNegative = cleanValue.startsWith('-');
-    
-    // Extract digits only
-    const digits = cleanValue.replace(/-/g, '');
-    
-    // Parse to number and apply sign
-    const numValue = digits ? parseInt(digits, 10) : 0;
-    
-    return isNegative ? -numValue : numValue;
-  };
-
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
-    
-    // Allow empty input or just a minus sign
-    if (inputValue === "" || inputValue === "-") {
-      setValue("quantityChange", inputValue === "-" ? -0 : 0, { shouldValidate: true });
-      return;
-    }
-    
-    const parsedValue = parseInputValue(inputValue);
-    
-    // Validate the parsed value
-    if (!isNaN(parsedValue) && Math.abs(parsedValue) < 10000) {
-      setValue("quantityChange", parsedValue, { shouldValidate: true });
-    }
-  };
-
-  const handleQuantityBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
-    
-    // If input is empty or just a minus sign, set to 0
-    if (inputValue === "" || inputValue === "-") {
-      setValue("quantityChange", 0, { shouldValidate: true });
-    }
-  };
+  const quantityChange = watch('quantityChange') || 0;
 
   const searchLower = search.toLowerCase();
   const filteredProducts =
@@ -163,16 +107,11 @@ const AdjustmentForm = ({
 
   const selectProduct = (product: Product) => {
     setSelectedProduct(product);
-    setValue("productId", product.id);
+    setValue('productId', product.id);
     setIsSearching(false);
   };
 
   const onSubmit = (data: AdjustmentFormValues) => {
-    if (Math.abs(data.quantityChange) >= 10000) {
-      toast.error("Quantity change cannot reach 10,000");
-      return;
-    }
-
     if (!selectedProduct) return;
 
     const newAdjustment: PendingAdjustment = {
@@ -186,9 +125,9 @@ const AdjustmentForm = ({
     setPendingAdjustments((prev) => [...prev, newAdjustment]);
     reset();
     setSelectedProduct(null);
-    setSearch("");
+    setSearch('');
     setIsSearching(false);
-    toast.success("Adjustment added to pending list");
+    toast.success('Adjustment added to pending list');
   };
 
   const submitAllAdjustments = async () => {
@@ -208,39 +147,39 @@ const AdjustmentForm = ({
         });
 
         if (!res.success) {
-          toast.error(res.message || "Adjustment failed");
+          toast.error(res.message || 'Adjustment failed');
           return;
         }
       }
 
       setPendingAdjustments([]);
       setShowConfirmation(true);
-      toast.success("All adjustments submitted successfully");
-      setTimeout(() => router.push("/inventory/adjustments"), 1500);
+      toast.success('All adjustments submitted successfully');
+      setTimeout(() => router.push('/inventory/adjustments'), 1500);
     } catch (error) {
-      console.error("Adjustment error:", error);
-      toast.error("Something went wrong while submitting.");
+      console.error('Adjustment error:', error);
+      toast.error('Something went wrong while submitting.');
     } finally {
       setLoading(false);
     }
   };
 
   const clearSearch = () => {
-    setSearch("");
+    setSearch('');
     setSelectedProduct(null);
     setIsSearching(false);
   };
 
   const removePendingAdjustment = (index: number) => {
     setPendingAdjustments(pendingAdjustments.filter((_, i) => i !== index));
-    toast.info("Adjustment removed from pending list");
+    toast.info('Adjustment removed from pending list');
   };
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6">
       <Button
         variant="ghost"
-        onClick={() => router.push("/inventory/adjustments")}
+        onClick={() => router.push('/inventory/adjustments')}
         className="group flex items-center gap-2 rounded-full text-sm text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
       >
         <ChevronLeft className="w-4 h-4 group-hover:translate-x-[-2px] transition-transform" />
@@ -281,7 +220,7 @@ const AdjustmentForm = ({
               {pendingAdjustments.length > 0 && (
                 <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {pendingAdjustments.length} pending adjustment
-                  {pendingAdjustments.length !== 1 ? "s" : ""}
+                  {pendingAdjustments.length !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -342,13 +281,13 @@ const AdjustmentForm = ({
                             )}
                             {product.expiryDate && (
                               <span className="text-amber-600 text-xs">
-                                Exp:{" "}
+                                Exp:{' '}
                                 {new Date(
-                                  product.expiryDate
-                                ).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
+                                  product.expiryDate,
+                                ).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
                                 })}
                               </span>
                             )}
@@ -400,7 +339,7 @@ const AdjustmentForm = ({
                 <button
                   onClick={() => {
                     setSelectedProduct(null);
-                    setSearch("");
+                    setSearch('');
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -414,7 +353,7 @@ const AdjustmentForm = ({
                     Current
                   </div>
                   <div className="text-lg font-semibold text-gray-800">
-                    {selectedProduct.quantity}{" "}
+                    {selectedProduct.quantity}{' '}
                     {selectedProduct.unit.toLowerCase()}
                   </div>
                 </div>
@@ -425,11 +364,11 @@ const AdjustmentForm = ({
                   </div>
                   <div
                     className={`text-lg font-semibold ${
-                      quantityChange >= 0 ? "text-blue-600" : "text-red-600"
+                      quantityChange >= 0 ? 'text-blue-600' : 'text-red-600'
                     }`}
                   >
-                    {quantityChange >= 0 ? "+" : ""}
-                    {quantityChange.toLocaleString()}
+                    {quantityChange >= 0 ? '+' : ''}
+                    {quantityChange}
                   </div>
                 </div>
 
@@ -438,7 +377,7 @@ const AdjustmentForm = ({
                     New Stock
                   </div>
                   <div className="text-lg font-semibold text-green-600">
-                    {selectedProduct.quantity + quantityChange}{" "}
+                    {selectedProduct.quantity + quantityChange}{' '}
                     {selectedProduct.unit.toLowerCase()}
                   </div>
                 </div>
@@ -448,33 +387,23 @@ const AdjustmentForm = ({
                 {/* Hidden productId field */}
                 <input
                   type="hidden"
-                  {...register("productId", { valueAsNumber: true })}
+                  {...register('productId', { valueAsNumber: true })}
                 />
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Quantity Change <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="text"
-                    value={
-                      quantityChange === 0 
-                        ? "0" 
-                        : `${quantityChange < 0 ? "-" : ""}${formatNumberWithCommas(quantityChange)}`
-                    }
-                    onChange={handleQuantityChange}
-                    onBlur={handleQuantityBlur}
-                    placeholder="e.g. -5,000 or +10,000"
-                    className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-right font-medium ${
-                      quantityChange > 0 
-                        ? "text-green-600" 
-                        : quantityChange < 0 
-                        ? "text-red-600" 
-                        : "text-gray-600"
-                    }`}
+                    type="number"
+                    {...register('quantityChange', { valueAsNumber: true })}
+                    placeholder="e.g. -5 or +10"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
                   {errors.quantityChange && (
-                    <p className="mt-1 text-sm text-red-600">{errors.quantityChange.message}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.quantityChange.message}
+                    </p>
                   )}
                 </div>
 
@@ -483,15 +412,15 @@ const AdjustmentForm = ({
                     Reason <span className="text-red-500">*</span>
                   </label>
                   <select
-                    {...register("reason")}
+                    {...register('reason')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select adjustment reason</option>
                     {[
-                      { value: "DAMAGED", label: "Damaged Product" },
-                      { value: "EXPIRED", label: "Expired Product" },
-                      { value: "LOST_OR_STOLEN", label: "Lost or Stolen" },
-                      { value: "STOCK_CORRECTION", label: "Stock Correction" },
+                      { value: 'DAMAGED', label: 'Damaged Product' },
+                      { value: 'EXPIRED', label: 'Expired Product' },
+                      { value: 'LOST_OR_STOLEN', label: 'Lost or Stolen' },
+                      { value: 'STOCK_CORRECTION', label: 'Stock Correction' },
                     ].map((r) => (
                       <option key={r.value} value={r.value}>
                         {r.label}
@@ -510,7 +439,7 @@ const AdjustmentForm = ({
                     Notes (optional)
                   </label>
                   <textarea
-                    {...register("notes")}
+                    {...register('notes')}
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Add any additional details..."
@@ -523,7 +452,7 @@ const AdjustmentForm = ({
                     type="button"
                     onClick={() => {
                       setSelectedProduct(null);
-                      setSearch("");
+                      setSearch('');
                     }}
                     className="flex-1"
                   >
@@ -566,21 +495,21 @@ const AdjustmentForm = ({
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-sm text-gray-600">
-                            {adj.currentStock} →{" "}
+                            {adj.currentStock} →{' '}
                             <span className="font-semibold">
                               {adj.newStock}
-                            </span>{" "}
+                            </span>{' '}
                             {adj.unit.toLowerCase()}
                           </span>
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full ${
                               adj.quantityChange > 0
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
                             }`}
                           >
-                            {adj.quantityChange > 0 ? "+" : ""}
-                            {adj.quantityChange.toLocaleString()}
+                            {adj.quantityChange > 0 ? '+' : ''}
+                            {adj.quantityChange}
                           </span>
                         </div>
                         <div className="mt-2">

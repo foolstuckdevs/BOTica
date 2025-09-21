@@ -185,9 +185,10 @@ export class PrintUtility {
 
     <div class="pharmacy-name"><h1>PHARMACIA DULNUAN</h1></div>
     <div class="pharmacy-info">Kasibu Nueva Vizcaya Purok 5</div>
-    <div class="pharmacy-info">Mobile: 0917-123-4567</div>
-        <div class="pharmacy-name"><h5>Temporary Receipt</h5></div>
-
+    <div class="pharmacy-info">Tel: (074) 123-4567 / Mobile: 0917-123-4567</div>
+    <div class="pharmacy-info">TIN: 123-456-789-000</div>
+    <div class="pharmacy-info">VAT Reg TIN: 123-456-789-001</div>
+    <div class="pharmacy-info">Permit No: 2025-123456789</div>
   </div>
 
   <div class="divider"></div>
