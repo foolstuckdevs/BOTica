@@ -132,48 +132,111 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
     day: 'numeric',
   });
 
+  const handleExportAndUpdateStatus = async (exportType: 'pdf' | 'excel') => {
+    if (isUpdating) return;
+
+    try {
+      setIsUpdating(true);
+
+      // First, update status to EXPORTED if it's not already
+      if (order.status === 'DRAFT') {
+        const result = await updatePurchaseOrderStatus(
+          order.id,
+          'EXPORTED',
+          order.pharmacyId,
+        );
+        if (!result.success) {
+          toast.error(result.message || 'Failed to update status');
+          return;
+        }
+      }
+
+      // Prepare export data
+      const exportData = {
+        filename: `purchase-order-${order.orderNumber}.${
+          exportType === 'pdf' ? 'pdf' : 'xlsx'
+        }`,
+        order: {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          orderDate: order.orderDate,
+          status: 'EXPORTED', // Use the new status
+          notes: order.notes,
+          totalCost: order.totalCost,
+          supplierName: supplier?.name,
+          userName: order.userName,
+        },
+        supplier: supplier
+          ? {
+              name: supplier.name,
+              contactPerson: supplier.contactPerson,
+              phone: supplier.phone,
+              email: supplier.email,
+              address: supplier.address,
+            }
+          : undefined,
+        items: order.items.map((item) => {
+          const product = products?.find((p) => p.id === item.productId);
+          return {
+            productName:
+              product?.name || item.productName || `Product #${item.productId}`,
+            quantity: item.quantity,
+            unitCost: item.unitCost,
+            productUnit: product?.unit || item.productUnit,
+            brandName: product?.brandName,
+          };
+        }),
+      };
+
+      // Export the file
+      const response = await fetch(
+        `/api/exports/purchase-order-${exportType}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(exportData),
+        },
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = exportData.filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        toast.success(
+          `Purchase order exported as ${exportType.toUpperCase()} successfully`,
+        );
+
+        // Reload page to reflect status change
+        window.location.reload();
+      } else {
+        throw new Error(`Failed to export ${exportType.toUpperCase()}`);
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(`Failed to export ${exportType.toUpperCase()}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const getAvailableActions = () => {
     const actions = [];
 
     if (order.status === 'DRAFT') {
-      actions.push(
-        {
-          label: 'Export PO',
-          icon: <FileText className="w-4 h-4" />,
-          variant: 'default' as const,
-          onClick: async () => {
-            if (!isUpdating) {
-              setIsUpdating(true);
-              const result = await updatePurchaseOrderStatus(
-                order.id,
-                'EXPORTED',
-                order.pharmacyId,
-              );
-              if (result.success) {
-                window.location.reload();
-              } else {
-                toast.error(result.message || 'Failed to update status');
-              }
-              setIsUpdating(false);
-            }
-          },
-          disabled: isUpdating,
-        },
-        {
-          label: 'Mark as Submitted',
-          icon: <Send className="w-4 h-4" />,
-          variant: 'outline' as const,
-          onClick: () => handleStatusUpdate('SUBMITTED'),
-          disabled: isUpdating,
-        },
-        {
-          label: 'Cancel Order',
-          icon: <AlertCircle className="w-4 h-4" />,
-          variant: 'destructive' as const,
-          onClick: () => handleStatusUpdate('CANCELLED'),
-          disabled: isUpdating,
-        },
-      );
+      actions.push({
+        label: 'Cancel Order',
+        icon: <AlertCircle className="w-4 h-4" />,
+        variant: 'destructive' as const,
+        onClick: () => handleStatusUpdate('CANCELLED'),
+        disabled: isUpdating,
+      });
     }
 
     if (order.status === 'EXPORTED') {
@@ -383,19 +446,22 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.print()}
-            className="gap-2 bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+            onClick={() => handleExportAndUpdateStatus('pdf')}
+            disabled={isUpdating}
+            className="gap-2 bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 disabled:opacity-50"
           >
             <FileText className="w-4 h-4" />
-            Export PDF
+            {isUpdating ? 'Exporting...' : 'Export PDF'}
           </Button>
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+            onClick={() => handleExportAndUpdateStatus('excel')}
+            disabled={isUpdating}
+            className="gap-2 bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Export Excel
+            {isUpdating ? 'Exporting...' : 'Export Excel'}
           </Button>
           <Button
             variant="outline"
