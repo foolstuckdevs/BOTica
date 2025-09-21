@@ -465,11 +465,17 @@ Sources: BOTica System`,
           textLower,
         );
 
+      // Also detect patient context follow-up queries like "for elderly", "for adults", "for children"
+      const isPatientContextFollowUp =
+        /\b(for|about)\s+(adult|elderly|child|children|baby|infant|teenager|pregnant|elder|senior|kid|toddler)\b/i.test(
+          textLower,
+        );
+
       console.log(
-        `[Session Debug] needsDrugContext: ${needsDrugContext}, isDosageFollowUp: ${isDosageFollowUp}, lastDrugName: "${body.sessionContext.lastDrugName}"`,
+        `[Session Debug] needsDrugContext: ${needsDrugContext}, isDosageFollowUp: ${isDosageFollowUp}, isPatientContextFollowUp: ${isPatientContextFollowUp}, lastDrugName: "${body.sessionContext.lastDrugName}"`,
       );
 
-      if (needsDrugContext || isDosageFollowUp) {
+      if (needsDrugContext || isDosageFollowUp || isPatientContextFollowUp) {
         console.log(
           `[Session Context] Using last drug: ${body.sessionContext.lastDrugName}`,
         );
@@ -480,7 +486,11 @@ Sources: BOTica System`,
           body.intent = 'drug_info';
         } else if (sideEffectsOnly) {
           body.intent = 'drug_info';
-        } else if (/\b(dosage|dose)\b/.test(textLower) || isDosageFollowUp) {
+        } else if (
+          /\b(dosage|dose)\b/.test(textLower) ||
+          isDosageFollowUp ||
+          isPatientContextFollowUp
+        ) {
           body.intent = 'dosage';
         }
 
@@ -713,11 +723,11 @@ Sources: BOTica System`,
 
       // MEDICAL SAFETY: Check if patient context is missing for dosage questions
       if (!body.sessionContext?.patientContext) {
-        const hasPatientInfo =
-          /\b(adult|child|elderly|baby|infant|teenager|pregnant)\b/i.test(
-            body.text || '',
-          );
-        if (!hasPatientInfo) {
+        const patientMatch = (body.text || '').match(
+          /\b(adult|child|elderly|baby|infant|teenager|pregnant|elder|senior|kid|toddler)\b/i,
+        );
+
+        if (!patientMatch) {
           console.log(
             '[Medical Safety] Dosage question without patient context',
           );
@@ -729,10 +739,22 @@ Sources: BOTica System`,
             { status: 200 },
           );
         } else {
-          // Extract patient context from text and continue processing
+          // Extract and set patient context from text
+          const patientContext = patientMatch[1].toLowerCase();
           console.log(
-            '[Medical Safety] Patient context found in text, proceeding with dosage query',
+            `[Medical Safety] Patient context "${patientContext}" found in text, proceeding with dosage query`,
           );
+
+          // Set patient context for this request
+          if (!body.sessionContext) {
+            body.sessionContext = {
+              recentDrugs: [],
+              lastDrugName: null,
+              lastIntent: null,
+              patientContext: null,
+            };
+          }
+          body.sessionContext.patientContext = patientContext;
         }
       }
 
@@ -1066,44 +1088,17 @@ Sources: BOTica Inventory`,
 
           const drugName = body.drugName || 'this medication';
 
-          // Enhanced inventory formatting with expiry dates
-          const stockInfo =
-            internalList.length > 0
-              ? `\n\n📦 Inventory: ${internalList
-                  .slice(0, 3)
-                  .map((p) => {
-                    let expiryDate = 'N/A';
-                    if (p.expiry) {
-                      try {
-                        const date = new Date(p.expiry as string);
-                        if (!isNaN(date.getTime())) {
-                          expiryDate = date.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          });
-                        }
-                      } catch {
-                        expiryDate = 'N/A';
-                      }
-                    }
-                    return `${p.brandPH || p.name} — ${
-                      p.stock
-                    } units available at ₱${
-                      p.sellingPrice?.toFixed(2) || 'N/A'
-                    } each (expiry: ${expiryDate})`;
-                  })
-                  .join('.\n')}.`
-              : '';
-
+          // NO INVENTORY INFO: Prescription drugs should not show inventory details for clinical queries
           return NextResponse.json(
             {
-              response: `${drugName} is a prescription-only medication. For your safety, I cannot provide clinical information including dosage, usage, or side effects without a valid prescription from a physician.${stockInfo}
+              response: `${drugName} is a prescription-only medication. For your safety, I cannot provide clinical information including dosage, usage, or side effects without a valid prescription from a physician.
+
+Prescription-only medications require professional medical supervision and should only be used as directed by a licensed healthcare provider.
 
 Please consult your physician or pharmacist for proper guidance.
 
-Sources: BOTica Inventory`,
-              sources: ['BOTica Inventory'],
+Sources: BOTica Clinical Database, FDA Guidelines`,
+              sources: ['BOTica Clinical Database', 'FDA Guidelines'],
             },
             { status: 200 },
           );
@@ -1643,8 +1638,12 @@ Sources: ${noInfoSources.join(', ')}`;
 Sources: OpenFDA, MedlinePlus`;
       }
     } else if (body.intent === 'dosage' && productType === 'prescription') {
-      // Prescription block template
-      response = `${body.drugName} is prescription-only. Cannot provide dosage without valid physician prescription. Prescription required from physician.`;
+      // Prescription block template - use standardized format
+      response = `${body.drugName} is a prescription-only medication. For your safety, I cannot provide dosage information without a valid prescription from a physician.
+
+Prescription-only medications require professional medical supervision and should only be used as directed by a licensed healthcare provider.
+
+Please consult your physician or pharmacist for proper guidance.`;
     } else if (sideEffectsOnly || usageOnly) {
       // Handle side effects and usage with external sources only
       const intentLabel = sideEffectsOnly
