@@ -166,6 +166,9 @@ function checkOutOfScope(text: string): boolean {
     // Non-pharmacy topics
     /\b(weather|sports|politics|news|cooking|travel|movies|music|games)\b/,
 
+    // Common non-pharmaceutical items
+    /\b(water|juice|soda|coffee|tea|food|snacks|candy|chocolate|bread|milk|rice|vegetables|fruits)\b/,
+
     // General health questions not specific to medications
     /\b(how\s+to\s+lose\s+weight|diet\s+plan|exercise\s+routine|healthy\s+lifestyle|nutrition\s+advice)\b/,
 
@@ -960,6 +963,19 @@ Sources: BOTica System`,
               '. As this is a non-medical product, please refer to the product label for usage instructions.';
           }
 
+          // For non-medical products, only respond to inventory queries
+          if (body.intent !== 'stock_check' && body.intent !== 'alternatives') {
+            return NextResponse.json(
+              {
+                response: `${productName} is available in our inventory. For specific product information, please ask about stock availability or pricing.
+
+Sources: BOTica Inventory`,
+                sources: ['BOTica Inventory'],
+              },
+              { status: 200 },
+            );
+          }
+
           return NextResponse.json(
             {
               response: inventoryResponse,
@@ -1132,11 +1148,51 @@ Sources: BOTica Inventory`,
       }
     }
 
+    // INVENTORY VALIDATION: Check if product exists in inventory before processing
+    if (body.drugName && wantInternal && internalList.length === 0) {
+      // Product not found in inventory - check if it's a valid pharmacy query
+      const isPharmacyRelated =
+        /\b(tablet|capsule|syrup|suspension|injection|cream|ointment|drops|medicine|medication|drug|prescription|otc|generic|brand|mg|ml|mcg|dosage|dose)\b/i.test(
+          body.text || '',
+        );
+
+      if (!isPharmacyRelated) {
+        // Not pharmacy-related and not in inventory - treat as out of scope
+        console.log(
+          '[Inventory Validation] Product not found in inventory and not pharmacy-related, treating as out of scope',
+        );
+        return NextResponse.json(
+          {
+            response: `I'm a pharmacy assistant. How can I help with inventory or drug information today?
+
+Sources: BOTica System`,
+            sources: ['BOTica System'],
+          },
+          { status: 200 },
+        );
+      } else {
+        // Product appears to be pharmaceutical but not in inventory
+        console.log(
+          '[Inventory Validation] Pharmaceutical product not found in inventory',
+        );
+        return NextResponse.json(
+          {
+            response: `${body.drugName} is not available in our current inventory. I can only provide information about products we have in stock.
+
+Sources: BOTica Inventory`,
+            sources: ['BOTica Inventory'],
+          },
+          { status: 200 },
+        );
+      }
+    }
+
     // FALLBACK CLASSIFICATION: For drugs not found in inventory but still need classification
     if (
       !productType &&
       body.drugName &&
-      (body.intent === 'dosage' || body.intent === 'drug_info')
+      (body.intent === 'dosage' || body.intent === 'drug_info') &&
+      internalList.length > 0 // Only classify if we found products in inventory
     ) {
       console.log(
         '[Fallback Classification] Classifying drug not found in inventory',
