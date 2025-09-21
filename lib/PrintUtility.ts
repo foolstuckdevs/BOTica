@@ -1,33 +1,7 @@
 // PrintUtility.ts
 // POS-style receipt printing (browser)
 
-export type TransactionItem = {
-  productId?: string;
-  productName: string;
-  unitPrice: string;
-  quantity: number;
-};
-
-export type UserInfo = {
-  id?: string;
-  fullName?: string;
-};
-
-export type Transaction = {
-  invoiceNumber: string;
-  createdAt: string | number | Date;
-  discount?: string;
-  amountReceived?: number | string;
-  changeDue?: number | string;
-  user?: UserInfo;
-};
-
-export type Pharmacy = {
-  name: string;
-  address?: string;
-  phone?: string;
-  tin?: string;
-};
+import type { Transaction, TransactionItem, Pharmacy } from '@/types';
 
 export class PrintUtility {
   private static isPrinting = false;
@@ -48,7 +22,11 @@ export class PrintUtility {
       const itemLines = items.length * 4;
       const contentHeight = Math.max(150, baseLines + itemLines);
 
-      const printContent = this.generateDynamicReceipt(sale, items, contentHeight);
+      const printContent = this.generateDynamicReceipt(
+        sale,
+        items,
+        contentHeight,
+      );
 
       const printWindow =
         preOpenedWindow || window.open('', '_blank', 'width=800,height=1000');
@@ -99,7 +77,7 @@ export class PrintUtility {
     items: TransactionItem[],
     contentHeight: number,
   ): string {
-    const parseNumber = (v: any) => {
+    const parseNumber = (v: string | number | undefined | null): number => {
       const n = typeof v === 'number' ? v : parseFloat(String(v ?? '0'));
       return isNaN(n) ? 0 : n;
     };
@@ -117,7 +95,7 @@ export class PrintUtility {
     const formatCurrency = (n: number) =>
       `₱${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
-    const safe = (v: any) =>
+    const safe = (v: string | number | undefined | null): string =>
       v == null
         ? ''
         : String(v)
@@ -206,15 +184,25 @@ export class PrintUtility {
   <div class="divider"></div>
 
   <div class="totals">
-    <div class="total-row"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
+    <div class="total-row"><span>Subtotal:</span><span>${formatCurrency(
+      subtotal,
+    )}</span></div>
     ${
       discountAmount > 0
-        ? `<div class="total-row"><span>Discount:</span><span>- ${formatCurrency(discountAmount)}</span></div>`
+        ? `<div class="total-row"><span>Discount:</span><span>- ${formatCurrency(
+            discountAmount,
+          )}</span></div>`
         : ''
     }
-    <div class="total-row total-main"><span>TOTAL:</span><span>${formatCurrency(total)}</span></div>
-    <div class="total-row"><span>Cash:</span><span>${formatCurrency(amountReceived)}</span></div>
-    <div class="total-row"><span>Change:</span><span>${formatCurrency(change)}</span></div>
+    <div class="total-row total-main"><span>TOTAL:</span><span>${formatCurrency(
+      total,
+    )}</span></div>
+    <div class="total-row"><span>Cash:</span><span>${formatCurrency(
+      amountReceived,
+    )}</span></div>
+    <div class="total-row"><span>Change:</span><span>${formatCurrency(
+      change,
+    )}</span></div>
   </div>
 
   <div class="divider"></div>

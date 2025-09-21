@@ -23,7 +23,18 @@ export default function Chatbot() {
   const [input, setInput] = useState('');
   const [showScrollDown, setShowScrollDown] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const sessionRef = useRef<string>('');
+  // Track conversation context for better follow-ups
+  const [sessionContext, setSessionContext] = useState<{
+    lastDrugName: string | null;
+    lastIntent: string | null;
+    recentDrugs: string[];
+    patientContext: string | null;
+  }>({
+    lastDrugName: null,
+    lastIntent: null,
+    recentDrugs: [],
+    patientContext: null,
+  });
 
   const scrollToBottom = (smooth = true) => {
     const el = scrollerRef.current;
@@ -61,31 +72,196 @@ export default function Chatbot() {
     setIsTyping(true);
 
     try {
-      if (!sessionRef.current)
-        sessionRef.current = Math.random().toString(36).slice(2);
-      const res = await fetch('/api/chatbot/dialogflow-proxy', {
+      // PASS 1: Intent extraction
+      const p1 = await fetch('/api/ai/intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: outgoing,
-          sessionId: sessionRef.current,
-          languageCode: 'en',
-        }),
+        body: JSON.stringify({ text: outgoing }),
       });
-      const data = (await res.json().catch(() => ({}))) as Partial<{
-        fulfillmentText: string;
-        sessionId: string;
-        intent: string | null;
-        error: string;
+      const intentJson = (await p1.json().catch(() => ({}))) as Partial<{
+        intent:
+          | 'drug_info'
+          | 'stock_check'
+          | 'dosage'
+          | 'alternatives'
+          | 'other';
+        drugName: string | null;
+        needs: string[];
+        sources: string[];
+        error?: string;
       }>;
-      if (data.sessionId) sessionRef.current = data.sessionId;
-      const content = res.ok
-        ? data.fulfillmentText || "I didn't catch that."
-        : `Assistant error: ${data.error ?? 'unavailable'}`;
+      if (!p1.ok) {
+        const content = `Assistant error: ${
+          intentJson.error ?? 'intent failed'
+        }`;
+        setMessages((m) => [...m, { sender: 'bot', content, ts: Date.now() }]);
+        return;
+      }
+
+      // Build PASS 2 payload with enhanced conversational memory
+      const finalPayload: {
+        intent:
+          | 'drug_info'
+          | 'stock_check'
+          | 'dosage'
+          | 'alternatives'
+          | 'other';
+        drugName: string | null | undefined;
+        needs: string[] | undefined;
+        sources: string[] | undefined;
+        text: string;
+        sessionContext?: {
+          lastDrugName: string | null;
+          lastIntent: string | null;
+          recentDrugs: string[];
+          patientContext: string | null;
+        };
+      } = {
+        intent: (intentJson.intent ?? 'other') as
+          | 'drug_info'
+          | 'stock_check'
+          | 'dosage'
+          | 'alternatives'
+          | 'other',
+        drugName: intentJson.drugName,
+        needs: intentJson.needs,
+        sources: intentJson.sources,
+        text: outgoing,
+        sessionContext: sessionContext,
+      };
+
+      // If no drugName detected but we have a recent one and the intent needs it, reuse it
+      const intentNeedsDrug =
+        finalPayload.intent === 'dosage' ||
+        finalPayload.intent === 'drug_info' ||
+        finalPayload.intent === 'alternatives';
+      if (
+        (!finalPayload.drugName ||
+          finalPayload.drugName?.toLowerCase() === 'it') &&
+        sessionContext.lastDrugName &&
+        intentNeedsDrug
+      ) {
+        finalPayload.drugName = sessionContext.lastDrugName;
+      }
+
+      // Ensure appropriate sources are present
+      const src = new Set(finalPayload.sources ?? []);
+      if (finalPayload.intent === 'dosage') src.add('external_db');
+      // Extract patient context from current message BEFORE API call
+      const patientKeywords = outgoing
+        .toLowerCase()
+        .match(/\b(adult|child|elderly|baby|infant|teenager|pregnant)\b/);
+
+      // Extract dosage form from current message
+      const dosageFormKeywords = outgoing
+        .toLowerCase()
+        .match(
+          /\b(tablet|capsule|syrup|suspension|liquid|injection|cream|ointment|gel|patch)\b/,
+        );
+
+      // Update session context before making API call
+      const updatedSessionContext = { ...sessionContext };
+
+      if (patientKeywords) {
+        updatedSessionContext.patientContext = patientKeywords[0];
+      }
+
+      if (dosageFormKeywords && finalPayload.drugName) {
+        const enhancedDrugName = `${finalPayload.drugName} ${dosageFormKeywords[0]}`;
+        updatedSessionContext.lastDrugName = enhancedDrugName;
+      }
+
+      // Use the updated context in the API call
+      finalPayload.sessionContext = updatedSessionContext;
+
+      if (
+        finalPayload.intent === 'stock_check' ||
+        finalPayload.intent === 'drug_info' ||
+        finalPayload.intent === 'alternatives'
+      )
+        src.add('internal_db');
+      finalPayload.sources = Array.from(src);
+
+      // PASS 2: Final response
+      const p2 = await fetch('/api/ai/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(finalPayload),
+      });
+      const resp = (await p2.json().catch(() => ({}))) as Partial<{
+        response: string; // New AI-generated response
+        patientSummary: string; // Legacy fallback
+        pharmacistNotes: string[];
+        warnings: string[];
+        sources: string[];
+        matches: Array<{
+          id: number;
+          name: string;
+          brand: string | null;
+          stock: number | null;
+          price: number | null;
+          expiry?: string;
+        }>;
+        alternatives: Array<{
+          id: number;
+          name: string;
+          brand: string | null;
+          stock: number | null;
+          price: number | null;
+          expiry?: string;
+        }>;
+        error?: string;
+      }>;
+
+      // Update session context with conversation memory
+      if (finalPayload.drugName) {
+        setSessionContext((prev) => ({
+          ...prev,
+          lastDrugName: finalPayload.drugName || null,
+          lastIntent: finalPayload.intent,
+          recentDrugs: prev.recentDrugs.includes(finalPayload.drugName || '')
+            ? prev.recentDrugs
+            : [
+                ...prev.recentDrugs.slice(-4),
+                finalPayload.drugName || '',
+              ].filter(Boolean),
+        }));
+      } else if (resp?.matches && resp.matches.length > 0) {
+        const drugName = resp.matches[0].name;
+        setSessionContext((prev) => ({
+          ...prev,
+          lastDrugName: drugName,
+          lastIntent: finalPayload.intent,
+          recentDrugs: prev.recentDrugs.includes(drugName)
+            ? prev.recentDrugs
+            : [...prev.recentDrugs.slice(-4), drugName],
+        }));
+      }
+
+      // Update session context state for next API call
+      if (patientKeywords) {
+        setSessionContext((prev) => ({
+          ...prev,
+          patientContext: patientKeywords[0],
+        }));
+      }
+
+      // Update drug name in context to include dosage form if specified
+      if (dosageFormKeywords && finalPayload.drugName) {
+        const enhancedDrugName = `${finalPayload.drugName} ${dosageFormKeywords[0]}`;
+        setSessionContext((prev) => ({
+          ...prev,
+          lastDrugName: enhancedDrugName,
+        }));
+      }
+
+      const content = p2.ok
+        ? formatPass2(resp)
+        : `Assistant error: ${resp.error ?? 'response failed'}`;
       setMessages((m) => [...m, { sender: 'bot', content, ts: Date.now() }]);
-    } catch (e) {
+    } catch {
       if (process.env.NODE_ENV !== 'production') {
-        console.error('Chatbot error:', e);
+        console.error('Chatbot error: PASS pipeline failed');
       }
       setMessages((m) => [
         ...m,
@@ -99,6 +275,38 @@ export default function Chatbot() {
       setIsTyping(false);
     }
   };
+
+  function formatPass2(
+    resp: Partial<{
+      response: string; // New AI-generated response
+      patientSummary: string; // Legacy fallback
+      pharmacistNotes: string[];
+      warnings: string[];
+      sources: string[];
+    }>,
+  ): string {
+    // If we have the new AI-generated response, use it directly
+    // (AI response already includes proper source attribution)
+    if (resp.response) {
+      return resp.response;
+    }
+
+    // Fallback to legacy format for compatibility
+    const lines: string[] = [];
+    if (resp.patientSummary) lines.push(resp.patientSummary);
+    if (resp.pharmacistNotes?.length) {
+      lines.push('', 'Notes:');
+      for (const n of resp.pharmacistNotes) lines.push(`• ${n}`);
+    }
+    if (resp.warnings?.length) {
+      lines.push('', 'Warnings:');
+      for (const w of resp.warnings) lines.push(`• ${w}`);
+    }
+    if (resp.sources?.length) {
+      lines.push('', `Sources: ${resp.sources.join(', ')}`);
+    }
+    return lines.join('\n');
+  }
 
   return (
     <div className="fixed bottom-6 right-6 z-50">

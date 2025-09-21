@@ -36,3 +36,12 @@ export const createStaffSchema = z.object({
   data: createStaffMemberSchema,
   adminPharmacyId: z.number().positive('Invalid pharmacy ID'),
 });
+
+export const staffFormSchema = z.object({
+  fullName: z
+    .string()
+    .min(8, 'Full name must be at least 8 characters')
+    .regex(/^[A-Za-z\s]+$/, 'Full name must contain only letters and spaces'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});

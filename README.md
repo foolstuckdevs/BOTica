@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## BOTica
 
-## Getting Started
+Pharmacy POS and reports app built on Next.js App Router with Drizzle ORM, RBAC, auth (short-lived JWT with rotating refresh), and a Chatbot assistant.
 
-First, run the development server:
+### Getting Started
 
-```bash
+```powershell
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Chatbot: Two-pass AI Pipeline
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The legacy Dialogflow integration was removed. The Chatbot now uses a two-pass, JSON-only pipeline:
 
-## Learn More
+1. PASS 1 — Intent Extraction
 
-To learn more about Next.js, take a look at the following resources:
+- Route: `POST /api/ai/intent`
+- Input: `{ text: string }`
+- Output: `{ intent: 'drug_info'|'stock_check'|'dosage'|'other', drugName: string|null, needs: string[], sources: ('internal_db'|'external_db'|'web_search')[] }`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. PASS 2 — Final Response Composer
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Route: `POST /api/ai/respond`
+- Input: PASS 1 output
+- Output: `{ patientSummary: string, pharmacistNotes: string[], warnings: string[], sources: string[] }`
 
-## Deploy on Vercel
+The UI component `components/Chatbot.tsx` calls PASS 1 then PASS 2 and renders a readable response on the client. Backend responses are strict JSON—no prose.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Env cleanup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Remove any Dialogflow environment variables if present:
+
+- `DIALOGFLOW_PROJECT_ID`
+- `DIALOGFLOW_CLIENT_EMAIL`
+- `DIALOGFLOW_PRIVATE_KEY`
+- `DEBUG_DIALOGFLOW`
+
+### Build
+
+```powershell
+npm run build
+npm start
+```
+
+### Tech
+
+- Next.js 15 (App Router), React 19
+- Drizzle ORM + Postgres
+- Auth: short-lived JWT, rotating refresh tokens, inactivity enforcement
+- shadcn/ui, tailwindcss, sonner
+
+### AI Model (optional)
+
+To enable LLM-powered intent extraction in PASS 1 set:
+
+```powershell
+# Required
+$env:AI_API_KEY = "sk-..."
+
+# Optional overrides
+$env:AI_API_BASE = "https://api.openai.com/v1"    # or another OpenAI-compatible endpoint
+$env:AI_MODEL = "gpt-5-mini"                      # default already set
+```
+
+When unset, the system falls back to deterministic heuristics.
+
+### External data (OpenFDA & MedlinePlus)
+
+PASS 2 pulls indications/dosage/warnings from OpenFDA (primary) and MedlinePlus (fallback) using their public APIs; no API key is required. OpenFDA provides official FDA drug labeling data, while MedlinePlus offers patient-friendly information for common medications.
