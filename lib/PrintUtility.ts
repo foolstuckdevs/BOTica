@@ -1,4 +1,33 @@
-import type { Transaction, TransactionItem, Pharmacy } from '@/types';
+// PrintUtility.ts
+// POS-style receipt printing (browser)
+
+export type TransactionItem = {
+  productId?: string;
+  productName: string;
+  unitPrice: string;
+  quantity: number;
+};
+
+export type UserInfo = {
+  id?: string;
+  fullName?: string;
+};
+
+export type Transaction = {
+  invoiceNumber: string;
+  createdAt: string | number | Date;
+  discount?: string;
+  amountReceived?: number | string;
+  changeDue?: number | string;
+  user?: UserInfo;
+};
+
+export type Pharmacy = {
+  name: string;
+  address?: string;
+  phone?: string;
+  tin?: string;
+};
 
 export class PrintUtility {
   private static isPrinting = false;
@@ -7,101 +36,56 @@ export class PrintUtility {
   static async printDynamicReceipt(
     sale: Transaction,
     items: TransactionItem[],
-    pharmacy: Pharmacy,
+    pharmacy: Pharmacy, // unused, since header is hardcoded
     preOpenedWindow?: Window | null,
   ): Promise<boolean> {
     this.printCount++;
-    console.log(
-      `Print attempt #${this.printCount} - isPrinting: ${this.isPrinting}`,
-    );
-
-    // Prevent multiple simultaneous print calls
-    if (this.isPrinting) {
-      console.log('Print already in progress, skipping...');
-      return false;
-    }
-
-    console.log('Starting print process...');
+    if (this.isPrinting) return false;
     this.isPrinting = true;
 
     try {
-      const baseLines = 25; // For headers, totals, footer
-      const itemLines = items.length * 4; // Rough estimate
+      const baseLines = 25;
+      const itemLines = items.length * 4;
       const contentHeight = Math.max(150, baseLines + itemLines);
 
-      const printContent = this.generateDynamicReceipt(
-        sale,
-        items,
-        pharmacy,
-        contentHeight,
-      );
+      const printContent = this.generateDynamicReceipt(sale, items, contentHeight);
 
-      // Use a pre-opened window if provided (avoids popup blockers), else try to open now
       const printWindow =
         preOpenedWindow || window.open('', '_blank', 'width=800,height=1000');
 
       if (!printWindow) {
-        console.warn('Could not open print window - popup may be blocked');
         this.isPrinting = false;
         return false;
       }
 
-      try {
-        printWindow.document.write(printContent);
-        printWindow.document.close();
-      } catch (writeError) {
-        console.error('Error writing to print window:', writeError);
-        printWindow.close();
-        this.isPrinting = false;
-        return false;
-      }
+      printWindow.document.open();
+      printWindow.document.write(printContent);
+      printWindow.document.close();
 
       return new Promise((resolve) => {
-        let hasExecuted = false;
-        let timeoutId: NodeJS.Timeout | null = null;
-
-        const executePrint = () => {
-          if (hasExecuted) {
-            console.log('Print already executed, skipping...');
-            return;
-          }
-          hasExecuted = true;
-
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-            timeoutId = null;
-          }
-
-          console.log('Executing print...');
-          try {
-            printWindow.print();
-            console.log('Print dialog opened');
-
-            setTimeout(() => {
+        let finished = false;
+        const finish = (ok: boolean) => {
+          if (!finished) {
+            finished = true;
+            try {
               printWindow.close();
-              console.log('Print window closed');
-              this.isPrinting = false;
-              resolve(true);
-            }, 1500);
-          } catch (printError) {
-            console.error('Print execution error:', printError);
-            printWindow.close();
+            } catch {}
             this.isPrinting = false;
-            resolve(false);
+            resolve(ok);
           }
         };
 
         printWindow.onload = () => {
-          console.log('Print window loaded, executing print...');
-          executePrint();
+          try {
+            printWindow.focus();
+            printWindow.print();
+            setTimeout(() => finish(true), 1500);
+          } catch {
+            finish(false);
+          }
         };
 
-        timeoutId = setTimeout(() => {
-          if (!hasExecuted) {
-            console.log('Fallback timeout triggered');
-            executePrint();
-          }
-        }, 3000);
+        setTimeout(() => finish(true), 3000);
       });
     } catch (error) {
       console.error('Print error:', error);
@@ -113,166 +97,131 @@ export class PrintUtility {
   private static generateDynamicReceipt(
     sale: Transaction,
     items: TransactionItem[],
-    pharmacy: Pharmacy,
     contentHeight: number,
   ): string {
+    const parseNumber = (v: any) => {
+      const n = typeof v === 'number' ? v : parseFloat(String(v ?? '0'));
+      return isNaN(n) ? 0 : n;
+    };
+
     const subtotal = items.reduce(
-      (sum, item) => sum + parseFloat(item.unitPrice) * item.quantity,
+      (sum, item) => sum + parseNumber(item.unitPrice) * (item.quantity ?? 0),
       0,
     );
-    const discountAmount = parseFloat(sale.discount ?? '0');
+
+    const discountAmount = parseNumber(sale.discount ?? '0');
     const total = subtotal - discountAmount;
+    const amountReceived = parseNumber(sale.amountReceived ?? '0');
+    const change = parseNumber(sale.changeDue ?? amountReceived - total);
 
-    return `<!DOCTYPE html>
-<html>
-<head>
-  <title>Receipt - ${sale.invoiceNumber}</title>
-  <style>
-    @page {
-      size: 100mm ${contentHeight}mm;
-      margin: 0;
-    }
-    body, div, span {
-      font-family: 'Courier New', monospace;
-      font-size: 22px;
-      font-weight: bold;
-      line-height: 1.4;
-      color: #000;
-    }
-    .header, .footer, .invoice-info, .totals, .items-container {
-      font-size: 22px;
-    }
-    .temp-receipt {
-      font-size: 20px !important;
-      font-weight: bold !important;
-      text-transform: uppercase;
-    }
-    .pharmacy-name {
-      font-size: 26px !important;
-    }
-    .pharmacy-info {
-      font-size: 20px !important;
-      font-weight: bold !important;
-      color: #000 !important;
-    }
-    .invoice-number {
-      font-size: 24px !important;
-    }
-    .item-main {
-      font-size: 22px !important;
-    }
-    .item-details {
-      font-size: 20px !important;
-      font-weight: bold !important;
-      color: #000 !important;
-    }
-    .total-row {
-      font-size: 22px !important;
-    }
-    .total-main {
-      font-size: 26px !important;
-      font-weight: bold !important;
-      border-top: 2px solid #000;
-      border-bottom: 2px solid #000;
-    }
-    .footer {
-      font-size: 22px !important;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="pharmacy-name">${pharmacy.name}</div>
-    <div class="pharmacy-info">${pharmacy.address ?? ''}</div>
-    <div class="pharmacy-info">${pharmacy.phone ?? ''}</div>
-  </div>
+    const formatCurrency = (n: number) =>
+      `₱${n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 
-  <div class="temp-receipt">TEMPORARY RECEIPT</div>
+    const safe = (v: any) =>
+      v == null
+        ? ''
+        : String(v)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;');
 
-  <div class="divider"></div>
-
-  <div class="invoice-info">
-    <div class="invoice-number">RECEIPT #${sale.invoiceNumber}</div>
-    <div>${new Date(sale.createdAt).toLocaleString('en-US', {
+    const createdAt = new Date(sale.createdAt ?? Date.now());
+    const createdAtStr = createdAt.toLocaleString('en-PH', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-    })}</div>
-    <div>Cashier: ${sale.user?.fullName || 'Unknown'}</div>
+    });
+
+    const itemsHtml = items
+      .map((item) => {
+        const lineTotal = parseNumber(item.unitPrice) * (item.quantity ?? 0);
+        return `
+          <div class="item-row">
+            <div class="item-left">
+              <div class="item-title">${safe(item.productName)}</div>
+              <div class="item-meta">${item.quantity} × ${formatCurrency(
+          parseNumber(item.unitPrice),
+        )}</div>
+            </div>
+            <div class="item-right">${formatCurrency(lineTotal)}</div>
+          </div>`;
+      })
+      .join('');
+
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Receipt - ${safe(sale.invoiceNumber)}</title>
+<style>
+.divider {
+  border-top: 1px dashed #000;
+  margin: 2mm 0;
+}
+
+  @page { size: 100mm ${contentHeight}mm; margin: 0; }
+  body { font-family: 'Courier New', monospace; font-size: 22px; margin: 0; padding: 4mm; }
+  .header { text-align: center; margin-bottom: 4mm; }
+  .pharmacy-name { font-size: 26px; font-weight: bold; }
+  .pharmacy-info { font-size: 20px; }
+  .divider { border-top: 1px dashed #000; margin: 2mm 0; }
+  .invoice-info { margin-bottom: 4mm; }
+  .item-row { display: flex; justify-content: space-between; margin-bottom: 2mm; }
+  .item-left { max-width: 65mm; }
+  .item-title { font-weight: bold; }
+  .item-meta { font-size: 20px; }
+  .item-right { text-align: right; min-width: 28mm; }
+  .totals { margin-top: 4mm; }
+  .total-row { display: flex; justify-content: space-between; margin: 2mm 0; }
+  .total-main { font-size: 24px; font-weight: bold; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+  .footer { text-align: center; margin-top: 6mm; font-size: 20px; }
+</style>
+</head>
+<body>
+  <div class="header">
+   <div class="divider">----------------------------------------</div>
+
+    <div class="pharmacy-name"><h1>PHARMACIA DULNUAN</h1></div>
+    <div class="pharmacy-info">Kasibu Nueva Vizcaya Purok 5</div>
+    <div class="pharmacy-info">Tel: (074) 123-4567 / Mobile: 0917-123-4567</div>
+    <div class="pharmacy-info">TIN: 123-456-789-000</div>
+    <div class="pharmacy-info">VAT Reg TIN: 123-456-789-001</div>
+    <div class="pharmacy-info">Permit No: 2025-123456789</div>
   </div>
 
   <div class="divider"></div>
 
-  <div class="items-container">
-    ${items
-      .map(
-        (item, index) => `
-      <div class="item">
-        <div class="item-main">
-          <span>${index + 1}. ${item.productName}</span>
-          <span>₱${(parseFloat(item.unitPrice) * item.quantity).toFixed(
-            2,
-          )}</span>
-        </div>
-        <div class="item-details">
-          <span>${item.quantity} × ₱${parseFloat(item.unitPrice).toFixed(
-          2,
-        )}</span>
-          <span>Subtotal: ₱${(
-            parseFloat(item.unitPrice) * item.quantity
-          ).toFixed(2)}</span>
-        </div>
-      </div>
-    `,
-      )
-      .join('')}
+  <div class="invoice-info">
+    <div>Receipt #: ${safe(sale.invoiceNumber)}</div>
+    <div>Date: ${safe(createdAtStr)}</div>
+    <div>Cashier: ${safe(sale.user?.fullName ?? 'Unknown')}</div>
   </div>
+
+  <div class="divider"></div>
+
+  <div class="items">${itemsHtml}</div>
 
   <div class="divider"></div>
 
   <div class="totals">
-    <div class="total-row">
-      <span>Subtotal:</span>
-      <span>₱${subtotal.toFixed(2)}</span>
-    </div>
+    <div class="total-row"><span>Subtotal:</span><span>${formatCurrency(subtotal)}</span></div>
     ${
       discountAmount > 0
-        ? `
-      <div class="total-row">
-        <span>Discount:</span>
-        <span>-₱${discountAmount.toFixed(2)}</span>
-      </div>`
+        ? `<div class="total-row"><span>Discount:</span><span>- ${formatCurrency(discountAmount)}</span></div>`
         : ''
     }
-    <div class="total-row total-main">
-      <span>TOTAL:</span>
-      <span>₱${total.toFixed(2)}</span>
-    </div>
-    
-    <div class="payment-info">
-      <div class="total-row">
-        <span>Cash Received:</span>
-        <span>₱${parseFloat(sale.amountReceived?.toString() ?? '0').toFixed(
-          2,
-        )}</span>
-      </div>
-      <div class="total-row">
-        <span>Change:</span>
-        <span>₱${parseFloat(sale.changeDue?.toString() ?? '0').toFixed(
-          2,
-        )}</span>
-      </div>
-    </div>
+    <div class="total-row total-main"><span>TOTAL:</span><span>${formatCurrency(total)}</span></div>
+    <div class="total-row"><span>Cash:</span><span>${formatCurrency(amountReceived)}</span></div>
+    <div class="total-row"><span>Change:</span><span>${formatCurrency(change)}</span></div>
   </div>
 
   <div class="divider"></div>
 
   <div class="footer">
-    <div>Thank you for your purchase!</div>
-    <div style="margin: 2mm 0;">Visit us again soon!</div>
-    <div>${new Date().toLocaleString()}</div>
+    <div>*** Thank you for your purchase! ***</div>
+    <div>Please come again.</div>
   </div>
 </body>
 </html>`;

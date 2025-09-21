@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User as UserIcon, Lock } from 'lucide-react';
-import ProfilePasswordForm from '@/components/ProfilePasswordForm';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import React from 'react';
-import { toast } from 'sonner';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { User as UserIcon, Lock } from "lucide-react";
+import ProfilePasswordForm from "@/components/ProfilePasswordForm";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import React from "react";
+import { toast } from "sonner";
 
 type ProfilePageClientProps = {
   name: string;
   email: string;
   initials: string;
   saveProfile: (
-    formData: FormData,
+    formData: FormData
   ) => Promise<{ ok: boolean; message: string }> | Promise<void> | void;
   changePassword: (
-    formData: FormData,
+    formData: FormData
   ) => Promise<{ ok: boolean; message: string }> | Promise<void> | void;
 };
 
@@ -40,15 +40,15 @@ export default function ProfilePageClient({
         ok?: boolean;
         message?: string;
       } | void;
-      if (res && typeof res === 'object' && 'ok' in res && res.ok) {
-        toast.success(res.message || 'Profile updated');
-      } else if (res && typeof res === 'object' && 'ok' in res && !res.ok) {
-        toast.error(res.message || 'Update failed');
+      if (res && typeof res === "object" && "ok" in res && res.ok) {
+        toast.success(res.message || "Profile updated");
+      } else if (res && typeof res === "object" && "ok" in res && !res.ok) {
+        toast.error(res.message || "Update failed");
       } else {
-        toast.success('Profile updated');
+        toast.success("Profile updated");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Something went wrong';
+      const msg = err instanceof Error ? err.message : "Something went wrong";
       toast.error(msg);
     } finally {
       setInfoPending(false);
@@ -78,7 +78,7 @@ export default function ProfilePageClient({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <UserIcon className="w-4 h-4 text-muted-foreground" />
-                <CardTitle className="text-base">Profile information</CardTitle>
+                <CardTitle className="text-base">Profile Information</CardTitle>
               </div>
               <Avatar className="h-8 w-8 border border-gray-200/70">
                 <AvatarImage src="" />
@@ -101,6 +101,8 @@ export default function ProfilePageClient({
                   required
                   placeholder="Juan Dela Cruz"
                   className="w-full"
+                  pattern="^[A-Za-z\s]+$"
+                  title="Name must contain only letters and spaces"
                 />
               </div>
               <div className="grid gap-1">
@@ -119,7 +121,7 @@ export default function ProfilePageClient({
               </div>
               <div className="flex justify-end">
                 <Button type="submit" disabled={infoPending}>
-                  {infoPending ? 'Saving…' : 'Save'}
+                  {infoPending ? "Saving…" : "Save"}
                 </Button>
               </div>
             </form>
