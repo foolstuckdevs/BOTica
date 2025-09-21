@@ -396,13 +396,22 @@ Sources: BOTica System`,
       }
     }
     const textLower = (body.text || '').toLowerCase();
+
+    // Enhanced pattern matching for different query variations
     const sideEffectsOnly =
-      /\b(side\s?effects?|adverse\s?reactions?|undesirable\s?effects?|adverse\s?events?)\b/.test(
+      /(side\s?effects?|adverse\s?reactions?|undesirable\s?effects?|adverse\s?events?|what\s+(are\s+the\s+)?side\s?effects?|side\s?effects?\s+of|any\s+side\s?effects?|risks?|dangerous)/.test(
         textLower,
       );
-    // Detect usage/indications-only queries
+
+    // Detect usage/indications-only queries with comprehensive patterns
     const usageOnly =
-      /\b(usage|indications?|what\s+is\s+it\s+used\s+for|what\s+is\s+this\s+for|what\s+is\s+it\s+for)\b/.test(
+      /(usage|indications?|what\s+is\s+.*used\s+for|what\s+is\s+this\s+for|what\s+is\s+it\s+for|what\s+does\s+.*do|what\s+is\s+the\s+use\s+of|use\s+of|used\s+for|.*\sused\sfor\s*\??\s*$)/.test(
+        textLower,
+      );
+
+    // Detect dosage-only queries with comprehensive patterns
+    const dosageOnlyQuery =
+      /(dosage|dose|how\s+much|how\s+many|dosing|what\s+is\s+the\s+dose|what\s+dose|recommended\s+dose|daily\s+dose|how\s+to\s+take|how\s+should\s+i\s+take|take\s+how\s+much|dosage\s+of|dose\s+of)/.test(
         textLower,
       );
 
@@ -412,12 +421,29 @@ Sources: BOTica System`,
         textLower,
       );
 
-    // AUTO-DETECT ALTERNATIVES INTENT: When user asks for alternatives
-    if (body.intent === 'other' && alternativesOnly && body.drugName) {
-      console.log(
-        '[Auto-Intent] Detected alternatives query, setting intent to alternatives',
-      );
-      body.intent = 'alternatives';
+    // AUTO-DETECT INTENT: When user asks specific questions but intent is 'other'
+    if (body.intent === 'other' && body.drugName) {
+      if (alternativesOnly) {
+        console.log(
+          '[Auto-Intent] Detected alternatives query, setting intent to alternatives',
+        );
+        body.intent = 'alternatives';
+      } else if (dosageOnlyQuery) {
+        console.log(
+          '[Auto-Intent] Detected dosage query, setting intent to dosage',
+        );
+        body.intent = 'dosage';
+      } else if (usageOnly) {
+        console.log(
+          '[Auto-Intent] Detected usage query, setting intent to drug_info with usage focus',
+        );
+        body.intent = 'drug_info';
+      } else if (sideEffectsOnly) {
+        console.log(
+          '[Auto-Intent] Detected side effects query, setting intent to drug_info with side effects focus',
+        );
+        body.intent = 'drug_info';
+      }
     }
 
     // UNIVERSAL SESSION CONTEXT: Handle follow-up queries without drug names
@@ -433,11 +459,17 @@ Sources: BOTica System`,
           textLower,
         );
 
+      // Also detect dosage-specific follow-up queries like "500mg tablet", "250mg capsule", etc.
+      const isDosageFollowUp =
+        /\b\d+\s?(mg|ml|mcg|μg|g|gram|milligram|microgram|milliliter)\s*(tablet|capsule|syrup|suspension|liquid|injection|cream|ointment|gel|patch|drops|inhaler|spray|suppository|solution|lotion|powder|mouthwash)?\b/i.test(
+          textLower,
+        );
+
       console.log(
-        `[Session Debug] needsDrugContext: ${needsDrugContext}, lastDrugName: "${body.sessionContext.lastDrugName}"`,
+        `[Session Debug] needsDrugContext: ${needsDrugContext}, isDosageFollowUp: ${isDosageFollowUp}, lastDrugName: "${body.sessionContext.lastDrugName}"`,
       );
 
-      if (needsDrugContext) {
+      if (needsDrugContext || isDosageFollowUp) {
         console.log(
           `[Session Context] Using last drug: ${body.sessionContext.lastDrugName}`,
         );
@@ -448,7 +480,7 @@ Sources: BOTica System`,
           body.intent = 'drug_info';
         } else if (sideEffectsOnly) {
           body.intent = 'drug_info';
-        } else if (/\b(dosage|dose)\b/.test(textLower)) {
+        } else if (/\b(dosage|dose)\b/.test(textLower) || isDosageFollowUp) {
           body.intent = 'dosage';
         }
 
@@ -563,6 +595,36 @@ Sources: BOTica System`,
 
 Sources: BOTica System`,
             sources: ['BOTica System'],
+          },
+          { status: 200 },
+        );
+      }
+
+      // PRESCRIPTION COMPLIANCE: Block dosage requests for prescription drugs (FIRST PRIORITY - before any safety checks)
+      const productType = classifyProduct(
+        body.drugName,
+        null, // no generic name available
+        null, // no dosage form from DB
+        null, // no category from DB
+      );
+
+      if (productType === 'prescription') {
+        console.log(
+          '[Prescription Product] Blocking dosage request - compliance mode (FIRST PRIORITY)',
+        );
+
+        const drugName = body.drugName || 'this medication';
+
+        return NextResponse.json(
+          {
+            response: `${drugName} is a prescription-only medication. For your safety, I cannot provide dosage information without a valid prescription from a physician.
+
+Prescription-only medications require professional medical supervision and should only be used as directed by a licensed healthcare provider.
+
+Please consult your physician or pharmacist for proper guidance.
+
+Sources: BOTica Clinical Database, FDA Guidelines`,
+            sources: ['BOTica Clinical Database', 'FDA Guidelines'],
           },
           { status: 200 },
         );
@@ -993,10 +1055,13 @@ Sources: BOTica Inventory`,
           );
         }
 
-        // PRESCRIPTION COMPLIANCE: Block dosage requests for prescription drugs
-        if (productType === 'prescription' && body.intent === 'dosage') {
+        // PRESCRIPTION COMPLIANCE: Block clinical information requests for prescription drugs
+        if (
+          productType === 'prescription' &&
+          (body.intent === 'dosage' || body.intent === 'drug_info')
+        ) {
           console.log(
-            '[Prescription Product] Blocking dosage request - compliance mode',
+            '[Prescription Product] Blocking clinical information request - compliance mode',
           );
 
           const drugName = body.drugName || 'this medication';
@@ -1033,7 +1098,9 @@ Sources: BOTica Inventory`,
 
           return NextResponse.json(
             {
-              response: `${drugName} is prescription-only medication. Cannot provide dosage without valid physician prescription. Prescription required from physician.${stockInfo}
+              response: `${drugName} is a prescription-only medication. For your safety, I cannot provide clinical information including dosage, usage, or side effects without a valid prescription from a physician.${stockInfo}
+
+Please consult your physician or pharmacist for proper guidance.
 
 Sources: BOTica Inventory`,
               sources: ['BOTica Inventory'],
@@ -1205,17 +1272,26 @@ Sources: BOTica Inventory`,
       );
     }
 
-    // PRESCRIPTION COMPLIANCE: Block dosage requests for prescription drugs (early check)
-    if (productType === 'prescription' && body.intent === 'dosage') {
+    // PRESCRIPTION COMPLIANCE: Block ALL clinical information requests for prescription drugs (early check)
+    if (
+      productType === 'prescription' &&
+      (body.intent === 'dosage' || body.intent === 'drug_info')
+    ) {
       console.log(
-        '[Prescription Product] Blocking dosage request - compliance mode (early)',
+        '[Prescription Product] Blocking clinical information request - compliance mode (early)',
       );
 
       const drugName = body.drugName || 'this medication';
 
       return NextResponse.json(
         {
-          response: `${drugName} is a prescription-only medication. For your safety, I cannot provide dosage instructions without a valid prescription from a physician.\n\nCommonly prescribed by physicians for specific medical conditions. May cause side effects and requires professional medical supervision.\n\nPrescription required from physician.\n\nSources: BOTica Clinical Database, FDA Guidelines`,
+          response: `${drugName} is a prescription-only medication. For your safety, I cannot provide clinical information including dosage, usage, or side effects without a valid prescription from a physician.
+
+Prescription-only medications require professional medical supervision and should only be used as directed by a licensed healthcare provider.
+
+Please consult your physician or pharmacist for proper guidance.
+
+Sources: BOTica Clinical Database, FDA Guidelines`,
           sources: ['BOTica Clinical Database', 'FDA Guidelines'],
         },
         { status: 200 },
@@ -1289,18 +1365,18 @@ Sources: BOTica Inventory`,
     }
     const sources = friendly as Sources;
 
-    // Special case: dosage intent with missing external dosage -> handle based on product type
+    // Special case: dosage intent with missing external dosage
     if (
       body.intent === 'dosage' &&
       wantExternal &&
       (!external.dosage || !external.dosage.trim())
     ) {
-      // For prescription products or when product type is unknown, indicate missing clinical data
+      // Show "not available" message for all drugs when no external data exists
       const noInfoSources = ['OpenFDA'];
       if (sourcesListAgg.some((s) => s.toLowerCase().includes('medlineplus'))) {
         noInfoSources.push('MedlinePlus');
       }
-      const responseText = `Clinical details for this drug are not available from approved sources.
+      const responseText = `Clinical details for this drug are not available from approved sources right now.
 
 Sources: ${noInfoSources.join(', ')}`;
       return NextResponse.json(
@@ -1312,48 +1388,81 @@ Sources: ${noInfoSources.join(', ')}`;
       );
     }
 
-    // Special case: side-effects intent with missing data -> reply clearly with no clinical info
+    // Special case: side-effects intent with missing data
     if (
       sideEffectsOnly &&
       wantExternal &&
       (!external.sideEffects || !external.sideEffects.trim())
     ) {
-      const noInfoSources = ['OpenFDA'];
-      if (sourcesListAgg.some((s) => s.toLowerCase().includes('medlineplus'))) {
-        noInfoSources.push('MedlinePlus');
-      }
-      const responseText = `Clinical details for this drug are not available from approved sources.
+      console.log('[Debug] Side effects query with no external data:', {
+        drugName: body.drugName,
+        productType,
+        hasExternalSideEffects: !!(
+          external.sideEffects && external.sideEffects.trim()
+        ),
+      });
+
+      // For prescription drugs, show "not available" message
+      if (productType === 'prescription') {
+        const noInfoSources = ['OpenFDA'];
+        if (
+          sourcesListAgg.some((s) => s.toLowerCase().includes('medlineplus'))
+        ) {
+          noInfoSources.push('MedlinePlus');
+        }
+        const responseText = `Clinical details for this drug are not available from approved sources.
 
 Sources: ${noInfoSources.join(', ')}`;
-      return NextResponse.json(
-        {
-          response: responseText,
-          sources: noInfoSources,
-        },
-        { status: 200 },
-      );
+        return NextResponse.json(
+          {
+            response: responseText,
+            sources: noInfoSources,
+          },
+          { status: 200 },
+        );
+      }
+
+      // For OTC drugs, also show "not available" - rely only on external sources
+      // No hardcoded information should be provided
     }
 
-    // Special case: usage-only with missing indications -> reply clearly with no clinical info
+    // Special case: usage-only with missing indications
     if (
       usageOnly &&
       wantExternal &&
       (!external.indications || !external.indications.trim())
     ) {
-      const noInfoSources = ['OpenFDA'];
-      if (sourcesListAgg.some((s) => s.toLowerCase().includes('medlineplus'))) {
-        noInfoSources.push('MedlinePlus');
-      }
-      const responseText = `Clinical details for this drug are not available from approved sources.
+      console.log('[Debug] Usage query with no external data:', {
+        drugName: body.drugName,
+        usageOnly,
+        productType,
+        hasExternalIndications: !!(
+          external.indications && external.indications.trim()
+        ),
+      });
+
+      // For prescription drugs, show "not available" message
+      if (productType === 'prescription') {
+        const noInfoSources = ['OpenFDA'];
+        if (
+          sourcesListAgg.some((s) => s.toLowerCase().includes('medlineplus'))
+        ) {
+          noInfoSources.push('MedlinePlus');
+        }
+        const responseText = `Clinical details for this drug are not available from approved sources right now.
 
 Sources: ${noInfoSources.join(', ')}`;
-      return NextResponse.json(
-        {
-          response: responseText,
-          sources: noInfoSources,
-        },
-        { status: 200 },
-      );
+        return NextResponse.json(
+          {
+            response: responseText,
+            sources: noInfoSources,
+          },
+          { status: 200 },
+        );
+      }
+
+      // For OTC drugs, also show "not available" - rely only on external sources
+      // No hardcoded information should be provided
     }
 
     // Check if AI response composition is available
@@ -1528,16 +1637,22 @@ Sources: ${noInfoSources.join(', ')}`;
           'Consult a licensed healthcare professional before use.';
         response = formattedResponse;
       } else {
-        // Fallback when no external data available - follow composer template
-        if (body.drugName?.toLowerCase().includes('paracetamol')) {
-          response = `${body.drugName}: Adult 500mg-1g every 4-6 hours, max 4g/day. Pediatric: 10-15mg/kg every 4-6 hours. Consult a licensed healthcare professional before use.`;
-        } else {
-          response = `${body.drugName}: Adult dose varies by formulation. Follow package instructions. Consult a licensed healthcare professional before use.`;
-        }
+        // When no external data available, show "not available" message
+        response = `Clinical details for this drug are not available from approved sources right now.
+
+Sources: OpenFDA, MedlinePlus`;
       }
     } else if (body.intent === 'dosage' && productType === 'prescription') {
       // Prescription block template
       response = `${body.drugName} is prescription-only. Cannot provide dosage without valid physician prescription. Prescription required from physician.`;
+    } else if (sideEffectsOnly || usageOnly) {
+      // Handle side effects and usage with external sources only
+      const intentLabel = sideEffectsOnly
+        ? 'side effects'
+        : 'usage information';
+      response = `Clinical details for ${intentLabel} are not available from approved sources right now.
+
+Sources: OpenFDA, MedlinePlus`;
     } else if (body.intent === 'alternatives') {
       // Alternatives template
       if (alternativesList.length > 0) {
