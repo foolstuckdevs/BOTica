@@ -23,13 +23,13 @@ async function seedUsers() {
       fullName: 'Ian Tristan Landagura',
       email: 'iantristanlandagura21@gmail.com',
       password: 'WELOVEYOU2025=nv',
-      role: 'Pharmacist' as const,
+      role: 'Admin' as const,
     },
     {
       fullName: 'Kathlene Claire Feliciano',
       email: 'kathleneclairefeliciano24@gmail.com',
       password: 'Testing.1',
-      role: 'Pharmacist' as const,
+      role: 'Admin' as const,
     },
   ];
 

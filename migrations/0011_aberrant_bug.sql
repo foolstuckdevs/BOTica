@@ -1,1 +1,0 @@
-ALTER TABLE "purchase_orders" DROP COLUMN "expected_date";

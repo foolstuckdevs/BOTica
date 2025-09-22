@@ -1,1 +1,0 @@
-ALTER TABLE "sales" ALTER COLUMN "amount_received" SET NOT NULL;

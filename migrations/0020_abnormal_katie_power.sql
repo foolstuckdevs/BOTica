@@ -1,1 +1,0 @@
-ALTER TYPE "public"."purchase_order_status" ADD VALUE 'COMPLETED' BEFORE 'CANCELLED';

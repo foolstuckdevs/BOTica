@@ -1,1 +1,0 @@
-ALTER TABLE "inventory_adjustments" ADD COLUMN "notes" text;
