@@ -17,9 +17,9 @@ const Layout = async ({ children }: { children: ReactNode }) => {
   return (
     <div className="flex h-screen bg-gray-50/50 relative">
       <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         <Header session={session} />
-        <main className="flex-1 overflow-y-auto pt-16 pl-64 bg-gray-50/30">
+        <main className="flex-1 pt-16 pl-64 bg-gray-50/30">
           <div className="p-6 max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
