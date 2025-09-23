@@ -20,16 +20,33 @@ export const productSchema = z.object({
   expiryDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Expiry date is required and must be valid',
   }),
-  quantity: z.number().min(1, 'Quantity must be at least 1'),
-  costPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid cost price'),
-  sellingPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid selling price'),
-  minStockLevel: z.number().min(0).optional(),
+  quantity: z
+    .number()
+    .min(1, 'Quantity must be at least 1')
+    .max(9999, 'Quantity cannot exceed 9999'),
+  costPrice: z
+    .string()
+    .regex(
+      /^(?:\d{1,6})(?:\.\d{1,2})?$/,
+      'Cost price must be a valid number up to 999,999.99'
+    ),
+  sellingPrice: z
+    .string()
+    .regex(
+      /^(?:\d{1,6})(?:\.\d{1,2})?$/,
+      'Selling price must be a valid number up to 999,999.99'
+    ),
+  minStockLevel: z
+    .number()
+    .min(0)
+    .max(999, 'Minimum stock cannot exceed 999')
+    .optional(),
   unit: unitSchema,
   supplierId: z.number().min(1, 'Supplier is required').optional(),
   imageUrl: z.string().optional().or(z.literal('')),
 });
 
-// Client-side form schema that handles Date objects for forms
+// Client-side form schema
 export const productFormSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   genericName: z.string().optional(),
@@ -44,10 +61,27 @@ export const productFormSchema = z.object({
   expiryDate: z.date({
     message: 'Expiry date is required',
   }),
-  quantity: z.number().min(1, 'Quantity must be at least 1'),
-  costPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid cost price'),
-  sellingPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid selling price'),
-  minStockLevel: z.number().min(0).optional(),
+  quantity: z
+    .number()
+    .min(1, 'Quantity must be at least 1')
+    .max(9999, 'Quantity cannot exceed 9999'),
+  costPrice: z
+    .string()
+    .regex(
+      /^(?:\d{1,6})(?:\.\d{1,2})?$/,
+      'Cost price must be a valid number up to 999,999.99'
+    ),
+  sellingPrice: z
+    .string()
+    .regex(
+      /^(?:\d{1,6})(?:\.\d{1,2})?$/,
+      'Selling price must be a valid number up to 999,999.99'
+    ),
+  minStockLevel: z
+    .number()
+    .min(0)
+    .max(999, 'Minimum stock cannot exceed 999')
+    .optional(),
   unit: unitSchema,
   supplierId: z.number().min(1, 'Supplier is required').optional(),
   imageUrl: z.string().optional().or(z.literal('')),
