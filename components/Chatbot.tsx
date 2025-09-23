@@ -23,18 +23,6 @@ export default function Chatbot() {
   const [input, setInput] = useState('');
   const [showScrollDown, setShowScrollDown] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  // Track conversation context for better follow-ups
-  const [sessionContext, setSessionContext] = useState<{
-    lastDrugName: string | null;
-    lastIntent: string | null;
-    recentDrugs: string[];
-    patientContext: string | null;
-  }>({
-    lastDrugName: null,
-    lastIntent: null,
-    recentDrugs: [],
-    patientContext: null,
-  });
 
   const scrollToBottom = (smooth = true) => {
     const el = scrollerRef.current;
@@ -72,197 +60,117 @@ export default function Chatbot() {
     setIsTyping(true);
 
     try {
-      // PASS 1: Intent extraction
-      const p1 = await fetch('/api/ai/intent', {
+      // Use the new simplified chatbot endpoint
+      const response = await fetch('/api/chatbot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: outgoing }),
+        body: JSON.stringify({
+          message: outgoing,
+          pharmacyId: 1, // Default pharmacy ID - you can make this dynamic
+          userId: 'staff-user', // Optional user ID
+        }),
       });
-      const intentJson = (await p1.json().catch(() => ({}))) as Partial<{
-        intent:
-          | 'drug_info'
-          | 'stock_check'
-          | 'dosage'
-          | 'alternatives'
-          | 'other';
-        drugName: string | null;
-        needs: string[];
-        sources: string[];
-        error?: string;
-      }>;
-      if (!p1.ok) {
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
         const content = `Assistant error: ${
-          intentJson.error ?? 'intent failed'
+          errorData.error ?? 'Request failed'
         }`;
         setMessages((m) => [...m, { sender: 'bot', content, ts: Date.now() }]);
         return;
       }
 
-      // Build PASS 2 payload with enhanced conversational memory
-      const finalPayload: {
-        intent:
-          | 'drug_info'
-          | 'stock_check'
-          | 'dosage'
-          | 'alternatives'
-          | 'other';
-        drugName: string | null | undefined;
-        needs: string[] | undefined;
-        sources: string[] | undefined;
-        text: string;
-        sessionContext?: {
-          lastDrugName: string | null;
-          lastIntent: string | null;
-          recentDrugs: string[];
-          patientContext: string | null;
-        };
-      } = {
-        intent: (intentJson.intent ?? 'other') as
-          | 'drug_info'
-          | 'stock_check'
-          | 'dosage'
-          | 'alternatives'
-          | 'other',
-        drugName: intentJson.drugName,
-        needs: intentJson.needs,
-        sources: intentJson.sources,
-        text: outgoing,
-        sessionContext: sessionContext,
-      };
+      const chatbotResponse = await response.json();
 
-      // If no drugName detected but we have a recent one and the intent needs it, reuse it
-      const intentNeedsDrug =
-        finalPayload.intent === 'dosage' ||
-        finalPayload.intent === 'drug_info' ||
-        finalPayload.intent === 'alternatives';
-      if (
-        (!finalPayload.drugName ||
-          finalPayload.drugName?.toLowerCase() === 'it') &&
-        sessionContext.lastDrugName &&
-        intentNeedsDrug
-      ) {
-        finalPayload.drugName = sessionContext.lastDrugName;
+      // Format the response for display (plain text, no markdown)
+      let content = '';
+
+      // 1) Staff summary
+      if (chatbotResponse.ui?.staffMessage) {
+        content += chatbotResponse.ui.staffMessage;
       }
 
-      // Ensure appropriate sources are present
-      const src = new Set(finalPayload.sources ?? []);
-      if (finalPayload.intent === 'dosage') src.add('external_db');
-      // Extract patient context from current message BEFORE API call
-      const patientKeywords = outgoing
-        .toLowerCase()
-        .match(/\b(adult|child|elderly|baby|infant|teenager|pregnant)\b/);
-
-      // Extract dosage form from current message
-      const dosageFormKeywords = outgoing
-        .toLowerCase()
-        .match(
-          /\b(tablet|capsule|syrup|suspension|liquid|injection|cream|ointment|gel|patch)\b/,
+      // 2) Stock list (if present)
+      const items = chatbotResponse.inventory;
+      if (Array.isArray(items) && items.length > 0) {
+        content += '\n\nStock Information:\n';
+        items.forEach(
+          (
+            item: {
+              name: string;
+              genericName?: string;
+              brandName?: string;
+              dosageForm?: string;
+              quantity: number;
+              unit: string;
+              sellingPrice: string;
+              expiryDate?: string;
+            },
+            index: number,
+          ) => {
+            const price = `₱${Number(item.sellingPrice).toFixed(2)}`;
+            content += `${index + 1}. ${item.name}${
+              item.genericName ? ` (${item.genericName})` : ''
+            }${item.brandName ? ` - ${item.brandName}` : ''}\n`;
+            if (item.brandName) content += `   - Brand: ${item.brandName}\n`;
+            if (item.dosageForm)
+              content += `   - Dosage form: ${item.dosageForm}\n`;
+            content += `   - Quantity: ${item.quantity} ${item.unit}\n`;
+            content += `   - Price: ${price}\n`;
+            if (item.expiryDate) content += `   - Expiry: ${item.expiryDate}\n`;
+          },
         );
-
-      // Update session context before making API call
-      const updatedSessionContext = { ...sessionContext };
-
-      if (patientKeywords) {
-        updatedSessionContext.patientContext = patientKeywords[0];
+      } else if (items && !Array.isArray(items)) {
+        const item = items;
+        const price = `₱${Number(item.sellingPrice).toFixed(2)}`;
+        content += '\n\nStock Information:\n';
+        content += `${item.name}${
+          item.genericName ? ` (${item.genericName})` : ''
+        }${item.brandName ? ` - ${item.brandName}` : ''}\n`;
+        if (item.brandName) content += `- Brand: ${item.brandName}\n`;
+        if (item.dosageForm) content += `- Dosage form: ${item.dosageForm}\n`;
+        content += `- Quantity: ${item.quantity} ${item.unit}\n`;
+        content += `- Price: ${price}`;
+        if (item.expiryDate) content += `\n- Expiry: ${item.expiryDate}`;
       }
 
-      if (dosageFormKeywords && finalPayload.drugName) {
-        const enhancedDrugName = `${finalPayload.drugName} ${dosageFormKeywords[0]}`;
-        updatedSessionContext.lastDrugName = enhancedDrugName;
+      // 3) Clinical info (if present)
+      if (chatbotResponse.clinical) {
+        content += '\n\nClinical Information:\n';
+        if (chatbotResponse.clinical.dosage) {
+          content += `- Dosage: ${chatbotResponse.clinical.dosage}\n`;
+        }
+        if (chatbotResponse.clinical.usage) {
+          content += `- Usage: ${chatbotResponse.clinical.usage}\n`;
+        }
+        if (chatbotResponse.clinical.sideEffects) {
+          content += `- Side effects: ${chatbotResponse.clinical.sideEffects}\n`;
+        }
       }
 
-      // Use the updated context in the API call
-      finalPayload.sessionContext = updatedSessionContext;
+      // 5) Only show detailedNotes if both inventory and clinical are missing
+      const hasInventory = Array.isArray(items)
+        ? items.length > 0
+        : Boolean(items);
+      const hasClinical = Boolean(chatbotResponse.clinical);
+      if (!hasInventory && !hasClinical && chatbotResponse.ui?.detailedNotes) {
+        content += '\n\nNotes:\n';
+        content += chatbotResponse.ui.detailedNotes;
+      }
 
+      // 6) Sources footer
       if (
-        finalPayload.intent === 'stock_check' ||
-        finalPayload.intent === 'drug_info' ||
-        finalPayload.intent === 'alternatives'
-      )
-        src.add('internal_db');
-      finalPayload.sources = Array.from(src);
-
-      // PASS 2: Final response
-      const p2 = await fetch('/api/ai/respond', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(finalPayload),
-      });
-      const resp = (await p2.json().catch(() => ({}))) as Partial<{
-        response: string; // New AI-generated response
-        patientSummary: string; // Legacy fallback
-        pharmacistNotes: string[];
-        warnings: string[];
-        sources: string[];
-        matches: Array<{
-          id: number;
-          name: string;
-          brand: string | null;
-          stock: number | null;
-          price: number | null;
-          expiry?: string;
-        }>;
-        alternatives: Array<{
-          id: number;
-          name: string;
-          brand: string | null;
-          stock: number | null;
-          price: number | null;
-          expiry?: string;
-        }>;
-        error?: string;
-      }>;
-
-      // Update session context with conversation memory
-      if (finalPayload.drugName) {
-        setSessionContext((prev) => ({
-          ...prev,
-          lastDrugName: finalPayload.drugName || null,
-          lastIntent: finalPayload.intent,
-          recentDrugs: prev.recentDrugs.includes(finalPayload.drugName || '')
-            ? prev.recentDrugs
-            : [
-                ...prev.recentDrugs.slice(-4),
-                finalPayload.drugName || '',
-              ].filter(Boolean),
-        }));
-      } else if (resp?.matches && resp.matches.length > 0) {
-        const drugName = resp.matches[0].name;
-        setSessionContext((prev) => ({
-          ...prev,
-          lastDrugName: drugName,
-          lastIntent: finalPayload.intent,
-          recentDrugs: prev.recentDrugs.includes(drugName)
-            ? prev.recentDrugs
-            : [...prev.recentDrugs.slice(-4), drugName],
-        }));
+        chatbotResponse.sources &&
+        Array.isArray(chatbotResponse.sources) &&
+        chatbotResponse.sources.length > 0
+      ) {
+        content += '\n\nSources: ';
+        content += chatbotResponse.sources.join('; ');
       }
 
-      // Update session context state for next API call
-      if (patientKeywords) {
-        setSessionContext((prev) => ({
-          ...prev,
-          patientContext: patientKeywords[0],
-        }));
-      }
-
-      // Update drug name in context to include dosage form if specified
-      if (dosageFormKeywords && finalPayload.drugName) {
-        const enhancedDrugName = `${finalPayload.drugName} ${dosageFormKeywords[0]}`;
-        setSessionContext((prev) => ({
-          ...prev,
-          lastDrugName: enhancedDrugName,
-        }));
-      }
-
-      const content = p2.ok
-        ? formatPass2(resp)
-        : `Assistant error: ${resp.error ?? 'response failed'}`;
       setMessages((m) => [...m, { sender: 'bot', content, ts: Date.now() }]);
-    } catch {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Chatbot error: PASS pipeline failed');
-      }
+    } catch (error) {
+      console.error('Chatbot error:', error);
       setMessages((m) => [
         ...m,
         {
@@ -275,38 +183,6 @@ export default function Chatbot() {
       setIsTyping(false);
     }
   };
-
-  function formatPass2(
-    resp: Partial<{
-      response: string; // New AI-generated response
-      patientSummary: string; // Legacy fallback
-      pharmacistNotes: string[];
-      warnings: string[];
-      sources: string[];
-    }>,
-  ): string {
-    // If we have the new AI-generated response, use it directly
-    // (AI response already includes proper source attribution)
-    if (resp.response) {
-      return resp.response;
-    }
-
-    // Fallback to legacy format for compatibility
-    const lines: string[] = [];
-    if (resp.patientSummary) lines.push(resp.patientSummary);
-    if (resp.pharmacistNotes?.length) {
-      lines.push('', 'Notes:');
-      for (const n of resp.pharmacistNotes) lines.push(`• ${n}`);
-    }
-    if (resp.warnings?.length) {
-      lines.push('', 'Warnings:');
-      for (const w of resp.warnings) lines.push(`• ${w}`);
-    }
-    if (resp.sources?.length) {
-      lines.push('', `Sources: ${resp.sources.join(', ')}`);
-    }
-    return lines.join('\n');
-  }
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
