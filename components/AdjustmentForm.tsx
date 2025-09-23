@@ -13,9 +13,14 @@ import { Button } from './ui/button';
 import { Product } from '@/types';
 
 // Form schema for client-side validation (only fields user fills out)
+// Form schema for client-side validation (only fields user fills out)
 const adjustmentFormSchema = z.object({
   productId: z.number().int().positive(),
-  quantityChange: z.number().int(),
+  quantityChange: z
+    .number()
+    .int()
+    .min(-9999, { message: 'Quantity cannot be less than -9999' })
+    .max(9999, { message: 'Quantity cannot be greater than 9999' }),
   reason: adjustmentReasonSchema,
   notes: z.string().optional(),
 });
@@ -394,12 +399,15 @@ const AdjustmentForm = ({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Quantity Change <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="number"
-                    {...register('quantityChange', { valueAsNumber: true })}
-                    placeholder="e.g. -5 or +10"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                <input
+  type="number"
+  {...register('quantityChange', { valueAsNumber: true })}
+  placeholder="e.g. -5 or +10"
+  min={-9999}
+  max={9999}
+  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+/>
+
                   {errors.quantityChange && (
                     <p className="mt-1 text-sm text-red-600">
                       {errors.quantityChange.message}
