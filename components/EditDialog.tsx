@@ -37,7 +37,7 @@ interface Props<T extends FieldValues> {
   // Using `any` here is necessary for Zod's complex internal type system
   // This doesn't compromise type safety as T is properly constrained
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  schema: ZodType<T, unknown, any>;
+  schema: ZodType<T, any, any>;
 }
 
 export const EditDialog = <T extends FieldValues>({
