@@ -8,7 +8,8 @@ export const categorySchema = z.object({
   name: z
     .string()
     .min(4, 'Name must be at least 4 characters')
-    .max(30, 'Name too long'),
+    .max(30, 'Name too long')
+    .regex(/^[A-Za-z\s]+$/, 'Name must contain letters only'),
   description: z
     .string()
     .min(10, 'Description too short')
@@ -25,7 +26,8 @@ export const updateCategorySchema = z.object({
   name: z
     .string()
     .min(4, 'Name must be at least 4 characters')
-    .max(30, 'Name too long'),
+    .max(30, 'Name too long')
+    .regex(/^[A-Za-z\s]+$/, 'Name must contain letters only'),
   description: z
     .string()
     .min(10, 'Description too short')
