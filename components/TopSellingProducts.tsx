@@ -8,6 +8,8 @@ import {
   CardTitle,
 } from './ui/card';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { ArrowRight } from 'lucide-react';
+import Link from 'next/link';
 
 export interface TopSellingProduct {
   name: string;
@@ -44,12 +46,22 @@ export const TopSellingProducts = ({ products }: TopSellingProductsProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base font-semibold">
-          Top Selling Medicines
-        </CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
-          Best performers for this month ({monthYear})
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base font-semibold">
+              Top Selling Medicines
+            </CardTitle>
+            <CardDescription className="text-sm text-muted-foreground">
+              Best performers for this month ({monthYear})
+            </CardDescription>
+          </div>
+          <Link
+            href="/reports/sales"
+            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+          >
+            View Details <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
       </CardHeader>
       <CardContent>
         {topSellingProducts.length === 0 ? (

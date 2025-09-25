@@ -34,6 +34,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import {
+  exportToExcel,
+  exportFormatters,
+  type ExportColumn,
+} from '@/lib/exporters';
 
 interface PurchaseOrderDetailsProps {
   order: PurchaseOrder & {
@@ -132,7 +137,87 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
     day: 'numeric',
   });
 
+  const handleExcelExport = () => {
+    if (isUpdating) return;
+
+    try {
+      setIsUpdating(true);
+
+      // Prepare data for Excel export
+      const orderItems = order.items.map((item, index) => {
+        const product = products?.find((p) => p.id === item.productId);
+        return {
+          itemNo: index + 1,
+          productName:
+            product?.name || item.productName || `Product #${item.productId}`,
+          brandName: product?.brandName || '',
+          unit: product?.unit || item.productUnit || '',
+          quantity: item.quantity,
+          unitCost: item.unitCost ? parseFloat(item.unitCost) : 0,
+          totalCost: item.unitCost
+            ? item.quantity * parseFloat(item.unitCost)
+            : 0,
+        };
+      });
+
+      const columns: ExportColumn[] = [
+        { header: 'Item #', key: 'itemNo' },
+        { header: 'Product Name', key: 'productName' },
+        { header: 'Brand', key: 'brandName' },
+        { header: 'Unit', key: 'unit' },
+        { header: 'Quantity', key: 'quantity' },
+        {
+          header: 'Unit Cost',
+          key: 'unitCost',
+          formatter: exportFormatters.phpCurrency,
+        },
+        {
+          header: 'Total Cost',
+          key: 'totalCost',
+          formatter: exportFormatters.phpCurrency,
+        },
+      ];
+
+      const filename = `purchase-order-${order.orderNumber}.xlsx`;
+
+      exportToExcel({
+        filename,
+        sheets: [
+          {
+            name: `PO ${order.orderNumber}`,
+            columns,
+            rows: orderItems,
+          },
+        ],
+      });
+
+      toast.success('Purchase order exported as Excel successfully');
+
+      // Update status to EXPORTED if it was DRAFT
+      if (order.status === 'DRAFT') {
+        updatePurchaseOrderStatus(order.id, 'EXPORTED', order.pharmacyId).then(
+          (result) => {
+            if (result.success) {
+              window.location.reload();
+            }
+          },
+        );
+      }
+    } catch (error) {
+      console.error('Excel export error:', error);
+      toast.error('Failed to export Excel');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleExportAndUpdateStatus = async (exportType: 'pdf' | 'excel') => {
+    if (exportType === 'excel') {
+      handleExcelExport();
+      return;
+    }
+
+    // Keep existing PDF export logic
     if (isUpdating) return;
 
     try {
@@ -188,15 +273,12 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
         }),
       };
 
-      // Export the file
-      const response = await fetch(
-        `/api/exports/purchase-order-${exportType}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(exportData),
-        },
-      );
+      // Export the PDF file
+      const response = await fetch(`/api/exports/purchase-order-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(exportData),
+      });
 
       if (response.ok) {
         const blob = await response.blob();
@@ -209,18 +291,16 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
 
-        toast.success(
-          `Purchase order exported as ${exportType.toUpperCase()} successfully`,
-        );
+        toast.success(`Purchase order exported as PDF successfully`);
 
         // Reload page to reflect status change
         window.location.reload();
       } else {
-        throw new Error(`Failed to export ${exportType.toUpperCase()}`);
+        throw new Error(`Failed to export PDF`);
       }
     } catch (error) {
       console.error('Export error:', error);
-      toast.error(`Failed to export ${exportType.toUpperCase()}`);
+      toast.error(`Failed to export PDF`);
     } finally {
       setIsUpdating(false);
     }
@@ -644,7 +724,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
         <div className="space-y-4">
           {/* Order Status Card */}
           <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
+            <CardHeader>
               <CardTitle className="text-lg font-medium text-gray-900">
                 Order Status
               </CardTitle>
@@ -661,7 +741,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
           {/* Actions Card */}
           {availableActions.length > 0 && (
             <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-2">
+              <CardHeader>
                 <CardTitle className="text-lg font-medium text-gray-900">
                   Actions
                 </CardTitle>
@@ -694,7 +774,7 @@ const PurchaseOrderDetails: React.FC<PurchaseOrderDetailsProps> = ({
 
           {/* Summary Card */}
           <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-2">
+            <CardHeader>
               <CardTitle className="text-lg font-medium text-gray-900">
                 Summary
               </CardTitle>

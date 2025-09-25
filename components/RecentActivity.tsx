@@ -11,6 +11,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { auth } from '@/auth';
+import { ArrowRight } from 'lucide-react';
 
 type Props = {
   pharmacyId: number;
@@ -37,9 +38,9 @@ export default async function RecentActivity({ pharmacyId, limit = 8 }: Props) {
           {session?.user?.role === 'Admin' && (
             <Link
               href="/reports/activity-log"
-              className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+              className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
             >
-              View logs
+              View logs <ArrowRight className="w-3 h-3" />
             </Link>
           )}
         </CardAction>

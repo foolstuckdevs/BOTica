@@ -121,7 +121,7 @@ export function SectionCards({
               href="/reports/inventory?tab=low-stock"
               className="text-xs text-yellow-800 hover:underline flex items-center gap-1"
             >
-              View Report <ArrowRight className="w-3 h-3" />
+              View Details <ArrowRight className="w-3 h-3" />
             </Link>
           </CardFooter>
         )}

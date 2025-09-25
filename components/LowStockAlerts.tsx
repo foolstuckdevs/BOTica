@@ -7,8 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from './ui/card';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowRight } from 'lucide-react';
 import { LowStockProduct } from '@/types';
+import Link from 'next/link';
 
 interface LowStockAlertsProps {
   lowStockProducts: LowStockProduct[];
@@ -18,12 +19,22 @@ export const LowStockAlerts = ({ lowStockProducts }: LowStockAlertsProps) => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-orange-500" />
-          <CardTitle className="text-base">Low Stock Alerts</CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-orange-500" />
+            <CardTitle className="text-base">
+              Low Stock & Out of Stock
+            </CardTitle>
+          </div>
+          <Link
+            href="/reports/inventory?tab=low-stock"
+            className="text-xs text-yellow-800 hover:underline flex items-center gap-1"
+          >
+            View All <ArrowRight className="w-3 h-3" />
+          </Link>
         </div>
         <CardDescription className="text-sm text-muted-foreground">
-          Items below minimum stock threshold
+          Items below minimum stock threshold and out of stock
         </CardDescription>
       </CardHeader>
       <CardContent>
