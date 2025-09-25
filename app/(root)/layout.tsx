@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import Header from '@/components/Header';
-import Sidebar from '@/components/Sidebar';
+import Sidebar, { SidebarProvider } from '@/components/Sidebar';
 import Chatbot from '@/components/Chatbot';
 import { ReactNode } from 'react';
 import InactivityWatcher from '@/components/InactivityWatcher';
@@ -15,20 +15,33 @@ const Layout = async ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50/50 relative">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header session={session} />
-        <main className="flex-1 pt-16 pl-64 bg-gray-50/30">
-          <div className="p-6 max-w-7xl mx-auto">{children}</div>
-        </main>
+    <SidebarProvider>
+      <div className="flex min-h-screen bg-gray-50/50 relative">
+        <Sidebar />
+        {/* Content wrapper needs to be offset by sidebar width and use remaining space */}
+        <div
+          className="flex flex-col min-w-0 transition-all duration-300"
+          style={{
+            marginLeft: 'var(--sidebar-width)',
+            width: 'calc(100vw - var(--sidebar-width))',
+          }}
+        >
+          <Header session={session} />
+          {/* Main content area with proper top padding for header */}
+          <main className="flex-1 bg-gray-50/30" style={{ paddingTop: 56 }}>
+            {/* Container with consistent spacing and max-width constraint */}
+            <div className="w-full h-full px-6 lg:px-8 py-6 sm:py-8 lg:py-8">
+              <div className="max-w-[1500px] mx-auto w-full">{children}</div>
+            </div>
+          </main>
+        </div>
+        <div className="fixed bottom-4 right-4 z-50">
+          <Chatbot />
+        </div>
+        <InactivityWatcher role={session.user.role} />
+        <SessionLifecycle />
       </div>
-      <div className="fixed bottom-4 right-4 z-50">
-        <Chatbot />
-      </div>
-      <InactivityWatcher role={session.user.role} />
-      <SessionLifecycle />
-    </div>
+    </SidebarProvider>
   );
 };
 

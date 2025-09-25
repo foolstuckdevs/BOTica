@@ -34,10 +34,10 @@ const Page = async () => {
   const chartDataPromise = getChartData(pharmacyId, 30);
 
   return (
-    <main className="flex flex-col gap-6 py-5">
+    <div className="flex flex-col w-full space-y-6">
       <Suspense
         fallback={
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-10 animate-pulse">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-6 animate-pulse">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
@@ -52,6 +52,7 @@ const Page = async () => {
           salesComparisonPromise={salesComparisonPromise}
         />
       </Suspense>
+
       <Suspense
         fallback={
           <div className="h-72 rounded-lg border bg-muted/40 dark:bg-muted/20 animate-pulse" />
@@ -59,6 +60,7 @@ const Page = async () => {
       >
         <ChartSection chartDataPromise={chartDataPromise} />
       </Suspense>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Suspense
           fallback={
@@ -77,6 +79,7 @@ const Page = async () => {
           />
         </Suspense>
       </div>
+
       <Suspense
         fallback={
           <div className="h-72 rounded-lg border bg-muted/40 dark:bg-muted/20 animate-pulse" />
@@ -84,7 +87,7 @@ const Page = async () => {
       >
         <ActivitySection pharmacyId={pharmacyId} />
       </Suspense>
-    </main>
+    </div>
   );
 };
 

@@ -31,6 +31,7 @@ export function CustomDatePicker({
   className,
   buttonClassName,
 }: CustomDatePickerProps) {
+  const [isClient, setIsClient] = React.useState(false);
   const [isOpen, setIsOpen] = React.useState(false);
   const [startDate, setStartDate] = React.useState<Date | null>(
     dateRange?.from || null,
@@ -38,6 +39,11 @@ export function CustomDatePicker({
   const [endDate, setEndDate] = React.useState<Date | null>(
     dateRange?.to || null,
   );
+
+  // Ensure component is client-side rendered
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Update internal state when prop changes
   React.useEffect(() => {
@@ -69,43 +75,48 @@ export function CustomDatePicker({
 
   return (
     <div className={cn('flex items-center gap-1', className)}>
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant={startDate ? 'default' : 'ghost'}
-            size="sm"
-            className={cn(
-              'h-9 px-3 justify-start text-left font-normal',
-              !startDate && 'text-muted-foreground',
-              buttonClassName,
-            )}
-          >
-            <CalendarIcon className="w-3 h-3 mr-1" />
-            {startDate && endDate
-              ? `${format(startDate, 'MMM dd')} - ${format(endDate, 'MMM dd')}`
-              : startDate
-              ? format(startDate, 'MMM dd')
-              : 'Custom'}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-4 mt-2" align="center">
-          <div className="space-y-4">
-            <div className="text-sm font-medium">Select Date Range</div>
-            <DatePicker
-              selected={startDate}
-              onChange={handleDateChange}
-              startDate={startDate}
-              endDate={endDate}
-              selectsRange
-              inline
-              maxDate={new Date()}
-              minDate={new Date('2020-01-01')}
-              monthsShown={2}
-              className="border-0 p-0"
-            />
-          </div>
-        </PopoverContent>
-      </Popover>
+      {isClient && (
+        <Popover open={isOpen} onOpenChange={setIsOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant={startDate ? 'default' : 'ghost'}
+              size="sm"
+              className={cn(
+                'h-9 px-3 justify-start text-left font-normal',
+                !startDate && 'text-muted-foreground',
+                buttonClassName,
+              )}
+            >
+              <CalendarIcon className="w-3 h-3 mr-1" />
+              {startDate && endDate
+                ? `${format(startDate, 'MMM dd')} - ${format(
+                    endDate,
+                    'MMM dd',
+                  )}`
+                : startDate
+                ? format(startDate, 'MMM dd')
+                : 'Custom'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-4 mt-2" align="center">
+            <div className="space-y-4">
+              <div className="text-sm font-medium">Select Date Range</div>
+              <DatePicker
+                selected={startDate}
+                onChange={handleDateChange}
+                startDate={startDate}
+                endDate={endDate}
+                selectsRange
+                inline
+                maxDate={new Date()}
+                minDate={new Date('2020-01-01')}
+                monthsShown={2}
+                className="border-0 p-0"
+              />
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
 
       {startDate && (
         <Button
