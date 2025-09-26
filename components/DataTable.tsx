@@ -42,6 +42,14 @@ interface DataTableProps<TData, TValue> {
     searchableColumns?: string[]; // Column keys to search in
     globalFilter?: boolean; // Use global filter vs column-specific filter
   };
+  manualPagination?: {
+    pageIndex: number; // zero-based
+    pageSize: number;
+    pageCount: number; // total number of pages (for server mode)
+    onPageChange: (nextPageIndex: number) => void;
+    onPageSizeChange: (pageSize: number) => void;
+    isLoading?: boolean;
+  };
 }
 
 export function DataTable<TData, TValue>({
@@ -52,6 +60,7 @@ export function DataTable<TData, TValue>({
     placeholder: 'Search...',
     globalFilter: false,
   },
+  manualPagination,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -61,11 +70,12 @@ export function DataTable<TData, TValue>({
     React.useState<VisibilityState>({});
   const [globalFilter, setGlobalFilter] = React.useState('');
 
+  // When manual pagination is used, table state is driven externally.
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel: manualPagination ? undefined : getPaginationRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
@@ -73,11 +83,31 @@ export function DataTable<TData, TValue>({
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
     globalFilterFn: 'includesString',
+    manualPagination: !!manualPagination,
+    pageCount: manualPagination ? manualPagination.pageCount : undefined,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       globalFilter,
+      pagination: manualPagination
+        ? { pageIndex: manualPagination.pageIndex, pageSize: manualPagination.pageSize }
+        : undefined,
+    },
+    onPaginationChange: (updater) => {
+      if (!manualPagination) return; // local mode handled internally by react-table
+      const current = {
+        pageIndex: manualPagination.pageIndex,
+        pageSize: manualPagination.pageSize,
+      };
+      const nextState =
+        typeof updater === 'function' ? updater(current) : updater;
+      if (nextState.pageSize !== current.pageSize) {
+        manualPagination.onPageSizeChange(nextState.pageSize);
+      }
+      if (nextState.pageIndex !== current.pageIndex) {
+        manualPagination.onPageChange(nextState.pageIndex);
+      }
     },
   });
 
@@ -181,6 +211,9 @@ export function DataTable<TData, TValue>({
       </div>
       <div className="mt-2">
         <DataTablePagination table={table} />
+        {manualPagination?.isLoading && (
+          <div className="text-xs text-muted-foreground mt-1">Loading...</div>
+        )}
       </div>
     </div>
   );

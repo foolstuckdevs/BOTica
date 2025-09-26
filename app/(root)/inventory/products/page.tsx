@@ -1,4 +1,3 @@
-import { getProducts } from '@/lib/actions/products';
 import { getCategories } from '@/lib/actions/categories';
 import { getSuppliers } from '@/lib/actions/suppliers';
 import { ProductsPageClient } from './ProductsPageClient';
@@ -18,8 +17,7 @@ const ProductsPage = async () => {
   }
 
   const pharmacyId = session.user.pharmacyId;
-  const [products, categories, suppliers] = await Promise.all([
-    getProducts(pharmacyId),
+  const [categories, suppliers] = await Promise.all([
     getCategories(pharmacyId),
     getSuppliers(pharmacyId),
   ]);
@@ -27,11 +25,7 @@ const ProductsPage = async () => {
   // Hydrate filter state client-side
   // Use a client wrapper for filter state
   return (
-    <ProductsPageClient
-      products={products}
-      categories={categories}
-      suppliers={suppliers}
-    />
+    <ProductsPageClient categories={categories} suppliers={suppliers} />
   );
 };
 
