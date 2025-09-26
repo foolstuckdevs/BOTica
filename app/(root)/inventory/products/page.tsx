@@ -24,9 +24,7 @@ const ProductsPage = async () => {
 
   // Hydrate filter state client-side
   // Use a client wrapper for filter state
-  return (
-    <ProductsPageClient categories={categories} suppliers={suppliers} />
-  );
+  return <ProductsPageClient categories={categories} suppliers={suppliers} />;
 };
 
 export default ProductsPage;

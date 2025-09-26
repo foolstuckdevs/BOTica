@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Product, Category, Supplier } from '@/types';
 import { ProductFiltersClient } from '../../../../components/ProductFiltersClient';
 import { DataTable } from '@/components/DataTable';
@@ -22,7 +22,10 @@ type PaginatedProducts = {
   pageCount: number;
 };
 
-export function ProductsPageClient({ categories, suppliers }: ProductsPageClientProps) {
+export function ProductsPageClient({
+  categories,
+  suppliers,
+}: ProductsPageClientProps) {
   const { canEditMasterData } = usePermissions();
   const [filters, setFilters] = useState({
     search: '',
@@ -36,72 +39,79 @@ export function ProductsPageClient({ categories, suppliers }: ProductsPageClient
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadPage = useCallback(async (pi: number, ps: number, search: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const params = new URLSearchParams({ page: String(pi + 1), pageSize: String(ps) });
-      if (search) params.set('search', search);
-      const res = await fetch(`/api/products?${params.toString()}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-      const json = await res.json();
-      setServerData(json);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to load products';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Initial + changes (debounce search)
-  useEffect(() => {
-    const handle = setTimeout(() => {
-      loadPage(pageIndex, pageSize, filters.search);
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [pageIndex, pageSize, filters.search, loadPage]);
-
-  const filteredProducts = useMemo(() => {
-    const products = serverData?.data ?? [];
-    const now = new Date();
-    return products.filter((product) => {
-      // Stock/expiry status logic
-      let matchesStatus = true;
-      if (filters.status !== 'all') {
-        if (filters.status === 'low') {
-          matchesStatus =
-            product.minStockLevel != null &&
-            product.quantity <= product.minStockLevel &&
-            product.quantity > 0;
-        } else if (filters.status === 'out') {
-          matchesStatus = product.quantity === 0;
-        } else if (filters.status === 'expiring') {
-          const expiry = product.expiryDate
-            ? new Date(product.expiryDate)
-            : null;
-          matchesStatus = !!(
-            expiry &&
-            expiry > now &&
-            expiry.getTime() - now.getTime() < 30 * 24 * 60 * 60 * 1000
-          );
-        } else if (filters.status === 'expired') {
-          const expiry = product.expiryDate
-            ? new Date(product.expiryDate)
-            : null;
-          matchesStatus = !!(expiry && expiry < now);
-        }
+  const loadPage = useCallback(
+    async (
+      pi: number,
+      ps: number,
+      search: string,
+      categoryId: string,
+      supplierId: string,
+      status: string,
+    ) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const params = new URLSearchParams({
+          page: String(pi + 1),
+          pageSize: String(ps),
+        });
+        if (search) params.set('search', search);
+        if (categoryId !== 'all') params.set('categoryId', categoryId);
+        if (supplierId !== 'all') params.set('supplierId', supplierId);
+        if (status !== 'all') params.set('status', status);
+        const res = await fetch(`/api/products?${params.toString()}`, {
+          cache: 'no-store',
+        });
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+        const json = await res.json();
+        setServerData(json);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to load products';
+        setError(msg);
+      } finally {
+        setLoading(false);
       }
-      const matchesCategory =
-        filters.categoryId === 'all' ||
-        String(product.categoryId) === filters.categoryId;
-      const matchesSupplier =
-        filters.supplierId === 'all' ||
-        String(product.supplierId) === filters.supplierId;
+    },
+    [],
+  );
 
-      return matchesStatus && matchesCategory && matchesSupplier;
-    });
-  }, [serverData, filters]);
+  // Immediate initial load (once) then debounce subsequent changes.
+  const didInitialLoadRef = useRef(false);
+  useEffect(() => {
+    if (!didInitialLoadRef.current) {
+      didInitialLoadRef.current = true;
+      loadPage(
+        pageIndex,
+        pageSize,
+        filters.search,
+        filters.categoryId,
+        filters.supplierId,
+        filters.status,
+      );
+      return;
+    }
+    const handle = setTimeout(() => {
+      loadPage(
+        pageIndex,
+        pageSize,
+        filters.search,
+        filters.categoryId,
+        filters.supplierId,
+        filters.status,
+      );
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [
+    pageIndex,
+    pageSize,
+    filters.search,
+    filters.categoryId,
+    filters.supplierId,
+    filters.status,
+    loadPage,
+  ]);
+
+  const products = serverData?.data ?? [];
 
   return (
     <div className="px-6 py-6 space-y-6">
@@ -120,27 +130,40 @@ export function ProductsPageClient({ categories, suppliers }: ProductsPageClient
         )}
       </div>
       <div className="bg-white rounded-lg shadow border">
-        {error && (
-          <div className="p-4 text-sm text-red-600">{error}</div>
-        )}
+        {error && <div className="p-4 text-sm text-red-600">{error}</div>}
         <DataTable
           columns={columns}
-            data={filteredProducts}
-            searchConfig={{
-              enabled: true,
-              placeholder: 'Search products by name, brand, batch, or supplier...',
-              globalFilter: true,
-              searchableColumns: ['name','brandName','genericName','lotNumber','supplierName'],
-            }}
-            manualPagination={serverData ? {
-              pageIndex,
-              pageSize,
-              pageCount: serverData.pageCount,
-              onPageChange: (pi) => setPageIndex(pi),
-              onPageSizeChange: (ps) => { setPageSize(ps); setPageIndex(0); },
-              isLoading: loading,
-            } : undefined}
-          />
+          data={products}
+          isLoading={loading && !serverData}
+          searchConfig={{
+            enabled: true,
+            placeholder:
+              'Search products by name, brand, batch, or supplier...',
+            globalFilter: true,
+            searchableColumns: [
+              'name',
+              'brandName',
+              'genericName',
+              'lotNumber',
+              'supplierName',
+            ],
+          }}
+          manualPagination={
+            serverData
+              ? {
+                  pageIndex,
+                  pageSize,
+                  pageCount: serverData.pageCount,
+                  onPageChange: (pi) => setPageIndex(pi),
+                  onPageSizeChange: (ps) => {
+                    setPageSize(ps);
+                    setPageIndex(0);
+                  },
+                  isLoading: loading,
+                }
+              : undefined
+          }
+        />
       </div>
     </div>
   );

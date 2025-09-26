@@ -24,7 +24,10 @@ export async function listProductsPage(params: ProductListPageParams) {
   const offset = (safePage - 1) * clampedSize;
 
   // Build predicates
-  const predicates = [eq(products.pharmacyId, pharmacyId), sql`${products.deletedAt} IS NULL`];
+  const predicates = [
+    eq(products.pharmacyId, pharmacyId),
+    sql`${products.deletedAt} IS NULL`,
+  ];
 
   if (params.search) {
     const s = `%${params.search}%`;
@@ -42,13 +45,17 @@ export async function listProductsPage(params: ProductListPageParams) {
     const now = sql`NOW()`;
     switch (params.status) {
       case 'low':
-        predicates.push(sql`${products.quantity} > 0 AND ${products.quantity} <= ${products.minStockLevel}`);
+        predicates.push(
+          sql`${products.quantity} > 0 AND ${products.quantity} <= ${products.minStockLevel}`,
+        );
         break;
       case 'out':
         predicates.push(sql`${products.quantity} = 0`);
         break;
       case 'expiring':
-        predicates.push(sql`${products.expiryDate} > ${now} AND ${products.expiryDate} <= (${now} + interval '30 days')`);
+        predicates.push(
+          sql`${products.expiryDate} > ${now} AND ${products.expiryDate} <= (${now} + interval '30 days')`,
+        );
         break;
       case 'expired':
         predicates.push(sql`${products.expiryDate} < ${now}`);

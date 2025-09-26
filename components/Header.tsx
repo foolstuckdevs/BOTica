@@ -67,6 +67,7 @@ const Header = ({ session }: { session: Session }) => {
         {isClient && (
           <Notification
             pharmacyId={session.user.pharmacyId as unknown as number}
+            isAdmin={session.user.role === 'Admin'}
           />
         )}
 
@@ -95,7 +96,6 @@ const Header = ({ session }: { session: Session }) => {
             <DropdownMenuContent
               className="w-56 rounded-lg shadow-sm border border-gray-200/70 bg-white/95 backdrop-blur-sm mt-1"
               align="end"
-              forceMount
             >
               <DropdownMenuLabel className="px-3 py-2">
                 <div className="flex flex-col">

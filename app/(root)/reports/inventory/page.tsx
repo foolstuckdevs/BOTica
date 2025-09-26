@@ -2,6 +2,7 @@ import { getInventoryReportData } from '@/lib/actions/inventory-reports';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import React from 'react';
+
 import InventoryReportClient from '@/components/InventoryReportClient';
 
 const page = async ({

@@ -36,6 +36,7 @@ import { DataTableViewOptions } from '@/components/DataTableViewOptions';
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  isLoading?: boolean;
   searchConfig?: {
     enabled: boolean;
     placeholder?: string;
@@ -55,6 +56,7 @@ interface DataTableProps<TData, TValue> {
 export function DataTable<TData, TValue>({
   columns,
   data,
+  isLoading = false,
   searchConfig = {
     enabled: true,
     placeholder: 'Search...',
@@ -69,13 +71,20 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [globalFilter, setGlobalFilter] = React.useState('');
+  // Local pagination state for non-manual mode to avoid undefined pagination during initial render
+  const [localPagination, setLocalPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   // When manual pagination is used, table state is driven externally.
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: manualPagination ? undefined : getPaginationRowModel(),
+    getPaginationRowModel: manualPagination
+      ? undefined
+      : getPaginationRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
@@ -91,35 +100,87 @@ export function DataTable<TData, TValue>({
       columnVisibility,
       globalFilter,
       pagination: manualPagination
-        ? { pageIndex: manualPagination.pageIndex, pageSize: manualPagination.pageSize }
-        : undefined,
+        ? {
+            pageIndex: manualPagination.pageIndex,
+            pageSize: manualPagination.pageSize,
+          }
+        : localPagination,
     },
     onPaginationChange: (updater) => {
-      if (!manualPagination) return; // local mode handled internally by react-table
-      const current = {
-        pageIndex: manualPagination.pageIndex,
-        pageSize: manualPagination.pageSize,
-      };
-      const nextState =
-        typeof updater === 'function' ? updater(current) : updater;
-      if (nextState.pageSize !== current.pageSize) {
-        manualPagination.onPageSizeChange(nextState.pageSize);
-      }
-      if (nextState.pageIndex !== current.pageIndex) {
-        manualPagination.onPageChange(nextState.pageIndex);
+      if (manualPagination) {
+        const current = {
+          pageIndex: manualPagination.pageIndex,
+          pageSize: manualPagination.pageSize,
+        };
+        const nextState =
+          typeof updater === 'function' ? updater(current) : updater;
+        if (nextState.pageSize !== current.pageSize) {
+          manualPagination.onPageSizeChange(nextState.pageSize);
+        }
+        if (nextState.pageIndex !== current.pageIndex) {
+          manualPagination.onPageChange(nextState.pageIndex);
+        }
+      } else {
+        setLocalPagination((prev) => {
+          const nextState =
+            typeof updater === 'function' ? updater(prev) : updater;
+          return {
+            pageIndex: nextState.pageIndex ?? prev.pageIndex,
+            pageSize: nextState.pageSize ?? prev.pageSize,
+          };
+        });
       }
     },
   });
 
-  const searchValue = searchConfig.globalFilter
-    ? globalFilter
-    : (table.getColumn('name')?.getFilterValue() as string) ?? '';
+  // Determine which column to apply a column-specific filter to (when not using global filter)
+  const targetColumnId = React.useMemo(() => {
+    if (!searchConfig.enabled || searchConfig.globalFilter) return undefined;
+
+    const allCols = table.getAllColumns();
+    const colIds = new Set(allCols.map((c) => c.id));
+
+    // 1. Explicit searchableColumns list
+    if (searchConfig.searchableColumns?.length) {
+      for (const id of searchConfig.searchableColumns) {
+        if (colIds.has(id)) return id;
+      }
+    }
+    // 2. Backwards compat 'name' only if it actually exists
+    if (colIds.has('name')) return 'name';
+    // 3. First filterable column
+    const firstFilterable = allCols.find((c) => c.getCanFilter());
+    return firstFilterable?.id;
+  }, [
+    searchConfig.enabled,
+    searchConfig.globalFilter,
+    searchConfig.searchableColumns,
+    table,
+  ]);
+
+  const searchValue = React.useMemo(() => {
+    if (!searchConfig.enabled) return '';
+    if (searchConfig.globalFilter) return globalFilter;
+    if (targetColumnId) {
+      return (
+        (table.getColumn(targetColumnId)?.getFilterValue() as string) || ''
+      );
+    }
+    return '';
+  }, [
+    searchConfig.enabled,
+    searchConfig.globalFilter,
+    globalFilter,
+    targetColumnId,
+    table,
+  ]);
 
   const setSearchValue = (value: string) => {
+    if (!searchConfig.enabled) return; // no-op when search disabled
     if (searchConfig.globalFilter) {
       setGlobalFilter(value);
-    } else {
-      table.getColumn('name')?.setFilterValue(value);
+    } else if (targetColumnId) {
+      table.getColumn(targetColumnId)?.setFilterValue(value);
     }
   };
 
@@ -159,7 +220,17 @@ export function DataTable<TData, TValue>({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="rounded-md border">
+      <div className="rounded-md border relative min-h-[160px]">
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm z-10">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-10 w-10 rounded-full border-4 border-muted border-t-primary animate-spin" />
+              <span className="text-xs text-muted-foreground tracking-wide">
+                Loading...
+              </span>
+            </div>
+          </div>
+        )}
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -180,7 +251,8 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {!isLoading &&
+              table.getRowModel().rows?.length > 0 &&
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -195,8 +267,8 @@ export function DataTable<TData, TValue>({
                     </TableCell>
                   ))}
                 </TableRow>
-              ))
-            ) : (
+              ))}
+            {!isLoading && table.getRowModel().rows?.length === 0 && (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
@@ -211,7 +283,7 @@ export function DataTable<TData, TValue>({
       </div>
       <div className="mt-2">
         <DataTablePagination table={table} />
-        {manualPagination?.isLoading && (
+        {manualPagination?.isLoading && !isLoading && (
           <div className="text-xs text-muted-foreground mt-1">Loading...</div>
         )}
       </div>

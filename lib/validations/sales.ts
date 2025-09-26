@@ -28,6 +28,17 @@ export const processSaleSchema = z.object({
   pharmacyId: pharmacyIdSchema,
   userId: userIdSchema,
   cashReceived: z.number().min(0, 'Cash received cannot be negative'),
+  idempotencyKey: z
+    .string()
+    .max(64)
+    .regex(/^[A-Za-z0-9_-]+$/, 'Invalid idempotency key')
+    .optional(),
+});
+
+// Preflight validation (no payment yet) - verify stock & pricing
+export const preflightCartSchema = z.object({
+  cartItems: z.array(cartItemSchema).min(1, 'Cart items are required'),
+  pharmacyId: pharmacyIdSchema,
 });
 
 // SALES REPORTS SCHEMAS

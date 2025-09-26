@@ -1,6 +1,5 @@
-import { getAllProductsPOS, getPharmacy } from '@/lib/actions/sales';
+import { getPharmacy } from '@/lib/actions/sales';
 import POSPage from './POSPageClient';
-import { ProductPOS } from '@/types';
 import { auth } from '@/auth';
 
 const page = async () => {
@@ -17,12 +16,12 @@ const page = async () => {
 
   // Get pharmacy ID from authenticated user session
   const pharmacyId = session.user.pharmacyId;
-  const products: ProductPOS[] = await getAllProductsPOS(pharmacyId);
+  // Legacy full preload removed: products now fetched on-demand via /api/pos/lookup
   const pharmacyInfo = await getPharmacy(pharmacyId);
 
   return (
     <POSPage
-      products={products}
+      products={[]}
       pharmacyInfo={pharmacyInfo}
       pharmacyId={pharmacyId}
       userId={session.user.id}

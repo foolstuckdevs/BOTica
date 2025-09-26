@@ -160,6 +160,10 @@ const Sidebar = () => {
     pathname.startsWith('/reports'),
   );
 
+  // Avoid prefetching during SSR and defer in dev to speed up first paint
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const isActive = (path: string) => pathname === path;
   const isChildActive = (prefix: string) => pathname.startsWith(prefix);
 
@@ -176,15 +180,24 @@ const Sidebar = () => {
 
   // Prefetch hottest routes for snappy navigation
   useEffect(() => {
-    router.prefetch('/dashboard');
-    router.prefetch('/inventory/products');
-    router.prefetch('/inventory/categories');
-    if (isAdmin) {
-      router.prefetch('/inventory/suppliers');
-      router.prefetch('/inventory/adjustments');
-      router.prefetch('/inventory/purchase-order');
+    if (!mounted) return;
+    const doPrefetch = () => {
+      router.prefetch('/dashboard');
+      router.prefetch('/inventory/products');
+      router.prefetch('/inventory/categories');
+      if (isAdmin) {
+        router.prefetch('/inventory/suppliers');
+        router.prefetch('/inventory/adjustments');
+        router.prefetch('/inventory/purchase-order');
+      }
+    };
+    if (process.env.NODE_ENV === 'production') {
+      doPrefetch();
+    } else if (typeof window !== 'undefined') {
+      const t = setTimeout(doPrefetch, 1500);
+      return () => clearTimeout(t);
     }
-  }, [router, isAdmin]);
+  }, [router, isAdmin, mounted]);
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white border-r border-gray-100/70">
@@ -337,11 +350,11 @@ const Sidebar = () => {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-               <TooltipContent side="right">
-                 <p>Inventory</p>
-               </TooltipContent>
-             </Tooltip>
-           </div>
+              <TooltipContent side="right">
+                <p>Inventory</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
         ) : (
           <div className="flex flex-col">
             <button
@@ -458,10 +471,7 @@ const Sidebar = () => {
                   <DropdownMenuLabel>Sales</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link
-                      href="/sales/pos"
-                      className="flex items-center gap-2"
-                    >
+                    <Link href="/sales/pos" className="flex items-center gap-2">
                       <ListOrdered className="w-4 h-4" />
                       POS Terminal
                     </Link>
@@ -477,11 +487,11 @@ const Sidebar = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-               <TooltipContent side="right">
-                 <p>Sales</p>
-               </TooltipContent>
-             </Tooltip>
-           </div>
+              <TooltipContent side="right">
+                <p>Sales</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
         ) : (
           <div className="flex flex-col">
             <button
@@ -587,10 +597,10 @@ const Sidebar = () => {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                   <TooltipContent side="right">
-                     <p>Reports</p>
-                   </TooltipContent>
-                 </Tooltip>
+                  <TooltipContent side="right">
+                    <p>Reports</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             ) : (
               <div className="flex flex-col">

@@ -1,45 +1,80 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Transaction, Pharmacy } from '@/types';
 import { DataTable } from '@/components/DataTable';
 import { columns as baseColumns } from './columns';
 import { TransactionDetailsModal } from '@/components/TransactionsDetailModal';
 
 type TransactionsPageClientProps = {
-  transactions: Transaction[];
   pharmacy: Pharmacy;
 };
 
+interface TransactionsPageResult {
+  data: Transaction[];
+  page: number;
+  pageSize: number;
+  total: number;
+  pageCount: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
 export default function TransactionsPageClient({
-  transactions,
   pharmacy,
 }: TransactionsPageClientProps) {
   const [selectedTransaction, setSelectedTransaction] =
     useState<Transaction | null>(null);
   const [showDetails, setShowDetails] = useState(false);
-
-  // Group transactions by ID to merge items if needed (assuming flattened input)
-  const groupedTransactions = transactions.reduce<Record<number, Transaction>>(
-    (acc, transaction) => {
-      if (!acc[transaction.id]) {
-        acc[transaction.id] = { ...transaction, items: [] };
-      }
-      acc[transaction.id].items.push(...transaction.items);
-      return acc;
-    },
-    {},
+  const [pageIndex, setPageIndex] = useState(0); // zero-based
+  const [pageSize, setPageSize] = useState(50);
+  const [serverPage, setServerPage] = useState<TransactionsPageResult | null>(
+    null,
   );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // (Future) Could wire a dedicated search bar; currently table global filter isn't server-driven.
 
-  const transactionList: Transaction[] = useMemo(() => {
-    return Object.values(groupedTransactions).sort((a, b) => {
-      const dateA =
-        typeof a.createdAt === 'string' ? new Date(a.createdAt) : a.createdAt;
-      const dateB =
-        typeof b.createdAt === 'string' ? new Date(b.createdAt) : b.createdAt;
-      return dateB.getTime() - dateA.getTime();
-    });
-  }, [groupedTransactions]);
+  const load = useCallback(async (pi: number, ps: number, term: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const params = new URLSearchParams({
+        page: String(pi + 1),
+        pageSize: String(ps),
+      });
+      if (term) params.set('search', term);
+      const res = await fetch(`/api/transactions?${params.toString()}`, {
+        cache: 'no-store',
+      });
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+      const json = await res.json();
+      setServerPage(json);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load transactions');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Immediate initial load (once) then debounce subsequent pagination changes
+  const didInitialLoadRef = useRef(false);
+  useEffect(() => {
+    if (!didInitialLoadRef.current) {
+      didInitialLoadRef.current = true;
+      load(pageIndex, pageSize, '');
+      return;
+    }
+    const handle = setTimeout(() => {
+      load(pageIndex, pageSize, '');
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [pageIndex, pageSize, load]);
+
+  const transactionList: Transaction[] = useMemo(
+    () => serverPage?.data ?? [],
+    [serverPage],
+  );
 
   const columns = useMemo(
     () =>
@@ -70,16 +105,32 @@ export default function TransactionsPageClient({
           </p>
         </div>
       </div>
-      <div className="bg-white rounded-lg shadow border">
+      <div className="bg-white rounded-lg shadow border p-2">
+        {error && <div className="p-2 text-sm text-red-600">{error}</div>}
         <DataTable
           columns={columns}
           data={transactionList}
+          isLoading={loading && !serverPage}
           searchConfig={{
             enabled: true,
             placeholder: 'Search by invoice or cashier...',
             globalFilter: true,
-            searchableColumns: ['invoiceNumber', 'user.fullName'],
           }}
+          manualPagination={
+            serverPage
+              ? {
+                  pageIndex,
+                  pageSize,
+                  pageCount: serverPage.pageCount,
+                  onPageChange: (pi) => setPageIndex(pi),
+                  onPageSizeChange: (ps) => {
+                    setPageSize(ps);
+                    setPageIndex(0);
+                  },
+                  isLoading: loading,
+                }
+              : undefined
+          }
         />
       </div>
 

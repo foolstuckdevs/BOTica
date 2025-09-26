@@ -1,7 +1,9 @@
 import React from 'react';
 import { getSalesReportData } from '@/lib/actions/sales-reports';
 import { auth } from '@/auth';
+
 import SalesReportClient from '@/components/SalesReportClient';
+
 import { redirect } from 'next/navigation';
 
 const page = async () => {

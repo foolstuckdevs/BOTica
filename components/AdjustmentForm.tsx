@@ -10,7 +10,7 @@ import { Search, Package, CheckCircle, X, ChevronLeft } from 'lucide-react';
 import { createAdjustment } from '@/lib/actions/adjustment';
 import { adjustmentReasonSchema } from '@/lib/validations/common';
 import { Button } from './ui/button';
-import { Product } from '@/types';
+import { Input } from './ui/input';
 
 // Form schema for client-side validation (only fields user fills out)
 // Form schema for client-side validation (only fields user fills out)
@@ -34,25 +34,37 @@ interface PendingAdjustment extends AdjustmentFormValues {
   unit: string;
 }
 
-interface AdjustmentFormProps {
-  products: Product[];
-  userId: string; // Pass userId from server component
-  pharmacyId: number; // Pass pharmacyId from server component
+interface LightweightProduct {
+  id: number;
+  name: string;
+  brandName: string | null;
+  genericName: string | null;
+  lotNumber: string | null;
+  supplierName: string | null;
+  quantity: number;
+  expiryDate: string | Date | null;
+  unit: string;
+  minStockLevel: number | null;
 }
 
-const AdjustmentForm = ({
-  products,
-  userId,
-  pharmacyId,
-}: AdjustmentFormProps) => {
+interface AdjustmentFormProps {
+  userId: string;
+  pharmacyId: number;
+}
+
+const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
   const router = useRouter();
   const [search, setSearch] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] =
+    useState<LightweightProduct | null>(null);
   const [pendingAdjustments, setPendingAdjustments] = useState<
     PendingAdjustment[]
   >([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [lookupResults, setLookupResults] = useState<LightweightProduct[]>([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const {
@@ -68,40 +80,56 @@ const AdjustmentForm = ({
 
   const quantityChange = watch('quantityChange') || 0;
 
-  const searchLower = search.toLowerCase();
-  const filteredProducts =
-    search.length >= 2
-      ? products
-          .filter((p) => {
-            return (
-              p.name.toLowerCase().includes(searchLower) ||
-              (p.brandName &&
-                p.brandName.toLowerCase().includes(searchLower)) ||
-              (p.genericName &&
-                p.genericName.toLowerCase().includes(searchLower)) ||
-              (p.lotNumber &&
-                p.lotNumber.toLowerCase().includes(searchLower)) ||
-              (p.supplierName &&
-                p.supplierName.toLowerCase().includes(searchLower))
-            );
-          })
-          .sort((a, b) => {
-            // Step 1: Prioritize exact/startsWith name matches
-            const aNameMatch = a.name.toLowerCase().startsWith(searchLower)
-              ? 0
-              : 1;
-            const bNameMatch = b.name.toLowerCase().startsWith(searchLower)
-              ? 0
-              : 1;
-
-            if (aNameMatch !== bNameMatch) return aNameMatch - bNameMatch;
-
-            // Step 2: Sort by soonest expiry (FEFO - First Expired, First Out)
-            const aExpiry = new Date(a.expiryDate).getTime();
-            const bExpiry = new Date(b.expiryDate).getTime();
-            return aExpiry - bExpiry;
-          })
-      : [];
+  // (searchLower used in local ranking logic inside effect; not needed separately now)
+  React.useEffect(() => {
+    if (search.trim().length < 2) {
+      setLookupResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    const handle = setTimeout(async () => {
+      setLookupLoading(true);
+      setLookupError(null);
+      try {
+        const params = new URLSearchParams({
+          search: search.trim(),
+          limit: '20',
+        });
+        const res = await fetch(`/api/products/lookup?${params.toString()}`, {
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        if (!res.ok) throw new Error(`Lookup failed: ${res.status}`);
+        const json = await res.json();
+        const list: LightweightProduct[] = json.data || [];
+        const lower = search.trim().toLowerCase();
+        const ranked = list.slice().sort((a, b) => {
+          const aNameMatch = a.name.toLowerCase().startsWith(lower) ? 0 : 1;
+          const bNameMatch = b.name.toLowerCase().startsWith(lower) ? 0 : 1;
+          if (aNameMatch !== bNameMatch) return aNameMatch - bNameMatch;
+          const aExpiry = a.expiryDate
+            ? new Date(a.expiryDate).getTime()
+            : Infinity;
+          const bExpiry = b.expiryDate
+            ? new Date(b.expiryDate).getTime()
+            : Infinity;
+          return aExpiry - bExpiry;
+        });
+        setLookupResults(ranked);
+      } catch (e) {
+        if (!(e instanceof DOMException && e.name === 'AbortError')) {
+          setLookupError(e instanceof Error ? e.message : 'Lookup failed');
+        }
+      } finally {
+        setLookupLoading(false);
+      }
+    }, 250);
+    return () => {
+      controller.abort();
+      clearTimeout(handle);
+    };
+  }, [search]);
+  const filteredProducts = search.length >= 2 ? lookupResults : [];
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -110,7 +138,7 @@ const AdjustmentForm = ({
     if (selectedProduct && value.length >= 2) setSelectedProduct(null);
   };
 
-  const selectProduct = (product: Product) => {
+  const selectProduct = (product: LightweightProduct) => {
     setSelectedProduct(product);
     setValue('productId', product.id);
     setIsSearching(false);
@@ -234,12 +262,11 @@ const AdjustmentForm = ({
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
               </div>
-              <input
-                type="text"
+              <Input
                 placeholder="Search by name, brand, lot number, or generic name..."
                 value={search}
                 onChange={handleSearchChange}
-                className="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                className="pl-10 pr-10 py-3 h-auto"
               />
               {search && (
                 <button
@@ -251,6 +278,14 @@ const AdjustmentForm = ({
                 </button>
               )}
             </div>
+            {lookupLoading && search.length >= 2 && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                Searching...
+              </div>
+            )}
+            {lookupError && (
+              <div className="mt-2 text-xs text-red-600">{lookupError}</div>
+            )}
 
             {isSearching && (
               <div className="mt-6 space-y-2 max-h-96 overflow-y-auto">
@@ -399,14 +434,14 @@ const AdjustmentForm = ({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Quantity Change <span className="text-red-500">*</span>
                   </label>
-                <input
-  type="number"
-  {...register('quantityChange', { valueAsNumber: true })}
-  placeholder="e.g. -5 or +10"
-  min={-9999}
-  max={9999}
-  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-/>
+                  <input
+                    type="number"
+                    {...register('quantityChange', { valueAsNumber: true })}
+                    placeholder="e.g. -5 or +10"
+                    min={-9999}
+                    max={9999}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  />
 
                   {errors.quantityChange && (
                     <p className="mt-1 text-sm text-red-600">

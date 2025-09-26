@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import { LowStockAlerts } from '@/components/LowStockAlerts';
 import { SectionCards } from '@/components/SectionsCards';
-import { SalesChart } from '@/components/SalesChart';
 import { TopSellingProducts } from '@/components/TopSellingProducts';
 import RecentActivity from '@/components/RecentActivity';
 import { auth } from '@/auth';
@@ -12,6 +11,9 @@ import {
   getLowStockProducts,
   getChartData,
 } from '@/lib/actions/dashboard';
+
+// Direct import to satisfy server component constraints (dynamic with ssr:false disallowed)
+import { SalesChart } from '@/components/SalesChart';
 
 const Page = async () => {
   const session = await auth();

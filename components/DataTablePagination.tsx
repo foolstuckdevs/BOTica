@@ -14,19 +14,28 @@ interface DataTablePaginationProps<TData> {
   table: Table<TData>;
 }
 
-export function DataTablePagination<TData>({ table }: DataTablePaginationProps<TData>) {
+export function DataTablePagination<TData>({
+  table,
+}: DataTablePaginationProps<TData>) {
+  const pagination = table.getState().pagination as
+    | { pageIndex: number; pageSize: number }
+    | undefined;
+
+  // If pagination state is not yet initialized, do not render controls.
+  if (!pagination) return null;
+
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex items-center space-x-2">
         <p className="text-sm font-medium">Rows per page</p>
         <Select
-          value={`${table.getState().pagination.pageSize}`}
+          value={`${pagination.pageSize}`}
           onValueChange={(value) => {
             table.setPageSize(Number(value));
           }}
         >
           <SelectTrigger className="h-8 w-[70px]">
-            <SelectValue placeholder={table.getState().pagination.pageSize} />
+            <SelectValue placeholder={pagination.pageSize} />
           </SelectTrigger>
           <SelectContent side="top">
             {[10, 20, 30, 40, 50].map((pageSize) => (
@@ -39,8 +48,7 @@ export function DataTablePagination<TData>({ table }: DataTablePaginationProps<T
       </div>
       <div className="flex flex-row">
         <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-          Page {table.getState().pagination.pageIndex + 1} of{' '}
-          {table.getPageCount()}
+          Page {pagination.pageIndex + 1} of {table.getPageCount() || 1}
         </div>
         <div className="flex items-center space-x-2">
           <Button

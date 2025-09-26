@@ -31,14 +31,14 @@ import {
 } from '@/lib/actions/notifications';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import type { Notification as AppNotification } from '@/types';
 
 interface NotificationProps {
   pharmacyId: number;
+  isAdmin: boolean;
 }
 
-export function Notification({ pharmacyId }: NotificationProps) {
+export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -265,6 +265,7 @@ export function Notification({ pharmacyId }: NotificationProps) {
                                 onMarkAsRead={handleMarkAsRead}
                                 onDelete={handleDeleteNotification}
                                 onClose={() => setIsOpen(false)}
+                                isAdmin={isAdmin}
                               />
                             ))}
                           </div>
@@ -283,6 +284,7 @@ export function Notification({ pharmacyId }: NotificationProps) {
                                 onMarkAsRead={handleMarkAsRead}
                                 onDelete={handleDeleteNotification}
                                 onClose={() => setIsOpen(false)}
+                                isAdmin={isAdmin}
                               />
                             ))}
                           </div>
@@ -306,6 +308,7 @@ interface NotificationItemProps {
   onMarkAsRead: (id: number) => void;
   onDelete: (id: number) => void;
   onClose: () => void;
+  isAdmin: boolean;
 }
 
 function NotificationItem({
@@ -313,9 +316,9 @@ function NotificationItem({
   onMarkAsRead,
   onDelete,
   onClose,
+  isAdmin,
 }: NotificationItemProps) {
   const router = useRouter();
-  const { data: session } = useSession();
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'LOW_STOCK':
@@ -358,7 +361,6 @@ function NotificationItem({
           // Optimistically mark as read via parent handler
           await onMarkAsRead(notification.id);
         }
-        const isAdmin = session?.user?.role === 'Admin';
         let href = isAdmin
           ? '/reports/inventory?tab=overview'
           : '/inventory/products';

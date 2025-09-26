@@ -9,55 +9,19 @@ import {
   notifications,
 } from '@/database/schema';
 import type { Pharmacy } from '@/types';
-import { eq, and, gte, sql, gt } from 'drizzle-orm';
+import { eq, and, sql, gt } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from '@/lib/actions/activity';
 import { processSaleSchema, pharmacyIdSchema } from '@/lib/validations';
 
+// Temporary in-memory idempotency key store (will reset on redeploy). For production, move to DB table.
+const processedSaleKeys = new Map<
+  string,
+  { saleId: number; createdAt: number }
+>();
+
 type ProductRow = InferSelectModel<typeof products>;
-
-// Get all products for POS
-
-export const getAllProductsPOS = async (pharmacyId: number) => {
-  try {
-    // Validate with Zod
-    pharmacyIdSchema.parse(pharmacyId);
-
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10); // 'YYYY-MM-DD'
-
-    const result = await db
-      .select({
-        // Core sales essentials
-        id: products.id,
-        name: products.name,
-        sellingPrice: products.sellingPrice,
-        quantity: products.quantity,
-        // Batch/expiry tracking (FEFO)
-        lotNumber: products.lotNumber,
-        expiryDate: products.expiryDate,
-        // Enhanced UX
-        imageUrl: products.imageUrl,
-        unit: products.unit,
-        brandName: products.brandName,
-      })
-      .from(products)
-      .orderBy(products.name, products.expiryDate)
-      .where(
-        and(
-          eq(products.pharmacyId, pharmacyId),
-          gte(products.expiryDate, todayStr), // Exclude expired products
-          sql`${products.deletedAt} IS NULL`,
-        ),
-      );
-
-    return result;
-  } catch (error) {
-    console.error('Error fetching POS products:', error);
-    return [];
-  }
-};
 
 // Get pharmacy info
 export const getPharmacy = async (
@@ -96,6 +60,7 @@ export const processSale = async (
   pharmacyId: number,
   userId: string,
   cashReceived: number = 0,
+  idempotencyKey?: string,
 ) => {
   try {
     // Validate all parameters with Zod
@@ -106,7 +71,26 @@ export const processSale = async (
       pharmacyId,
       userId,
       cashReceived,
+      idempotencyKey,
     });
+
+    // Basic in-memory idempotency check (5 minute retention)
+    if (validatedData.idempotencyKey) {
+      const now = Date.now();
+      // purge old keys (>5m)
+      for (const [k, v] of processedSaleKeys) {
+        if (now - v.createdAt > 5 * 60 * 1000) processedSaleKeys.delete(k);
+      }
+      const existing = processedSaleKeys.get(validatedData.idempotencyKey);
+      if (existing) {
+        return {
+          success: true,
+          data: { id: existing.saleId, invoiceNumber: 'REPLAYED' },
+          change: 0,
+          message: 'Duplicate sale ignored (idempotent replay)',
+        };
+      }
+    }
 
     const totalAmount = validatedData.cartItems.reduce(
       (total, item) => total + parseFloat(item.unitPrice) * item.quantity,
@@ -281,6 +265,13 @@ export const processSale = async (
         paymentMethod: result.sale.paymentMethod,
       },
     });
+
+    if (validatedData.idempotencyKey) {
+      processedSaleKeys.set(validatedData.idempotencyKey, {
+        saleId: result.sale.id,
+        createdAt: Date.now(),
+      });
+    }
 
     return {
       success: true,

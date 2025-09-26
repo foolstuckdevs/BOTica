@@ -39,51 +39,7 @@ type ExistingProductSubset = Pick<
   | 'imageUrl'
 >;
 
-export const getProducts = async (pharmacyId: number) => {
-  try {
-    // Validate with Zod
-    pharmacyIdSchema.parse(pharmacyId);
-
-    const result = await db
-      .select({
-        id: products.id,
-        name: products.name,
-        genericName: products.genericName,
-        categoryId: products.categoryId,
-        categoryName: categories.name,
-        barcode: products.barcode,
-        lotNumber: products.lotNumber,
-        expiryDate: products.expiryDate,
-        quantity: products.quantity,
-        costPrice: products.costPrice,
-        sellingPrice: products.sellingPrice,
-        minStockLevel: products.minStockLevel,
-        unit: products.unit,
-        supplierId: products.supplierId,
-        supplierName: suppliers.name,
-        imageUrl: products.imageUrl,
-        createdAt: products.createdAt,
-        updatedAt: products.updatedAt,
-        brandName: products.brandName,
-        dosageForm: products.dosageForm,
-      })
-      .from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
-      .orderBy(products.name)
-      .where(
-        and(
-          eq(products.pharmacyId, pharmacyId),
-          sql`${products.deletedAt} IS NULL`,
-        ),
-      );
-
-    return result;
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    return [];
-  }
-};
+// NOTE: Legacy unpaginated getProducts() removed. Use listProductsPage() via /api/products.
 
 export const getProductBatches = async (
   productName: string,
