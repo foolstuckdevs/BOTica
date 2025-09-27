@@ -28,6 +28,7 @@ export const LowStockAlerts = ({ lowStockProducts }: LowStockAlertsProps) => {
           </div>
           <Link
             href="/reports/inventory?tab=low-stock"
+            prefetch={true}
             className="text-xs text-yellow-800 hover:underline flex items-center gap-1"
           >
             View All <ArrowRight className="w-3 h-3" />

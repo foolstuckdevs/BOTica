@@ -1,12 +1,11 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { getSalesReportData } from '@/lib/actions/sales-reports';
 import { auth } from '@/auth';
-
 import SalesReportClient from '@/components/SalesReportClient';
-
 import { redirect } from 'next/navigation';
 
-const page = async () => {
+// Separate component for data fetching to enable streaming
+async function SalesReportData() {
   const session = await auth();
 
   // Middleware ensures session exists for protected routes
@@ -30,16 +29,12 @@ const page = async () => {
     } = await getSalesReportData(pharmacyId);
 
     return (
-      <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <SalesReportClient
-            salesData={salesData}
-            productData={productData}
-            comprehensiveSalesData={comprehensiveSalesData}
-            comprehensiveProductData={comprehensiveProductData}
-          />
-        </div>
-      </div>
+      <SalesReportClient
+        salesData={salesData}
+        productData={productData}
+        comprehensiveSalesData={comprehensiveSalesData}
+        comprehensiveProductData={comprehensiveProductData}
+      />
     );
   } catch (error) {
     console.error('Error loading sales report:', error);
@@ -76,18 +71,26 @@ const page = async () => {
     };
 
     return (
-      <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50">
-        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <SalesReportClient
-            salesData={fallbackData}
-            productData={fallbackProductData}
-            comprehensiveSalesData={[]}
-            comprehensiveProductData={[]}
-          />
-        </div>
-      </div>
+      <SalesReportClient
+        salesData={fallbackData}
+        productData={fallbackProductData}
+        comprehensiveSalesData={[]}
+        comprehensiveProductData={[]}
+      />
     );
   }
+}
+
+const page = async () => {
+  return (
+    <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50">
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <Suspense fallback={<div>Loading sales report...</div>}>
+          <SalesReportData />
+        </Suspense>
+      </div>
+    </div>
+  );
 };
 
 export default page;

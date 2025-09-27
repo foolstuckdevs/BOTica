@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { SalesReportHeader } from '@/components/SalesReportHeader';
 import { SalesReportOverview } from '@/components/SalesReportOverview';
 import { ProductPerformanceTable } from '@/components/ProductPerformanceTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SkeletonTable } from '@/components/ui/skeleton';
 import { LayoutDashboard, Receipt, LineChart } from 'lucide-react';
 import SalesTable from '@/components/SalesTable';
 import type { SalesOverviewData, ProductPerformanceData } from '@/types';
@@ -38,13 +39,33 @@ export default function SalesReportClient({
   comprehensiveSalesData = [],
   comprehensiveProductData = [],
 }: Props) {
+  // Lazy tab loading
+  const [salesTabLoaded, setSalesTabLoaded] = useState(false);
+  const [productsTabLoaded, setProductsTabLoaded] = useState(false);
+
+  const handleTabChange = useCallback(
+    (val: string) => {
+      if (val === 'sales' && !salesTabLoaded) {
+        setSalesTabLoaded(true);
+      }
+      if (val === 'products' && !productsTabLoaded) {
+        setProductsTabLoaded(true);
+      }
+    },
+    [salesTabLoaded, productsTabLoaded],
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <SalesReportHeader />
       </div>
       <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-lg overflow-hidden">
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs
+          defaultValue="overview"
+          onValueChange={handleTabChange}
+          className="w-full"
+        >
           <div className="border-b bg-gray-50 dark:bg-gray-800/50">
             <TabsList className="grid w-full grid-cols-3 bg-transparent p-2 h-auto gap-1">
               <TabsTrigger
@@ -87,14 +108,28 @@ export default function SalesReportClient({
             </TabsContent>
 
             <TabsContent value="sales" className="m-0">
-              <SalesTable comprehensiveProductData={comprehensiveProductData} />
+              {salesTabLoaded ? (
+                <SalesTable
+                  comprehensiveProductData={comprehensiveProductData}
+                />
+              ) : (
+                <div className="p-6">
+                  <SkeletonTable rows={8} columns={6} />
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="products" className="m-0">
-              <ProductPerformanceTable
-                productData={productData}
-                comprehensiveProductData={comprehensiveProductData}
-              />
+              {productsTabLoaded ? (
+                <ProductPerformanceTable
+                  productData={productData}
+                  comprehensiveProductData={comprehensiveProductData}
+                />
+              ) : (
+                <div className="p-6">
+                  <SkeletonTable rows={6} columns={5} />
+                </div>
+              )}
             </TabsContent>
           </div>
         </Tabs>

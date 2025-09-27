@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import InventoryReportHeader from '@/components/InventoryReportHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -21,6 +21,7 @@ import { ExpiringProductsTable } from '@/components/inventory-report/ExpiringPro
 import { LowStockTable } from '@/components/inventory-report/LowStockTable';
 import { InactiveProductsTable } from './inventory-report/InactiveProductsTable';
 import { AvailableProductsTable } from './inventory-report/AvailableProductsTable';
+import { SkeletonTable } from '@/components/ui/skeleton';
 
 type TabKey = 'overview' | 'expiring' | 'low-stock' | 'active' | 'inactive';
 
@@ -43,18 +44,40 @@ export default function InventoryReportClient({
   initialLowStockStatus,
   initialExpiringStatus,
 }: Props) {
+  // Lazy tab loading
+  const [expiringLoaded, setExpiringLoaded] = useState(false);
+  const [lowStockLoaded, setLowStockLoaded] = useState(false);
+  const [activeLoaded, setActiveLoaded] = useState(false);
+  const [inactiveLoaded, setInactiveLoaded] = useState(false);
+
   const [, setActiveTab] = useState<TabKey>(initialTab);
-  const handleTabChange = (value: string) => {
-    if (
-      value === 'overview' ||
-      value === 'expiring' ||
-      value === 'low-stock' ||
-      value === 'active' ||
-      value === 'inactive'
-    ) {
-      setActiveTab(value);
-    }
-  };
+  const handleTabChange = useCallback(
+    (value: string) => {
+      if (
+        value === 'overview' ||
+        value === 'expiring' ||
+        value === 'low-stock' ||
+        value === 'active' ||
+        value === 'inactive'
+      ) {
+        setActiveTab(value as TabKey);
+        // Load tab content on first visit
+        if (value === 'expiring' && !expiringLoaded) {
+          setExpiringLoaded(true);
+        }
+        if (value === 'low-stock' && !lowStockLoaded) {
+          setLowStockLoaded(true);
+        }
+        if (value === 'active' && !activeLoaded) {
+          setActiveLoaded(true);
+        }
+        if (value === 'inactive' && !inactiveLoaded) {
+          setInactiveLoaded(true);
+        }
+      }
+    },
+    [expiringLoaded, lowStockLoaded, activeLoaded, inactiveLoaded],
+  );
   const [expiryFilter, setExpiryFilter] = useState<
     'all' | '30days' | '60days' | '90days'
   >('all');
@@ -63,6 +86,28 @@ export default function InventoryReportClient({
   >(initialLowStockStatus ?? 'all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // If initial tab is not overview, mark it loaded
+  React.useEffect(() => {
+    if (initialTab === 'expiring' && !expiringLoaded) {
+      setExpiringLoaded(true);
+    }
+    if (initialTab === 'low-stock' && !lowStockLoaded) {
+      setLowStockLoaded(true);
+    }
+    if (initialTab === 'active' && !activeLoaded) {
+      setActiveLoaded(true);
+    }
+    if (initialTab === 'inactive' && !inactiveLoaded) {
+      setInactiveLoaded(true);
+    }
+  }, [
+    initialTab,
+    expiringLoaded,
+    lowStockLoaded,
+    activeLoaded,
+    inactiveLoaded,
+  ]);
 
   const filteredExpiringProducts = useMemo(() => {
     return inventoryData.expiringProducts.filter((product) => {
@@ -191,47 +236,63 @@ export default function InventoryReportClient({
             </TabsContent>
 
             <TabsContent value="expiring" className="m-0">
-              <ExpiringProductsTable
-                products={filteredExpiringProducts}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                expiryFilter={expiryFilter}
-                onExpiryFilterChange={setExpiryFilter}
-                statusFilter={initialExpiringStatus ?? 'all'}
-                onStatusFilterChange={() => {}}
-              />
+              {expiringLoaded ? (
+                <ExpiringProductsTable
+                  products={filteredExpiringProducts}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  expiryFilter={expiryFilter}
+                  onExpiryFilterChange={setExpiryFilter}
+                  statusFilter={initialExpiringStatus ?? 'all'}
+                  onStatusFilterChange={() => {}}
+                />
+              ) : (
+                <SkeletonTable rows={8} columns={5} />
+              )}
             </TabsContent>
 
             <TabsContent value="low-stock" className="m-0">
-              <LowStockTable
-                products={filteredLowStockProducts}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
-                categoryFilter={categoryFilter}
-                onCategoryFilterChange={setCategoryFilter}
-              />
+              {lowStockLoaded ? (
+                <LowStockTable
+                  products={filteredLowStockProducts}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  statusFilter={statusFilter}
+                  onStatusFilterChange={setStatusFilter}
+                  categoryFilter={categoryFilter}
+                  onCategoryFilterChange={setCategoryFilter}
+                />
+              ) : (
+                <SkeletonTable rows={6} columns={4} />
+              )}
             </TabsContent>
 
             <TabsContent value="active" className="m-0">
-              <AvailableProductsTable
-                products={inventoryData.activeProducts}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                categoryFilter={categoryFilter}
-                onCategoryFilterChange={setCategoryFilter}
-              />
+              {activeLoaded ? (
+                <AvailableProductsTable
+                  products={inventoryData.activeProducts}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  categoryFilter={categoryFilter}
+                  onCategoryFilterChange={setCategoryFilter}
+                />
+              ) : (
+                <SkeletonTable rows={10} columns={6} />
+              )}
             </TabsContent>
 
             <TabsContent value="inactive" className="m-0">
-              <InactiveProductsTable
-                products={inventoryData.inactiveProducts}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                categoryFilter={categoryFilter}
-                onCategoryFilterChange={setCategoryFilter}
-              />
+              {inactiveLoaded ? (
+                <InactiveProductsTable
+                  products={inventoryData.inactiveProducts}
+                  searchTerm={searchTerm}
+                  onSearchChange={setSearchTerm}
+                  categoryFilter={categoryFilter}
+                  onCategoryFilterChange={setCategoryFilter}
+                />
+              ) : (
+                <SkeletonTable rows={8} columns={5} />
+              )}
             </TabsContent>
           </div>
         </Tabs>

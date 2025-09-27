@@ -57,6 +57,7 @@ export const TopSellingProducts = ({ products }: TopSellingProductsProps) => {
           </div>
           <Link
             href="/reports/sales"
+            prefetch={true}
             className="text-xs text-blue-600 hover:underline flex items-center gap-1"
           >
             View Details <ArrowRight className="w-3 h-3" />

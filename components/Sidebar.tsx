@@ -571,6 +571,7 @@ const Sidebar = () => {
                       <DropdownMenuItem asChild>
                         <Link
                           href="/reports/sales"
+                          prefetch={true}
                           className="flex items-center gap-2"
                         >
                           <FileText className="w-4 h-4" />
@@ -580,6 +581,7 @@ const Sidebar = () => {
                       <DropdownMenuItem asChild>
                         <Link
                           href="/reports/inventory"
+                          prefetch={true}
                           className="flex items-center gap-2"
                         >
                           <Layers className="w-4 h-4" />
@@ -624,6 +626,7 @@ const Sidebar = () => {
                   <div className="flex flex-col mt-1 space-y-0.5 ml-1">
                     <Link
                       href="/reports/sales"
+                      prefetch={true}
                       className={`${submenuLinkClasses} ${
                         isActive('/reports/sales')
                           ? submenuActiveClasses
@@ -635,6 +638,7 @@ const Sidebar = () => {
                     </Link>
                     <Link
                       href="/reports/inventory"
+                      prefetch={true}
                       className={`${submenuLinkClasses} ${
                         isActive('/reports/inventory')
                           ? submenuActiveClasses
