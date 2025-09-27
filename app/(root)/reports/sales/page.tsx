@@ -3,6 +3,7 @@ import { getSalesReportData } from '@/lib/actions/sales-reports';
 import { auth } from '@/auth';
 import SalesReportClient from '@/components/SalesReportClient';
 import { redirect } from 'next/navigation';
+import { SkeletonSalesOverview } from '@/components/ui/skeleton';
 
 // Separate component for data fetching to enable streaming
 async function SalesReportData() {
@@ -85,7 +86,7 @@ const page = async () => {
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50">
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <Suspense fallback={<div>Loading sales report...</div>}>
+        <Suspense fallback={<SkeletonSalesOverview />}>
           <SalesReportData />
         </Suspense>
       </div>

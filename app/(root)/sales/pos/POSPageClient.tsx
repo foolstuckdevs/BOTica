@@ -31,7 +31,6 @@ export default function POSPage({
   const [products, setProducts] = useState<ProductPOS[]>(initialProducts);
   const [searchTerm, setSearchTerm] = useState('');
   const [loadingLookup, setLoadingLookup] = useState(false);
-  const [lookupError, setLookupError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discountPercentage, setDiscountPercentage] = useState(0);
@@ -179,7 +178,6 @@ export default function POSPage({
     const controller = new AbortController();
     abortRef.current = controller;
     setLoadingLookup(true);
-    setLookupError(null);
     fetchProducts({ offset: 0, limit: pageSize, signal: controller.signal })
       .then((list) => {
         setProducts(list);
@@ -190,7 +188,7 @@ export default function POSPage({
       .catch((e: unknown) => {
         if (e instanceof DOMException && e.name === 'AbortError') return;
         const msg = e instanceof Error ? e.message : 'Initial load error';
-        setLookupError(msg);
+        toast.error(msg);
       })
       .finally(() => setLoadingLookup(false));
   }, [searchTerm, products.length, fetchProducts]);
@@ -203,7 +201,6 @@ export default function POSPage({
     const controller = new AbortController();
     abortRef.current = controller;
     setLoadingLookup(true);
-    setLookupError(null);
     fetch(`/api/pos/lookup?barcode=${encodeURIComponent(code)}`, {
       signal: controller.signal,
     })
@@ -235,7 +232,7 @@ export default function POSPage({
       })
       .catch((e) => {
         if (e.name === 'AbortError') return;
-        setLookupError(e.message || 'Barcode lookup error');
+        toast.error(e.message || 'Barcode lookup error');
       })
       .finally(() => setLoadingLookup(false));
   }, [searchTerm]);
@@ -256,7 +253,6 @@ export default function POSPage({
       const controller = new AbortController();
       abortRef.current = controller;
       setLoadingLookup(true);
-      setLookupError(null);
       fetchProducts({
         query: term,
         offset: 0,
@@ -271,7 +267,7 @@ export default function POSPage({
         .catch((e: unknown) => {
           if (e instanceof DOMException && e.name === 'AbortError') return;
           const msg = e instanceof Error ? e.message : 'Lookup error';
-          setLookupError(msg);
+          toast.error(msg);
         })
         .finally(() => setLoadingLookup(false));
     }, 250);
@@ -285,7 +281,6 @@ export default function POSPage({
     const controller = new AbortController();
     abortRef.current = controller;
     setLoadingLookup(true);
-    setLookupError(null);
     fetchProducts({
       query: term.length >= 2 && !isBarcodePattern(term) ? term : undefined,
       offset,
@@ -299,7 +294,7 @@ export default function POSPage({
       .catch((e: unknown) => {
         if (e instanceof DOMException && e.name === 'AbortError') return;
         const msg = e instanceof Error ? e.message : 'Load more error';
-        setLookupError(msg);
+        toast.error(msg);
       })
       .finally(() => setLoadingLookup(false));
   };
@@ -312,13 +307,6 @@ export default function POSPage({
   const discountAmount = (totalAmount * discountPercentage) / 100;
   const discountedTotal = totalAmount - discountAmount;
   const change = cashReceived - discountedTotal;
-
-  // Simple status indicators (can be styled later)
-  const lookupStatus = loadingLookup
-    ? 'Searching...'
-    : lookupError
-    ? `Error: ${lookupError}`
-    : '';
 
   // Sale functions
   // NOTE: Render lookup status near search input (minimal inline feedback)
@@ -561,9 +549,6 @@ export default function POSPage({
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 h-12 bg-gray-50 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base"
                 />
-                {lookupStatus && (
-                  <p className="mt-2 text-xs text-gray-500">{lookupStatus}</p>
-                )}
               </div>
             </div>
 

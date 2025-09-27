@@ -5,6 +5,7 @@ import { SessionProvider } from 'next-auth/react';
 import { Toaster } from 'sonner';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import AccessDeniedToast from '@/components/AccessDeniedToast';
+import { auth } from '@/auth';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -21,17 +22,18 @@ export const metadata: Metadata = {
   description: 'Software for Pharmacies',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <SessionProvider refetchOnWindowFocus>
+        <SessionProvider session={session} refetchOnWindowFocus>
           {children}
           <Toaster position="bottom-right" />
           <AccessDeniedToast />
