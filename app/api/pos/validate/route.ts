@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { db } from '@/database/drizzle';
 import { products } from '@/database/schema';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, sql, inArray } from 'drizzle-orm';
 import { preflightCartSchema } from '@/lib/validations/sales';
 
 export async function POST(req: NextRequest) {
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         and(
           sql`${products.deletedAt} IS NULL`,
           eq(products.pharmacyId, parsed.pharmacyId),
-          sql`${products.id} = ANY(${ids})`,
+          inArray(products.id, ids),
         ),
       );
 
