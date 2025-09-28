@@ -19,7 +19,49 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'BOTica',
-  description: 'Software for Pharmacies',
+  description:
+    'Complete pharmacy management software for inventory, sales, and operations. Streamline your pharmacy workflow with BOTica.',
+  keywords:
+    'pharmacy software, inventory management, POS system, pharmacy management',
+  authors: [{ name: 'BOTica' }],
+  creator: 'BOTica Team',
+  metadataBase: new URL('https://botica.site'),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'BOTica - Pharmacy Management System',
+    description:
+      'Complete pharmacy management software for inventory, sales, and operations.',
+    url: 'https://botica.site',
+    siteName: 'BOTica',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'BOTica Pharmacy Management System',
+      },
+    ],
+    locale: 'en_PH',
+    type: 'website',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  icons: {
+    icon: [{ url: '/favicon.ico?v=2' }],
+    shortcut: '/favicon.ico?v=2',
+  },
+  manifest: '/manifest.json',
 };
 
 export default async function RootLayout({

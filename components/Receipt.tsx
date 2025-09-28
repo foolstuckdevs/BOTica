@@ -136,7 +136,7 @@ const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           </head>
           <body>
             <div class="header">
-              <img src="/BOTica2.png" alt="BOTica Logo" class="logo" />
+              <img src="/BOTica-logo.png" alt="BOTica Logo" class="logo" />
               <div class="temp-receipt">*** TEMPORARY RECEIPT ***</div>
               <h1>${pharmacy.name}</h1>
               <p>${pharmacy.address}</p>

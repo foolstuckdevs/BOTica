@@ -187,8 +187,8 @@ export default function Chatbot() {
   return (
     <div className="fixed bottom-6 right-6 z-50">
       {isOpen ? (
-        <Card className="w-[380px] h-[560px] rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col">
-          <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-3 py-2 flex items-center justify-between">
+        <Card className="w-[380px] h-[560px] rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col p-0">
+          <div className="sticky pt-2 z-10 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-3 pb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-full bg-blue-700">
                 <Bot className="w-4 h-4" />

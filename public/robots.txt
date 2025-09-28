@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://botica.site/sitemap.xml
