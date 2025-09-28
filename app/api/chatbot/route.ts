@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BoticaAgent } from '@/lib/chatbot/agents/agent';
-import type { ChatbotResponse } from '@/lib/chatbot/types';
+import { RAGOrchestrator } from '@/lib/chatbot/rag';
+import type { UserQuery, ChatbotResponse } from '@/lib/chatbot/rag/types';
 import { z } from 'zod';
 
 // Request validation schema
@@ -11,18 +11,115 @@ const ChatbotRequestSchema = z.object({
   sessionId: z.string().optional(),
 });
 
-// Global agent instance (singleton pattern)
-let agent: BoticaAgent | null = null;
+// Global RAG orchestrator instance (singleton pattern)
+let ragOrchestrator: RAGOrchestrator | null = null;
 
 /**
- * Initialize the agent singleton
+ * Convert RAG response to ChatbotResponse format for compatibility
  */
-function getAgent(): BoticaAgent {
-  if (!agent) {
-    console.log('[ChatbotAPI] Initializing new agent instance');
-    agent = new BoticaAgent();
+async function convertRAGResponse(
+  ragResponse: string,
+): Promise<ChatbotResponse> {
+  // Extract information from RAG response for structured format
+  const hasInventoryInfo =
+    ragResponse.includes('Available in pharmacy:') ||
+    ragResponse.includes('In Stock');
+  const hasClinicalInfo =
+    ragResponse.includes('Dosage') ||
+    ragResponse.includes('Usage') ||
+    ragResponse.includes('Side effects');
+
+  // Extract sources
+  const sources = [];
+  if (ragResponse.includes('FDA Drug Labels')) sources.push('FDA Drug Labels');
+  if (ragResponse.includes('MedlinePlus')) sources.push('MedlinePlus');
+  if (ragResponse.includes('RxNorm')) sources.push('RxNorm');
+  if (ragResponse.includes('Pharmacy Inventory'))
+    sources.push('Pharmacy Inventory');
+
+  // Calculate confidence based on available data
+  let confidence = 0.5;
+  if (hasClinicalInfo) confidence += 0.3;
+  if (hasInventoryInfo) confidence += 0.2;
+  if (sources.length > 2) confidence += 0.1;
+  confidence = Math.min(confidence, 1.0);
+
+  // Extract inventory information if present
+  let inventory = null;
+  const inventoryMatch = ragResponse.match(
+    /Available in pharmacy: ([^-]+)(?:-.*)?/,
+  );
+  if (inventoryMatch) {
+    const productName = inventoryMatch[1].trim();
+    const inStockMatch = ragResponse.match(/In Stock|Out of Stock/);
+    const priceMatch = ragResponse.match(/₱(\d+(?:\.\d+)?)/);
+
+    inventory = [
+      {
+        id: 0, // Placeholder ID
+        name: productName,
+        dosageForm: 'Unknown',
+        quantity: inStockMatch && inStockMatch[0] === 'In Stock' ? 1 : 0,
+        sellingPrice: priceMatch ? priceMatch[1] : '0.00',
+        inStock: inStockMatch ? inStockMatch[0] === 'In Stock' : false,
+        unit: 'piece',
+        categoryName: undefined,
+      },
+    ];
   }
-  return agent;
+
+  // Extract clinical information if present
+  let clinical = null;
+  if (hasClinicalInfo) {
+    const dosageMatch = ragResponse.match(/(?:Adults?:|Dosage:)([^•\n]+)/i);
+    const usageMatch = ragResponse.match(
+      /(?:treats|used for|indicated for)([^•\n]+)/i,
+    );
+    const sideEffectsMatch = ragResponse.match(
+      /(?:side effects?|common)([^•\n]+)/i,
+    );
+
+    clinical = {
+      dosage: dosageMatch ? dosageMatch[1].trim() : undefined,
+      usage: usageMatch ? usageMatch[1].trim() : undefined,
+      sideEffects: sideEffectsMatch ? sideEffectsMatch[1].trim() : undefined,
+      source: sources[0] || 'RAG System',
+    };
+  }
+
+  return {
+    ui: {
+      staffMessage: ragResponse, // The RAG response becomes the staff message
+      detailedNotes: `• Sources: ${
+        sources.join(', ') || 'None'
+      }\n• Confidence: ${(confidence * 100).toFixed(
+        0,
+      )}%\n• Processing: RAG Pipeline\n• Inventory: ${
+        inventory ? 'Found' : 'Not found'
+      }\n• Clinical: ${clinical ? 'Available' : 'Not available'}`,
+    },
+    inventory,
+    clinical,
+    sources,
+    confidence,
+  };
+}
+
+/**
+ * Initialize the RAG orchestrator singleton
+ */
+function getRAGOrchestrator(): RAGOrchestrator {
+  if (!ragOrchestrator) {
+    console.log('[ChatbotAPI] Initializing new RAG orchestrator');
+    ragOrchestrator = new RAGOrchestrator({
+      maxInventoryResults: 5,
+      rxnormTimeout: 10000,
+      clinicalTimeout: 15000,
+      enableCache: false,
+      fallbackToGeneric: true,
+    });
+  }
+  return ragOrchestrator;
 }
 
 /**
@@ -64,9 +161,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Get agent and process query
-    const pharmacyAgent = getAgent();
-    const response = await pharmacyAgent.processQuery(validatedRequest);
+    // Get RAG orchestrator and process query
+    const ragOrchestrator = getRAGOrchestrator();
+
+    // Create user query object
+    const userQuery: UserQuery = {
+      text: validatedRequest.message,
+      userId: validatedRequest.userId,
+      timestamp: new Date(),
+    };
+
+    // Process query through RAG pipeline
+    const ragResponse = await ragOrchestrator.processQuery(userQuery);
+
+    // Convert RAG response to ChatbotResponse format
+    const response: ChatbotResponse = await convertRAGResponse(ragResponse);
 
     const processingTime = Date.now() - startTime;
     console.log(`[ChatbotAPI] Query processed in ${processingTime}ms`);
@@ -162,8 +271,8 @@ export async function GET(): Promise<NextResponse> {
       timestamp: new Date().toISOString(),
       version: '1.0.0',
       agent: {
-        initialized: !!agent,
-        type: 'SimplePharmacyAgent',
+        initialized: !!ragOrchestrator,
+        type: 'RAG-PharmacyAssistant',
       },
       environment: {
         hasApiKey: !!process.env.AI_API_KEY,
