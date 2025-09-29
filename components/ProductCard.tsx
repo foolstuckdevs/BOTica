@@ -18,8 +18,8 @@ export const ProductCard = ({
     id: number;
     name: string;
     brandName?: string | null;
-    lotNumber: string;
-    expiryDate: string;
+    lotNumber: string | null;
+    expiryDate: string | null;
     sellingPrice: string;
     imageUrl?: string | null;
     quantity: number;
@@ -27,7 +27,15 @@ export const ProductCard = ({
   };
   onAddToCart: () => void;
 }) => {
-  const urgency = getExpiryUrgency(product.expiryDate);
+  const urgency = product.expiryDate ? getExpiryUrgency(product.expiryDate) : {
+    level: 'no_expiry',
+    days: null,
+    color: 'bg-gray-100',
+    textColor: 'text-gray-600',
+    borderColor: 'border-gray-200',
+    badge: 'NO EXPIRY',
+    icon: '⚫',
+  };
 
   return (
     <div
@@ -90,7 +98,7 @@ export const ProductCard = ({
 
           <div className="flex items-center gap-2 text-xs">
             <Hash className="w-3 h-3 text-amber-500 flex-shrink-0" />
-            <span className="text-gray-600 font-mono">{product.lotNumber}</span>
+            <span className="text-gray-600 font-mono">{product.lotNumber || 'No lot number'}</span>
           </div>
 
           <div className="flex items-center gap-2 text-xs">
@@ -101,10 +109,12 @@ export const ProductCard = ({
                   ? 'text-red-600'
                   : urgency.level === 'moderately_close'
                   ? 'text-yellow-600'
+                  : urgency.level === 'no_expiry'
+                  ? 'text-gray-500'
                   : 'text-green-600'
               }`}
             >
-              {urgency.days} days left
+              {urgency.days ? `${urgency.days} days left` : 'No expiry'}
             </span>
           </div>
         </div>

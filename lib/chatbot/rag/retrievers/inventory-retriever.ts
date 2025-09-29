@@ -19,11 +19,11 @@ type ProductSearchResult = {
   brandName: string | null;
   quantity: number;
   sellingPrice: string;
-  dosageForm: string;
-  unit: string;
+  dosageForm: string | null;
+  unit: string | null;
   categoryName: string | null;
   supplierName: string | null;
-  expiryDate: string;
+  expiryDate: string | null;
   minStockLevel: number;
 };
 
@@ -245,8 +245,11 @@ export class InventoryRetriever extends BaseRAGRetriever {
       parts.push(`Brand: ${row.brandName}`);
     }
 
-    parts.push(`Form: ${row.dosageForm}`);
-    parts.push(`Stock: ${row.quantity} ${row.unit}`);
+    if (row.dosageForm) {
+      parts.push(`Form: ${row.dosageForm}`);
+    }
+    
+    parts.push(`Stock: ${row.quantity} ${row.unit || 'units'}`);
 
     if (row.sellingPrice) {
       parts.push(`Price: ₱${row.sellingPrice}`);

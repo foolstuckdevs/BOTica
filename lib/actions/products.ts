@@ -70,12 +70,16 @@ export const getProductBatches = async (
 
     // Sort by expiry date (FEFO) and filter out expired products
     const activeProducts = result.filter((product) => {
+      if (!product.expiryDate) return true; // If no expiry date, include product
       const today = new Date();
       const expiryDate = new Date(product.expiryDate);
       return expiryDate >= today; // Only show products that haven't expired
     });
 
     return activeProducts.sort((a, b) => {
+      if (!a.expiryDate && !b.expiryDate) return 0;
+      if (!a.expiryDate) return 1; // No expiry date goes to end
+      if (!b.expiryDate) return -1; // No expiry date goes to end
       const expiryA = new Date(a.expiryDate);
       const expiryB = new Date(b.expiryDate);
       return expiryA.getTime() - expiryB.getTime();
@@ -300,9 +304,12 @@ export const updateProduct = async (
       const attemptedChanges: string[] = [];
       if (
         validatedData.params.expiryDate &&
+        existingProduct.expiryDate &&
         normalizeDate(validatedData.params.expiryDate) !==
           normalizeDate(existingProduct.expiryDate)
       )
+        attemptedChanges.push('expiryDate');
+      if (validatedData.params.expiryDate && !existingProduct.expiryDate)
         attemptedChanges.push('expiryDate');
       if (
         validatedData.params.lotNumber &&

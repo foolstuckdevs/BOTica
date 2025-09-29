@@ -44,6 +44,10 @@ export const unitSchema = z.enum([
   'BLISTER',
 ]);
 
+// Optional variants for nullable fields
+export const dosageFormSchemaOptional = dosageFormSchema.optional();
+export const unitSchemaOptional = unitSchema.optional();
+
 export const paymentMethodSchema = z.enum(['CASH', 'GCASH']);
 
 export const purchaseOrderStatusSchema = z.enum([

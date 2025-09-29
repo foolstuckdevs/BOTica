@@ -384,9 +384,9 @@ export function ExpiringProductsTable({
                         </div>
                       </td>
                       <td className="py-3 px-4">{product.categoryName}</td>
-                      <td className="py-3 px-4">{product.lotNumber}</td>
+                      <td className="py-3 px-4">{product.lotNumber || 'N/A'}</td>
                       <td className="py-3 px-4">
-                        {format(new Date(product.expiryDate), 'MMM d, yyyy')}
+                        {product.expiryDate ? format(new Date(product.expiryDate), 'MMM d, yyyy') : 'N/A'}
                       </td>
                       <td className="py-3 px-4">
                         {getDisplayDaysRemaining(product.daysRemaining)}

@@ -53,7 +53,7 @@ export const LowStockAlerts = ({ lowStockProducts }: LowStockAlertsProps) => {
                 <div>
                   <p className="font-medium text-gray-900">{item.product}</p>
                   <p className="text-xs text-muted-foreground">
-                    {item.genericName || item.category}
+                    {item.genericName || item.category || 'No category'}
                   </p>
                 </div>
                 <div className="text-right">

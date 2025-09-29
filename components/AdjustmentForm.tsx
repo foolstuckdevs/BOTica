@@ -43,7 +43,7 @@ interface LightweightProduct {
   supplierName: string | null;
   quantity: number;
   expiryDate: string | Date | null;
-  unit: string;
+  unit: string | null;
   minStockLevel: number | null;
 }
 
@@ -152,7 +152,7 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
       productName: selectedProduct.name,
       currentStock: selectedProduct.quantity,
       newStock: selectedProduct.quantity + data.quantityChange,
-      unit: selectedProduct.unit,
+      unit: selectedProduct.unit || 'units',
     };
 
     setPendingAdjustments((prev) => [...prev, newAdjustment]);
@@ -312,7 +312,7 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
                           <div className="flex items-center gap-3 text-sm text-gray-500">
                             <span className="flex items-center gap-1">
                               <Package className="w-3 h-3" />
-                              {product.quantity} {product.unit}
+                              {product.quantity} {product.unit || 'units'}
                             </span>
                             {product.lotNumber && (
                               <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-mono">
@@ -394,7 +394,7 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
                   </div>
                   <div className="text-lg font-semibold text-gray-800">
                     {selectedProduct.quantity}{' '}
-                    {selectedProduct.unit.toLowerCase()}
+                    {(selectedProduct.unit || 'units').toLowerCase()}
                   </div>
                 </div>
 
@@ -418,7 +418,7 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
                   </div>
                   <div className="text-lg font-semibold text-green-600">
                     {selectedProduct.quantity + quantityChange}{' '}
-                    {selectedProduct.unit.toLowerCase()}
+                    {(selectedProduct.unit || 'units').toLowerCase()}
                   </div>
                 </div>
               </div>

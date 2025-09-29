@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { productFormSchema } from "@/lib/validations";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { productFormSchema } from '@/lib/validations';
 import {
   Form,
   FormControl,
@@ -11,47 +11,47 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useRouter } from "next/navigation";
-import { Category, Product, Supplier } from "@/types";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { ImageUpload } from "./ImageUpload";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useRouter } from 'next/navigation';
+import { Category, Product, Supplier } from '@/types';
+import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { ImageUpload } from './ImageUpload';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Calendar } from "./ui/calendar";
+} from '@/components/ui/select';
+import { Calendar } from './ui/calendar';
 import {
   PackageIcon,
   TagIcon,
   Banknote,
   LayoutGrid,
   AlertCircle,
-} from "lucide-react";
-import { toast } from "sonner";
-import { createProduct, updateProduct } from "@/lib/actions/products";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { createProduct, updateProduct } from '@/lib/actions/products';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
 
 interface Props extends Partial<Product> {
-  type?: "create" | "update";
+  type?: 'create' | 'update';
   categories: Category[];
   suppliers: Supplier[];
   pharmacyId: number;
 }
 
 const ProductForm = ({
-  type = "create",
+  type = 'create',
   categories,
   suppliers,
   pharmacyId,
@@ -64,32 +64,30 @@ const ProductForm = ({
   const form = useForm<z.infer<typeof productFormSchema>>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
-      name: product.name || "",
-      genericName: product.genericName || "",
+      name: product.name || '',
+      genericName: product.genericName || '',
       categoryId: product.categoryId || undefined,
-      barcode: product.barcode || "",
-      lotNumber: product.lotNumber || "",
-      brandName: product.brandName || "",
+      barcode: product.barcode || '',
+      lotNumber: product.lotNumber || '',
+      brandName: product.brandName || '',
       dosageForm:
         (product.dosageForm as
-          | "TABLET"
-          | "CAPSULE"
-          | "SYRUP"
-          | "SUSPENSION"
-          | "INJECTION"
-          | "OINTMENT") || "TABLET",
-      expiryDate: product.expiryDate
-        ? new Date(product.expiryDate)
-        : new Date(),
+          | 'TABLET'
+          | 'CAPSULE'
+          | 'SYRUP'
+          | 'SUSPENSION'
+          | 'INJECTION'
+          | 'OINTMENT') || undefined,
+      expiryDate: product.expiryDate ? new Date(product.expiryDate) : undefined,
       quantity: product.quantity || 1,
-      costPrice: product.costPrice || "",
-      sellingPrice: product.sellingPrice || "",
+      costPrice: product.costPrice || '',
+      sellingPrice: product.sellingPrice || '',
       minStockLevel: product.minStockLevel || 10,
       unit:
-        (product.unit as "PIECE" | "BOTTLE" | "VIAL" | "SACHET" | "TUBE") ||
-        "PIECE",
+        (product.unit as 'PIECE' | 'BOTTLE' | 'VIAL' | 'SACHET' | 'TUBE') ||
+        undefined,
       supplierId: product.supplierId || undefined,
-      imageUrl: product.imageUrl || "",
+      imageUrl: product.imageUrl || '',
     },
   });
 
@@ -97,21 +95,21 @@ const ProductForm = ({
     try {
       setIsSubmitting(true);
 
-      let imageUrl = values.imageUrl || "";
+      let imageUrl = values.imageUrl || '';
 
       if (selectedImageFile) {
         const formData = new FormData();
-        formData.append("file", selectedImageFile);
+        formData.append('file', selectedImageFile);
 
-        const response = await fetch("/api/upload", {
-          method: "POST",
+        const response = await fetch('/api/upload', {
+          method: 'POST',
           body: formData,
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || "Image upload failed");
+          throw new Error(data.error || 'Image upload failed');
         }
 
         imageUrl = data.url;
@@ -119,10 +117,10 @@ const ProductForm = ({
 
       const apiData = {
         ...values,
-        expiryDate: values.expiryDate.toISOString(),
+        expiryDate: values.expiryDate?.toISOString(),
         imageUrl,
         minStockLevel:
-          typeof values.minStockLevel === "number" &&
+          typeof values.minStockLevel === 'number' &&
           !isNaN(values.minStockLevel)
             ? values.minStockLevel
             : 10,
@@ -130,7 +128,7 @@ const ProductForm = ({
 
       // On update, prune fields that are server-restricted to improve UX
       const toSend: Partial<typeof apiData> = { ...apiData };
-      if (type === "update" && (product as Product).hasReferences) {
+      if (type === 'update' && (product as Product).hasReferences) {
         // Never allow client-side quantity edits via update
         delete toSend.quantity;
         // Freeze identity/traceability
@@ -144,21 +142,21 @@ const ProductForm = ({
       }
 
       const result =
-        type === "create"
+        type === 'create'
           ? await createProduct({ ...apiData, pharmacyId })
           : await updateProduct(product.id!, toSend, pharmacyId);
 
       if (result?.success) {
-        toast.success(`Product ${type === "create" ? "added" : "updated"}`);
+        toast.success(`Product ${type === 'create' ? 'added' : 'updated'}`);
         form.reset();
         setSelectedImageFile(null);
-        router.push("/inventory/products");
+        router.push('/inventory/products');
       } else {
-        toast.error(result?.message || "Operation failed");
+        toast.error(result?.message || 'Operation failed');
       }
     } catch (error) {
-      console.error("Form submission error:", error);
-      toast.error(error instanceof Error ? error.message : "Operation failed");
+      console.error('Form submission error:', error);
+      toast.error(error instanceof Error ? error.message : 'Operation failed');
     } finally {
       setIsSubmitting(false);
     }
@@ -169,19 +167,19 @@ const ProductForm = ({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-            {type === "create" ? "Add New Product" : "Edit Product"}
+            {type === 'create' ? 'Add New Product' : 'Edit Product'}
           </h1>
           <p className="text-sm text-gray-500 mt-2">
-            {type === "create"
-              ? "Fill in the details to add a new product to your inventory"
-              : "Update the product information as needed"}
+            {type === 'create'
+              ? 'Fill in the details to add a new product to your inventory'
+              : 'Update the product information as needed'}
           </p>
         </div>
         <Badge
-          variant={type === "create" ? "default" : "secondary"}
+          variant={type === 'create' ? 'default' : 'secondary'}
           className="text-sm"
         >
-          {type === "create" ? "New Product" : "Editing Mode"}
+          {type === 'create' ? 'New Product' : 'Editing Mode'}
         </Badge>
       </div>
 
@@ -229,14 +227,13 @@ const ProductForm = ({
                       <FormItem>
                         <FormLabel className="flex items-center gap-1">
                           Unit
-                          <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
                             disabled={
-                              type === "update" &&
+                              type === 'update' &&
                               (product as Product).hasReferences
                             }
                           >
@@ -287,14 +284,13 @@ const ProductForm = ({
                       <FormItem>
                         <FormLabel className="flex items-center gap-1">
                           Dosage Form
-                          <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
                             disabled={
-                              type === "update" &&
+                              type === 'update' &&
                               (product as Product).hasReferences
                             }
                           >
@@ -420,7 +416,7 @@ const ProductForm = ({
                               if (previewUrl) {
                                 field.onChange(previewUrl);
                               } else {
-                                field.onChange("");
+                                field.onChange('');
                               }
                             }}
                             disabled={false}
@@ -448,21 +444,19 @@ const ProductForm = ({
                       <FormItem>
                         <FormLabel className="flex items-center gap-1">
                           Lot Number
-                          <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <div className="w-full">
                             <Input
-                              required
                               placeholder="e.g., LOT2025-001"
                               {...field}
                               className="w-full"
                               readOnly={
-                                type === "update" &&
+                                type === 'update' &&
                                 (product as Product).hasReferences
                               }
                               disabled={
-                                type === "update" &&
+                                type === 'update' &&
                                 (product as Product).hasReferences
                               }
                             />
@@ -486,11 +480,11 @@ const ProductForm = ({
                               {...field}
                               className="w-full"
                               readOnly={
-                                type === "update" &&
+                                type === 'update' &&
                                 (product as Product).hasReferences
                               }
                               disabled={
-                                type === "update" &&
+                                type === 'update' &&
                                 (product as Product).hasReferences
                               }
                             />
@@ -508,18 +502,17 @@ const ProductForm = ({
                       <FormItem className="flex flex-col">
                         <FormLabel className="flex items-center gap-1">
                           Expiry Date
-                          <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <div className="w-full">
                             <Calendar
-                              selected={field.value}
+                              selected={field.value || null}
                               onChange={field.onChange}
                               minDate={new Date()}
                               placeholderText="Pick a date"
                               className="rounded-md border w-full"
                               disabled={
-                                type === "update" &&
+                                type === 'update' &&
                                 (product as Product).hasReferences
                               }
                             />
@@ -545,7 +538,7 @@ const ProductForm = ({
                               value={field.value?.toString() || undefined}
                               disabled={
                                 suppliers.length === 0 ||
-                                (type === "update" &&
+                                (type === 'update' &&
                                   (product as Product).hasReferences)
                               }
                             >
@@ -604,8 +597,8 @@ const ProductForm = ({
                             className="w-full"
                             value={field.value}
                             onChange={(e) => {
-                              const raw = e.target.value.replace(/[^\d.]/g, "");
-                              if (raw === "" || /^\d*\.?\d{0,2}$/.test(raw)) {
+                              const raw = e.target.value.replace(/[^\d.]/g, '');
+                              if (raw === '' || /^\d*\.?\d{0,2}$/.test(raw)) {
                                 field.onChange(raw);
                               }
                             }}
@@ -616,11 +609,11 @@ const ProductForm = ({
                               }
                             }}
                             readOnly={
-                              type === "update" &&
+                              type === 'update' &&
                               (product as Product).hasReferences
                             }
                             disabled={
-                              type === "update" &&
+                              type === 'update' &&
                               (product as Product).hasReferences
                             }
                           />
@@ -648,9 +641,9 @@ const ProductForm = ({
                               onChange={(e) => {
                                 const raw = e.target.value.replace(
                                   /[^\d.]/g,
-                                  ""
+                                  '',
                                 );
-                                if (raw === "" || /^\d*\.?\d{0,2}$/.test(raw)) {
+                                if (raw === '' || /^\d*\.?\d{0,2}$/.test(raw)) {
                                   field.onChange(raw);
                                 }
                               }}
@@ -698,11 +691,11 @@ const ProductForm = ({
                               className="w-full"
                               onChange={(e) =>
                                 field.onChange(
-                                  Math.min(9999, parseInt(e.target.value) || 1)
+                                  Math.min(9999, parseInt(e.target.value) || 1),
                                 )
                               }
-                              readOnly={type === "update"}
-                              disabled={type === "update"}
+                              readOnly={type === 'update'}
+                              disabled={type === 'update'}
                             />
                           </div>
                         </FormControl>
@@ -735,10 +728,10 @@ const ProductForm = ({
                               placeholder="Set alert threshold"
                               {...field}
                               className="w-full"
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={(e) =>
                                 field.onChange(
-                                  parseInt(e.target.value) || undefined
+                                  parseInt(e.target.value) || undefined,
                                 )
                               }
                             />
@@ -757,7 +750,7 @@ const ProductForm = ({
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("/inventory/products")}
+              onClick={() => router.push('/inventory/products')}
               className="w-full sm:w-auto"
             >
               Cancel
@@ -768,12 +761,12 @@ const ProductForm = ({
               disabled={isSubmitting}
               aria-label={
                 isSubmitting
-                  ? type === "create"
-                    ? "Adding product"
-                    : "Updating product"
-                  : type === "create"
-                  ? "Add product"
-                  : "Update product"
+                  ? type === 'create'
+                    ? 'Adding product'
+                    : 'Updating product'
+                  : type === 'create'
+                  ? 'Add product'
+                  : 'Update product'
               }
             >
               {isSubmitting ? (
@@ -798,12 +791,12 @@ const ProductForm = ({
                     ></path>
                   </svg>
                   <span className="sr-only">Loading</span>
-                  {type === "create" ? "Adding..." : "Updating..."}
+                  {type === 'create' ? 'Adding...' : 'Updating...'}
                 </span>
-              ) : type === "create" ? (
-                "Add Product"
+              ) : type === 'create' ? (
+                'Add Product'
               ) : (
-                "Update Product"
+                'Update Product'
               )}
             </Button>
           </div>

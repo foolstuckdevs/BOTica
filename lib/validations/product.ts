@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
-  dosageFormSchema,
-  unitSchema,
+  dosageFormSchemaOptional,
+  unitSchemaOptional,
   pharmacyIdSchema,
   productIdSchema,
 } from './common';
@@ -14,12 +14,15 @@ export const productSchema = z.object({
     .string()
     .max(50, 'Barcode must be at most 50 characters')
     .optional(),
-  lotNumber: z.string().min(1, 'Lot number is required'),
+  lotNumber: z.string().optional(),
   brandName: z.string().optional(),
-  dosageForm: dosageFormSchema,
-  expiryDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Expiry date is required and must be valid',
-  }),
+  dosageForm: dosageFormSchemaOptional,
+  expiryDate: z
+    .string()
+    .refine((date) => !isNaN(Date.parse(date)), {
+      message: 'Expiry date must be valid',
+    })
+    .optional(),
   quantity: z
     .number()
     .min(1, 'Quantity must be at least 1')
@@ -28,20 +31,20 @@ export const productSchema = z.object({
     .string()
     .regex(
       /^(?:\d{1,6})(?:\.\d{1,2})?$/,
-      'Cost price must be a valid number up to 999,999.99'
+      'Cost price must be a valid number up to 999,999.99',
     ),
   sellingPrice: z
     .string()
     .regex(
       /^(?:\d{1,6})(?:\.\d{1,2})?$/,
-      'Selling price must be a valid number up to 999,999.99'
+      'Selling price must be a valid number up to 999,999.99',
     ),
   minStockLevel: z
     .number()
     .min(0)
     .max(999, 'Minimum stock cannot exceed 999')
     .optional(),
-  unit: unitSchema,
+  unit: unitSchemaOptional,
   supplierId: z.number().min(1, 'Supplier is required').optional(),
   imageUrl: z.string().optional().or(z.literal('')),
 });
@@ -55,12 +58,14 @@ export const productFormSchema = z.object({
     .string()
     .max(50, 'Barcode must be at most 50 characters')
     .optional(),
-  lotNumber: z.string().min(1, 'Lot number is required'),
+  lotNumber: z.string().optional(),
   brandName: z.string().optional(),
-  dosageForm: dosageFormSchema,
-  expiryDate: z.date({
-    message: 'Expiry date is required',
-  }),
+  dosageForm: dosageFormSchemaOptional,
+  expiryDate: z
+    .date({
+      message: 'Expiry date is required',
+    })
+    .optional(),
   quantity: z
     .number()
     .min(1, 'Quantity must be at least 1')
@@ -69,20 +74,20 @@ export const productFormSchema = z.object({
     .string()
     .regex(
       /^(?:\d{1,6})(?:\.\d{1,2})?$/,
-      'Cost price must be a valid number up to 999,999.99'
+      'Cost price must be a valid number up to 999,999.99',
     ),
   sellingPrice: z
     .string()
     .regex(
       /^(?:\d{1,6})(?:\.\d{1,2})?$/,
-      'Selling price must be a valid number up to 999,999.99'
+      'Selling price must be a valid number up to 999,999.99',
     ),
   minStockLevel: z
     .number()
     .min(0)
     .max(999, 'Minimum stock cannot exceed 999')
     .optional(),
-  unit: unitSchema,
+  unit: unitSchemaOptional,
   supplierId: z.number().min(1, 'Supplier is required').optional(),
   imageUrl: z.string().optional().or(z.literal('')),
 });

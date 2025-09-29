@@ -109,15 +109,15 @@ export interface Product {
   categoryId: number | null;
   categoryName: string | null;
   barcode: string | null;
-  lotNumber: string;
+  lotNumber: string | null;
   brandName?: string | null;
-  dosageForm: DosageFormType;
-  expiryDate: string; // ISO format if coming from JSON or DB
+  dosageForm: DosageFormType | null;
+  expiryDate: string | null; // ISO format if coming from JSON or DB
   quantity: number;
   costPrice: string; // Drizzle decimal maps to string
   sellingPrice: string;
   minStockLevel: number | null;
-  unit: UnitType;
+  unit: UnitType | null;
   supplierId: number | null;
   supplierName?: string | null;
   imageUrl: string | null;
@@ -136,11 +136,11 @@ export interface ProductPOS {
   sellingPrice: string;
   quantity: number;
   // Batch/expiry tracking (FEFO)
-  lotNumber: string;
-  expiryDate: string;
+  lotNumber: string | null;
+  expiryDate: string | null;
   // Enhanced UX
   imageUrl: string | null;
-  unit: UnitType;
+  unit: UnitType | null;
   brandName: string | null;
 }
 
@@ -149,15 +149,15 @@ export interface ProductParams {
   genericName?: string;
   categoryId?: number;
   barcode?: string;
-  lotNumber: string;
+  lotNumber?: string;
   brandName?: string;
-  dosageForm: DosageFormType;
-  expiryDate: string;
+  dosageForm?: DosageFormType;
+  expiryDate?: string;
   quantity: number;
   costPrice: string; // Drizzle expects decimal values as string
   sellingPrice: string;
   minStockLevel: number;
-  unit: UnitType;
+  unit?: UnitType;
   supplierId?: number;
   imageUrl?: string;
   pharmacyId?: number;
@@ -178,7 +178,7 @@ export type LowStockProduct = {
   genericName: string | null;
   currentStock: number;
   minThreshold: number;
-  category: string;
+  category: string | null;
 };
 
 export interface Adjustment {
@@ -340,8 +340,8 @@ export interface ExpiringProductData {
   id: number;
   name: string;
   brandName?: string | null;
-  lotNumber: string;
-  expiryDate: string;
+  lotNumber: string | null;
+  expiryDate: string | null;
   daysRemaining: number;
   quantity: number;
   value: number;
@@ -357,7 +357,7 @@ export interface LowStockProductData {
   id: number;
   name: string;
   brandName?: string | null;
-  lotNumber: string;
+  lotNumber: string | null;
   quantity: number;
   reorderPoint: number;
   supplierId?: number | null;
@@ -391,8 +391,8 @@ export interface InventoryProductRow {
   name: string;
   brandName?: string | null;
   categoryName: string;
-  lotNumber: string;
-  expiryDate: string;
+  lotNumber: string | null;
+  expiryDate: string | null;
   quantity: number;
   unit?: string | null;
   costPrice: number;

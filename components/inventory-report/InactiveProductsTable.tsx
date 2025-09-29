@@ -64,7 +64,7 @@ export function InactiveProductsTable({
           p.name.toLowerCase().includes(term) ||
           (p.brandName || '').toLowerCase().includes(term) ||
           p.categoryName.toLowerCase().includes(term) ||
-          p.lotNumber.toLowerCase().includes(term),
+          (p.lotNumber || '').toLowerCase().includes(term),
       )
       .filter(
         (p) => categoryFilter === 'all' || p.categoryName === categoryFilter,
