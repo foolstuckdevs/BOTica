@@ -48,7 +48,6 @@ export class RAGOrchestrator {
     });
 
     this.clinicalRetriever = new ClinicalRetriever({
-      preferFDA: true,
       enableFallback: this.config.fallbackToGeneric,
     });
 

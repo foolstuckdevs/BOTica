@@ -7,6 +7,7 @@ import type {
   DosageInfo,
   UsageInfo,
   SideEffectsInfo,
+  InventoryMatch,
 } from '../types';
 
 /**
@@ -23,6 +24,8 @@ interface FDADrugLabel {
   warnings?: string[];
   contraindications?: string[];
   description?: string[];
+  dosage_form?: string[]; // Add dosage form field
+  product_ndc?: string[]; // Add product NDC field
 }
 
 interface FDAResponse {
@@ -34,12 +37,11 @@ interface FDAResponse {
 }
 
 /**
- * Clinical data retriever that fetches information from MedlinePlus and FDA APIs
- * Focuses on retrieving only the specific clinical sections requested by the user
+ * Clinical data retriever that fetches information from FDA Drug Labels API
+ * Uses RxNorm normalized drug names for accurate FDA API queries
  */
 export class ClinicalRetriever extends BaseRAGRetriever {
   private readonly fdaBaseUrl = 'https://api.fda.gov/drug/label.json';
-  private readonly medlinePlusBaseUrl = 'https://wsearch.nlm.nih.gov/ws/query';
   private readonly timeout = 15000;
 
   // Known OTC drugs (from existing implementation)
@@ -63,9 +65,8 @@ export class ClinicalRetriever extends BaseRAGRetriever {
     'bismuth subsalicylate',
   ];
 
-  constructor(config: { preferFDA?: boolean; enableFallback?: boolean } = {}) {
+  constructor(config: { enableFallback?: boolean } = {}) {
     super({
-      preferFDA: true,
       enableFallback: true,
       ...config,
     });
@@ -115,24 +116,15 @@ export class ClinicalRetriever extends BaseRAGRetriever {
     for (const term of searchTerms) {
       const rxcui = rxcuis.length > 0 ? rxcuis[0] : undefined;
 
-      // Try FDA API first (more reliable for dosage)
-      if (this.config.preferFDA) {
-        const fdaData = await this.fetchFromFDA(term, rxcui, intent);
-        if (fdaData) {
-          clinicalData.push(fdaData);
-        }
-      }
-
-      // Try MedlinePlus as fallback or primary
-      if (clinicalData.length === 0 || this.config.enableFallback) {
-        const medlinePlusData = await this.fetchFromMedlinePlus(
-          term,
-          rxcui,
-          intent,
-        );
-        if (medlinePlusData) {
-          clinicalData.push(medlinePlusData);
-        }
+      // Use FDA API for clinical data with inventory context for specificity
+      const fdaData = await this.fetchFromFDA(
+        term,
+        rxcui,
+        intent,
+        context.inventoryMatches?.[0],
+      );
+      if (fdaData) {
+        clinicalData.push(fdaData);
       }
     }
 
@@ -167,15 +159,56 @@ export class ClinicalRetriever extends BaseRAGRetriever {
     drugName: string,
     rxcui?: string,
     intent?: DetectedIntent,
+    inventoryMatch?: InventoryMatch,
   ): Promise<ClinicalData | null> {
     try {
       const searchTerm = this.normalizeDrugName(drugName);
+
+      // Build more specific search query using inventory data
+      let searchQuery = `openfda.generic_name:"${searchTerm}" OR openfda.brand_name:"${searchTerm}"`;
+
+      if (inventoryMatch) {
+        // Extract dosage form and strength from product name since InventoryMatch doesn't have separate fields
+        const productName = inventoryMatch.name.toLowerCase();
+        const strengthMatch = inventoryMatch.name?.match(/(\d+)\s*(mg|g|ml)/i);
+
+        // Try to infer dosage form from product name
+        let dosageForm = '';
+        if (productName.includes('tablet')) dosageForm = 'tablet';
+        else if (productName.includes('capsule')) dosageForm = 'capsule';
+        else if (
+          productName.includes('syrup') ||
+          productName.includes('liquid')
+        )
+          dosageForm = 'solution';
+        else if (productName.includes('cream') || productName.includes('gel'))
+          dosageForm = 'cream';
+
+        console.log(
+          `[ClinicalRetriever] Inventory context - Inferred form: ${dosageForm}, Product: ${inventoryMatch.name}`,
+        );
+
+        if (dosageForm) {
+          searchQuery += `+AND+dosage_form:"${dosageForm}"`;
+        }
+
+        if (strengthMatch) {
+          const strength = strengthMatch[0]; // e.g., "500mg"
+          searchQuery += `+AND+(openfda.brand_name:"${strength}" OR product_ndc:"${strength}")`;
+          console.log(
+            `[ClinicalRetriever] Adding strength filter: ${strength}`,
+          );
+        }
+      }
+
       const params = new URLSearchParams({
-        search: `openfda.generic_name:"${searchTerm}" OR openfda.brand_name:"${searchTerm}"`,
-        limit: '1',
+        search: searchQuery,
+        limit: '5', // Increase limit to find the right formulation
       });
 
-      console.log(`[ClinicalRetriever] Trying FDA API for: "${searchTerm}"`);
+      console.log(
+        `[ClinicalRetriever] Trying FDA API for: "${searchTerm}" with query: ${searchQuery}`,
+      );
 
       const response = await fetch(`${this.fdaBaseUrl}?${params}`, {
         headers: {
@@ -194,7 +227,40 @@ export class ClinicalRetriever extends BaseRAGRetriever {
       const data: FDAResponse = await response.json();
 
       if (data.results && data.results.length > 0) {
-        const drugLabel = data.results[0];
+        // If we have inventory context, try to find the best matching result
+        let selectedResult = data.results[0]; // Default to first result
+
+        if (inventoryMatch && data.results.length > 1) {
+          // Extract dosage form from product name
+          const productName = inventoryMatch.name.toLowerCase();
+          let dosageForm = '';
+          if (productName.includes('tablet')) dosageForm = 'tablet';
+          else if (productName.includes('capsule')) dosageForm = 'capsule';
+          else if (
+            productName.includes('syrup') ||
+            productName.includes('liquid')
+          )
+            dosageForm = 'solution';
+          else if (productName.includes('cream') || productName.includes('gel'))
+            dosageForm = 'cream';
+
+          // Try to find a result that matches our dosage form
+          if (dosageForm) {
+            const matchingResult = data.results.find((result) => {
+              const resultForm = result.dosage_form?.[0]?.toLowerCase();
+              return resultForm && resultForm.includes(dosageForm);
+            });
+
+            if (matchingResult) {
+              selectedResult = matchingResult;
+              console.log(
+                `[ClinicalRetriever] Found matching dosage form: ${selectedResult.dosage_form?.[0]}`,
+              );
+            }
+          }
+        }
+
+        const drugLabel = selectedResult;
         console.log('[ClinicalRetriever] Found FDA drug label data');
 
         const sections: ClinicalData['sections'] = {};
@@ -232,95 +298,6 @@ export class ClinicalRetriever extends BaseRAGRetriever {
     } catch (error) {
       console.error(
         `[ClinicalRetriever] FDA API error for "${drugName}":`,
-        error,
-      );
-      return null;
-    }
-  }
-
-  /**
-   * Fetch clinical data from MedlinePlus API
-   */
-  private async fetchFromMedlinePlus(
-    drugName: string,
-    rxcui?: string,
-    intent?: DetectedIntent,
-  ): Promise<ClinicalData | null> {
-    try {
-      // MedlinePlus search by RxCUI if available
-      let searchUrl: string;
-      if (rxcui) {
-        searchUrl = `${this.medlinePlusBaseUrl}?db=healthTopics&term=${rxcui}`;
-      } else {
-        const searchTerm = this.normalizeDrugName(drugName);
-        searchUrl = `${
-          this.medlinePlusBaseUrl
-        }?db=healthTopics&term=${encodeURIComponent(searchTerm)}`;
-      }
-
-      console.log(`[ClinicalRetriever] Trying MedlinePlus for: "${drugName}"`);
-
-      const response = await fetch(searchUrl, {
-        headers: {
-          'User-Agent': 'BOTica-Pharmacy-Assistant/1.0',
-        },
-        signal: AbortSignal.timeout(this.timeout),
-      });
-
-      if (!response.ok) {
-        console.warn(
-          `[ClinicalRetriever] MedlinePlus failed: HTTP ${response.status}`,
-        );
-        return null;
-      }
-
-      const xmlData = await response.text();
-
-      if (xmlData.includes('<document>') || xmlData.includes('<result>')) {
-        const sections: ClinicalData['sections'] = {};
-
-        // Extract content from XML and parse based on intent
-        const content = this.extractContentFromXML(xmlData);
-
-        if (
-          content &&
-          (!intent || intent.type === 'dosage' || intent.type === 'general')
-        ) {
-          const dosageInfo = this.extractDosageFromText(content);
-          if (dosageInfo) sections.dosage = dosageInfo;
-        }
-
-        if (
-          content &&
-          (!intent || intent.type === 'usage' || intent.type === 'general')
-        ) {
-          const usageInfo = this.extractUsageFromText(content);
-          if (usageInfo) sections.usage = usageInfo;
-        }
-
-        if (
-          content &&
-          (!intent ||
-            intent.type === 'side-effects' ||
-            intent.type === 'general')
-        ) {
-          const sideEffectsInfo = this.extractSideEffectsFromText(content);
-          if (sideEffectsInfo) sections.sideEffects = sideEffectsInfo;
-        }
-
-        return {
-          rxcui: rxcui || 'unknown',
-          drugName: drugName,
-          sections,
-          source: 'MedlinePlus',
-          lastUpdated: new Date(),
-        };
-      }
-
-      return null;
-    } catch (error) {
-      console.error(
-        `[ClinicalRetriever] MedlinePlus error for "${drugName}":`,
         error,
       );
       return null;

@@ -92,18 +92,63 @@ export class ResponseCompiler extends BaseResponseCompiler {
 
       // Prepare input data for the chain
       const chainInput = this.prepareChainInput(context);
+      console.log(
+        '[ResponseCompiler] Starting compilation for intent:',
+        context.intent.type,
+      );
+      console.log(
+        '[ResponseCompiler] Clinical data sources:',
+        context.clinicalData?.length || 0,
+      );
+      console.log(
+        '[ResponseCompiler] LLM Input - Drug name:',
+        chainInput.drug_name,
+      );
+      console.log('[ResponseCompiler] LLM Input - Intent:', chainInput.intent);
+      console.log(
+        '[ResponseCompiler] LLM Input - Dosage data:',
+        chainInput.dosage_data || 'N/A',
+      );
+      console.log(
+        '[ResponseCompiler] LLM Input - Clinical data:',
+        chainInput.clinical_data,
+      );
 
       // Generate response using selected chain with LCEL
+      console.log('[ResponseCompiler] Invoking LLM chain...');
       const response = await chain.invoke(chainInput);
+      console.log(
+        '[ResponseCompiler] Raw LLM response:',
+        String(response.content || '').substring(0, 500) + '...',
+      );
 
-      // Get the main response content
-      const mainContent = String(response.content || '');
+      // Get and sanitize the main response content (removes deprecated sections)
+      const mainContent = this.sanitizeMainContent(
+        String(response.content || ''),
+      );
+      console.log(
+        '[ResponseCompiler] Sanitized content:',
+        mainContent.substring(0, 300) + '...',
+      );
 
       // Add source attribution footer
       const sourceFooter = this.generateSourceFooter(context);
 
       // Combine response with source attribution
-      return `${mainContent}\n\n${sourceFooter}`;
+      let combined = `${mainContent}\n\n${sourceFooter}`;
+
+      // Final defensive sanitation pass (in case model inserted forbidden blocks at end)
+      combined = combined.replace(
+        /(^|\n)Clinical Information:[\s\S]*?(?=\n?Sources?:|$)/gi,
+        '',
+      );
+      combined = combined.replace(/(^|\n)Sources?:.*$/gim, (m) => {
+        // Preserve only the footer's canonical 'Clinical Data Sources:' section, not stray 'Sources:' lines
+        return m.includes('Clinical Data Sources:') ? m : '';
+      });
+      combined = combined.replace(/\n{3,}/g, '\n\n').trim();
+      console.log('[ResponseCompiler] Final response length:', combined.length);
+      return combined;
     } catch (error) {
       console.error('Compilation failed:', error);
       return 'I apologize, but I encountered an error while processing your request. Please try again.';
@@ -171,18 +216,24 @@ export class ResponseCompiler extends BaseResponseCompiler {
     - Write in a professional, clinical tone appropriate for pharmacy staff
     - Include technical details and professional considerations
     - Structure information clearly without bold or italic text
-    - DO NOT add any "Clinical Information:" summary sections at the end
-    - DO NOT add any "Sources:" lines (this will be handled separately)
+    
+    STRICT OUTPUT CONSTRAINTS (MANDATORY):
+    - DO NOT generate any section titled "Clinical Information:" (deprecated legacy block)
+    - DO NOT add a trailing "Sources:" section (system supplies footer automatically)
+    - DO NOT output sections named "Notes:", "Debug:", "Metadata:", "Confidence:", "Processing:", or "Inventory:" in the visible content
+    - DO NOT restate dosage lines in a summary after listing them
+    - ONLY use data present in dosage_data, inventory_data, or rxnorm_data; if data is missing explicitly state its absence without fabricating
     
     Guidelines for Internal Staff:
-    - Provide specific dosage amounts with strength details when available
-    - Include frequency, timing, and administration route instructions
-    - Note age-specific, weight-based, or condition-specific considerations
+    - Provide clinical dosage ranges with strength details when available (e.g., "500 mg to 1000 mg every 4 to 6 hours")
+    - Include frequency, timing, and administration route specifications
+    - Note age-specific, weight-based, or condition-specific considerations using clinical reference ranges
     - Include contraindications and drug interaction warnings
     - Reference clinical guidelines and professional standards
     - Note inventory availability and alternative formulations
     - Include overdose symptoms and emergency protocols
-    - Mention when to escalate to clinical pharmacist or physician`;
+    - Mention when to escalate to clinical pharmacist or physician
+    - Use clinical reference format, not patient instruction format (avoid "take X tablets")`;
 
     const humanTemplate = `Drug name: {drug_name}
     
@@ -192,7 +243,7 @@ export class ResponseCompiler extends BaseResponseCompiler {
     
     RxNorm data: {rxnorm_data}
     
-    Please provide comprehensive dosage information for this medication.`;
+    Please provide comprehensive dosage information for this medication using clinical reference ranges.`;
 
     return ChatPromptTemplate.fromMessages([
       SystemMessagePromptTemplate.fromTemplate(systemTemplate),
@@ -215,18 +266,23 @@ export class ResponseCompiler extends BaseResponseCompiler {
     - Write in a professional, clinical tone appropriate for pharmacy staff
     - Include technical details and professional considerations
     - Structure information clearly without bold or italic text
-    - DO NOT add any "Clinical Information:" summary sections at the end
-    - DO NOT add any "Sources:" lines (this will be handled separately)
+    
+    STRICT OUTPUT CONSTRAINTS (MANDATORY):
+    - DO NOT generate any section titled "Clinical Information:" (deprecated)
+    - DO NOT append a final "Sources:" section (footer provided separately)
+    - DO NOT include debug or meta commentary
+    - DO NOT duplicate indication lists across headers
+    - ONLY use information grounded in usage_data, inventory_data, or rxnorm_data
     
     Guidelines for Internal Staff:
-    - List primary therapeutic indications with ICD-10 codes when available
-    - Include off-label uses and clinical evidence
-    - Detail contraindications, precautions, and black box warnings
-    - Note drug interactions and monitoring parameters
-    - Reference clinical guidelines and formulary status
-    - Include pregnancy/lactation categories and special populations
-    - Note therapeutic alternatives available in inventory
-    - Mention when clinical pharmacist consultation is recommended`;
+    - Provide clinical therapeutic indications and mechanism of action using professional reference format
+    - Include clinically-approved indications and evidence-based uses
+    - Note contraindications and precautions using clinical reference style
+    - Include drug interaction considerations and monitoring parameters
+    - Reference clinical guidelines and professional standards
+    - Note inventory availability and therapeutic alternatives
+    - Mention when to escalate to clinical pharmacist or physician
+    - Use clinical reference format appropriate for pharmacy professionals`;
 
     const humanTemplate = `Drug name: {drug_name}
     
@@ -236,7 +292,7 @@ export class ResponseCompiler extends BaseResponseCompiler {
     
     RxNorm data: {rxnorm_data}
     
-    Please provide comprehensive usage information for this medication.`;
+    Please provide comprehensive usage information for this medication using clinical reference format.`;
 
     return ChatPromptTemplate.fromMessages([
       SystemMessagePromptTemplate.fromTemplate(systemTemplate),
@@ -259,18 +315,24 @@ export class ResponseCompiler extends BaseResponseCompiler {
     - Write in a professional, clinical tone appropriate for pharmacy staff
     - Include technical details and professional considerations
     - Structure information clearly without bold or italic text
-    - DO NOT add any "Clinical Information:" summary sections at the end
-    - DO NOT add any "Sources:" lines (this will be handled separately)
+    
+    STRICT OUTPUT CONSTRAINTS (MANDATORY):
+    - DO NOT generate any section titled "Clinical Information:" (legacy)
+    - DO NOT add a trailing "Sources:" section (footer handled externally)
+    - DO NOT fabricate incidence data; state when unavailable
+    - DO NOT repeat the same adverse effect across frequency categories
+    - NO debug/meta commentary
     
     Guidelines for Internal Staff:
-    - Categorize adverse reactions by frequency and severity (MedDRA terms when available)
-    - Include incidence rates and clinical significance
-    - Note serious adverse reactions requiring immediate intervention
-    - Detail monitoring parameters and early warning signs
-    - Reference black box warnings and REMS requirements
-    - Include drug-drug interaction profiles
-    - Note special population considerations (pediatric, geriatric, hepatic/renal impairment)
-    - Mention reporting requirements for adverse events`;
+    - Provide clinical adverse reaction profiles with frequency data when available using professional reference format
+    - Include common, serious, and rare adverse effects with clinical significance
+    - Note contraindications and black box warnings using clinical reference style
+    - Include drug interaction safety considerations and monitoring parameters
+    - Reference clinical guidelines and professional safety standards
+    - Note inventory monitoring requirements and therapeutic alternatives
+    - Include management strategies and early warning signs
+    - Mention when to escalate to clinical pharmacist or physician
+    - Use clinical reference format appropriate for pharmacy professionals`;
 
     const humanTemplate = `Drug name: {drug_name}
     
@@ -280,7 +342,7 @@ export class ResponseCompiler extends BaseResponseCompiler {
     
     RxNorm data: {rxnorm_data}
     
-    Please provide comprehensive side effects information for this medication.`;
+    Please provide comprehensive side effects information for this medication using clinical reference format.`;
 
     return ChatPromptTemplate.fromMessages([
       SystemMessagePromptTemplate.fromTemplate(systemTemplate),
@@ -303,18 +365,28 @@ export class ResponseCompiler extends BaseResponseCompiler {
     - Write in a professional, clinical tone appropriate for pharmacy staff
     - Include technical details and professional considerations
     - Structure information clearly without bold or italic text
-    - DO NOT add any "Clinical Information:" summary sections at the end
-    - DO NOT add any "Sources:" lines (this will be handled separately)
+    
+    STRICT OUTPUT CONSTRAINTS (MANDATORY):
+    - DO NOT generate a section titled "Clinical Information:" (suppress legacy block)
+    - DO NOT create standalone "Sources:" or "Notes:" sections (system adds footer)
+    - DO NOT include debug/confidence/inventory/processing metadata
+    - DO NOT repeat inventory details redundantly
+    - ONLY use information in clinical_data, inventory_data, or rxnorm_data; omit absent subsections instead of inventing
     
     Guidelines for Internal Staff:
-    - Provide comprehensive drug monograph information
-    - Include pharmacokinetic and pharmacodynamic properties
+    - Provide essential drug monograph information focused on dispensing needs
     - Detail formulation specifics and bioequivalence data
-    - Note storage requirements and stability information
+    - Note storage requirements (room temperature, moisture/heat protection only)
     - Include regulatory status and scheduling information
     - Reference professional guidelines and standards of care
-    - Note inventory levels and procurement considerations
-    - Include clinical pearls and practice recommendations`;
+    - Note inventory levels only
+    
+    EXCLUDED SECTIONS (DO NOT INCLUDE):
+    - DO NOT include Pharmacokinetics section (absorption, distribution, metabolism, elimination details)
+    - DO NOT include Clinical Pearls section (general counseling advice)
+    - DO NOT include Practice Recommendations section (general practice guidance)
+    - DO NOT include Procurement Considerations section (supplier reliability, pricing, stock monitoring)
+    - DO NOT mention 'prevent accidental overdose' in storage requirements - focus only on environmental storage conditions`;
 
     const humanTemplate = `Drug name: {drug_name}
     
@@ -330,6 +402,29 @@ export class ResponseCompiler extends BaseResponseCompiler {
       SystemMessagePromptTemplate.fromTemplate(systemTemplate),
       HumanMessagePromptTemplate.fromTemplate(humanTemplate),
     ]);
+  }
+
+  /**
+   * Sanitize output to remove deprecated legacy sections (Clinical Information:, Sources:, and meta lines)
+   */
+  private sanitizeMainContent(raw: string): string {
+    let text = raw.trimEnd();
+
+    // Remove any Clinical Information block (legacy) until a blank line or end
+    text = text.replace(/(^|\n)Clinical Information:[\s\S]*?(?=\n\n|$)/gi, '');
+
+    // Remove standalone Sources: lines (not our footer)
+    text = text.replace(/(^|\n)Sources?:.*$/gim, '');
+
+    // Remove forbidden metadata lines
+    text = text.replace(
+      /(^|\n)(Notes?|Debug|Confidence|Processing|Inventory|Metadata):.*$/gim,
+      '',
+    );
+
+    // Collapse multiple blank lines
+    text = text.replace(/\n{3,}/g, '\n\n').trim();
+    return text;
   }
 
   /**
@@ -367,25 +462,86 @@ export class ResponseCompiler extends BaseResponseCompiler {
    * Extract and format dosage data from context
    */
   private extractDosageData(context: RetrievalContext): string {
+    console.log(
+      '[ResponseCompiler] Extracting dosage data from',
+      context.clinicalData?.length || 0,
+      'clinical sources',
+    );
+
     const dosageInfo = context.clinicalData
-      ?.map((data) => data.sections.dosage)
+      ?.map((data, index) => {
+        console.log(
+          `[ResponseCompiler] Processing clinical data ${index + 1}:`,
+          {
+            source: data.source,
+            hasDosage: !!data.sections.dosage,
+            dosageKeys: data.sections.dosage
+              ? Object.keys(data.sections.dosage)
+              : [],
+          },
+        );
+
+        if (data.sections.dosage) {
+          console.log(
+            `[ResponseCompiler] Dosage data ${index + 1}:`,
+            JSON.stringify(data.sections.dosage, null, 2),
+          );
+        }
+
+        return data.sections.dosage;
+      })
       .filter(Boolean)
-      .map((dosage) => {
+      .map((dosage, index) => {
         if (!dosage) return '';
         const parts = [];
-        if (dosage.adults) parts.push(`Adults: ${dosage.adults}`);
-        if (dosage.children) parts.push(`Children: ${dosage.children}`);
-        if (dosage.frequency) parts.push(`Frequency: ${dosage.frequency}`);
-        if (dosage.instructions)
+        if (dosage.adults) {
+          parts.push(`Adults: ${dosage.adults}`);
+          console.log(
+            `[ResponseCompiler] Dosage ${index + 1} - Adults:`,
+            dosage.adults,
+          );
+        }
+        if (dosage.children) {
+          parts.push(`Children: ${dosage.children}`);
+          console.log(
+            `[ResponseCompiler] Dosage ${index + 1} - Children:`,
+            dosage.children,
+          );
+        }
+        if (dosage.frequency) {
+          parts.push(`Frequency: ${dosage.frequency}`);
+          console.log(
+            `[ResponseCompiler] Dosage ${index + 1} - Frequency:`,
+            dosage.frequency,
+          );
+        }
+        if (dosage.instructions) {
           parts.push(`Instructions: ${dosage.instructions}`);
-        if (dosage.warnings) parts.push(`Warnings: ${dosage.warnings}`);
-        return parts.join('\n');
+          console.log(
+            `[ResponseCompiler] Dosage ${index + 1} - Instructions:`,
+            dosage.instructions,
+          );
+        }
+        if (dosage.warnings) {
+          parts.push(`Warnings: ${dosage.warnings}`);
+          console.log(
+            `[ResponseCompiler] Dosage ${index + 1} - Warnings:`,
+            dosage.warnings,
+          );
+        }
+        const formatted = parts.join('\n');
+        console.log(
+          `[ResponseCompiler] Formatted dosage ${index + 1}:`,
+          formatted,
+        );
+        return formatted;
       });
 
-    return (
+    const result =
       dosageInfo?.filter(Boolean).join('\n\n') ||
-      'No specific dosage information available.'
-    );
+      'No specific dosage information available.';
+    console.log('[ResponseCompiler] Final extracted dosage data:', result);
+    return result;
   }
 
   /**
@@ -450,18 +606,36 @@ export class ResponseCompiler extends BaseResponseCompiler {
    * Format clinical data for LLM input
    */
   private formatClinicalData(clinicalData?: ClinicalData[]): string {
+    console.log(
+      '[ResponseCompiler] Formatting clinical data:',
+      clinicalData?.length || 0,
+      'sources',
+    );
+
     if (!clinicalData || clinicalData.length === 0) {
+      console.log('[ResponseCompiler] No clinical data available');
       return 'No clinical data available.';
     }
 
-    return clinicalData
-      .map(
-        (data: ClinicalData) =>
-          `Source: ${data.source}\nSections: ${Object.keys(data.sections).join(
-            ', ',
-          )}`,
-      )
+    const formatted = clinicalData
+      .map((data: ClinicalData, index) => {
+        const sections = Object.keys(data.sections);
+        console.log(`[ResponseCompiler] Clinical data ${index + 1}:`, {
+          source: data.source,
+          sections: sections,
+          sectionsContent: Object.fromEntries(
+            sections.map((key) => [
+              key,
+              data.sections[key as keyof typeof data.sections],
+            ]),
+          ),
+        });
+        return `Source: ${data.source}\nSections: ${sections.join(', ')}`;
+      })
       .join('\n\n');
+
+    console.log('[ResponseCompiler] Formatted clinical data:', formatted);
+    return formatted;
   }
 
   /**
@@ -570,7 +744,7 @@ export class ResponseCompiler extends BaseResponseCompiler {
 
     // Add data sources
     if (hasInventoryData) {
-      sources.push('Internal Pharmacy Inventory');
+      sources.push('BOTica Inventory');
     }
 
     if (hasRxNormData) {
@@ -582,8 +756,8 @@ export class ResponseCompiler extends BaseResponseCompiler {
       context.clinicalData?.forEach((data) => {
         if (data.source === 'FDA') {
           clinicalSources.add('OpenFDA Drug Labels Database');
-        } else if (data.source === 'MedlinePlus') {
-          clinicalSources.add('MedlinePlus (National Library of Medicine)');
+        } else {
+          clinicalSources.add(data.source);
         }
       });
       sources.push(...Array.from(clinicalSources));
@@ -591,11 +765,6 @@ export class ResponseCompiler extends BaseResponseCompiler {
 
     // Build footer
     const footerLines = [];
-
-    // Add separator line
-    footerLines.push(
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-    );
 
     // Add source attribution if we have sources
     if (sources.length > 0) {
@@ -606,20 +775,13 @@ export class ResponseCompiler extends BaseResponseCompiler {
       footerLines.push('');
     }
 
-    // Add retrieval timestamp
-    footerLines.push(`Data retrieved: ${new Date().toLocaleString()}`);
-    footerLines.push('');
-
     // Add professional disclaimer for internal staff
-    footerLines.push('Internal Use Notice:');
+    footerLines.push('Notice:');
     footerLines.push(
-      'This information is compiled from authoritative clinical databases for pharmacy staff reference.',
+      '- This information is compiled from authoritative clinical databases for pharmacy staff reference.',
     );
     footerLines.push(
-      'Verify current prescribing information and consult clinical guidelines for patient-specific decisions.',
-    );
-    footerLines.push(
-      'Report any data discrepancies to the pharmacy informatics team.',
+      '- Verify current prescribing information and consult clinical guidelines for patient-specific decisions.',
     );
 
     return footerLines.join('\n');

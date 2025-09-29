@@ -115,6 +115,17 @@ export class IntentDetector {
       };
     }
 
+    // Check if query is a single drug name (high confidence for general info)
+    const singleDrugPattern = /^[a-zA-Z0-9\s-]{2,30}$/;
+    if (singleDrugPattern.test(normalizedQuery) && normalizedQuery.length > 2) {
+      return {
+        type: 'general',
+        drugName: this.cleanDrugName(normalizedQuery),
+        confidence: 0.8, // High confidence for single drug name queries
+        rawQuery: query.text,
+      };
+    }
+
     // No clear intent detected
     return {
       type: 'unknown',

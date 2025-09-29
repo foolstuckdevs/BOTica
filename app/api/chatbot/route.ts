@@ -31,8 +31,6 @@ async function convertRAGResponse(
 
   // Extract sources
   const sources = [];
-  if (ragResponse.includes('FDA Drug Labels')) sources.push('FDA Drug Labels');
-  if (ragResponse.includes('MedlinePlus')) sources.push('MedlinePlus');
   if (ragResponse.includes('RxNorm')) sources.push('RxNorm');
   if (ragResponse.includes('Pharmacy Inventory'))
     sources.push('Pharmacy Inventory');

@@ -134,20 +134,6 @@ export default function Chatbot() {
         if (item.expiryDate) content += `\n- Expiry: ${item.expiryDate}`;
       }
 
-      // 3) Clinical info (if present)
-      if (chatbotResponse.clinical) {
-        content += '\n\nClinical Information:\n';
-        if (chatbotResponse.clinical.dosage) {
-          content += `- Dosage: ${chatbotResponse.clinical.dosage}\n`;
-        }
-        if (chatbotResponse.clinical.usage) {
-          content += `- Usage: ${chatbotResponse.clinical.usage}\n`;
-        }
-        if (chatbotResponse.clinical.sideEffects) {
-          content += `- Side effects: ${chatbotResponse.clinical.sideEffects}\n`;
-        }
-      }
-
       // 5) Only show detailedNotes if both inventory and clinical are missing
       const hasInventory = Array.isArray(items)
         ? items.length > 0
@@ -156,16 +142,6 @@ export default function Chatbot() {
       if (!hasInventory && !hasClinical && chatbotResponse.ui?.detailedNotes) {
         content += '\n\nNotes:\n';
         content += chatbotResponse.ui.detailedNotes;
-      }
-
-      // 6) Sources footer
-      if (
-        chatbotResponse.sources &&
-        Array.isArray(chatbotResponse.sources) &&
-        chatbotResponse.sources.length > 0
-      ) {
-        content += '\n\nSources: ';
-        content += chatbotResponse.sources.join('; ');
       }
 
       setMessages((m) => [...m, { sender: 'bot', content, ts: Date.now() }]);
