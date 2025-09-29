@@ -67,15 +67,17 @@ export const Cart: React.FC<CartProps> = ({
             cart.map((item) => {
               const product = products.find((p) => p.id === item.id);
               const maxQuantity = product?.quantity || 1;
-              const urgency = item.expiryDate ? getExpiryUrgency(item.expiryDate) : {
-                level: 'no_expiry',
-                days: null,
-                color: 'bg-gray-100',
-                textColor: 'text-gray-600',
-                borderColor: 'border-gray-200',
-                badge: 'NO EXPIRY',
-                icon: '⚫',
-              };
+              const urgency = item.expiryDate
+                ? getExpiryUrgency(item.expiryDate)
+                : {
+                    level: 'no_expiry',
+                    days: null,
+                    color: 'bg-gray-100',
+                    textColor: 'text-gray-600',
+                    borderColor: 'border-gray-200',
+                    badge: 'NO EXPIRY',
+                    icon: '⚫',
+                  };
 
               return (
                 <div

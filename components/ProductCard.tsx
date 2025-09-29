@@ -27,15 +27,17 @@ export const ProductCard = ({
   };
   onAddToCart: () => void;
 }) => {
-  const urgency = product.expiryDate ? getExpiryUrgency(product.expiryDate) : {
-    level: 'no_expiry',
-    days: null,
-    color: 'bg-gray-100',
-    textColor: 'text-gray-600',
-    borderColor: 'border-gray-200',
-    badge: 'NO EXPIRY',
-    icon: '⚫',
-  };
+  const urgency = product.expiryDate
+    ? getExpiryUrgency(product.expiryDate)
+    : {
+        level: 'no_expiry',
+        days: null,
+        color: 'bg-gray-100',
+        textColor: 'text-gray-600',
+        borderColor: 'border-gray-200',
+        badge: 'NO EXPIRY',
+        icon: '⚫',
+      };
 
   return (
     <div
@@ -98,7 +100,9 @@ export const ProductCard = ({
 
           <div className="flex items-center gap-2 text-xs">
             <Hash className="w-3 h-3 text-amber-500 flex-shrink-0" />
-            <span className="text-gray-600 font-mono">{product.lotNumber || 'No lot number'}</span>
+            <span className="text-gray-600 font-mono">
+              {product.lotNumber || 'No lot number'}
+            </span>
           </div>
 
           <div className="flex items-center gap-2 text-xs">

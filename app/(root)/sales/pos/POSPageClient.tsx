@@ -132,8 +132,12 @@ export default function POSPage({
         if (aNameMatch !== bNameMatch) return aNameMatch - bNameMatch;
 
         // Step 2: Sort by soonest expiry (FEFO)
-        const aExpiry = a.expiryDate ? new Date(a.expiryDate).getTime() : Infinity;
-        const bExpiry = b.expiryDate ? new Date(b.expiryDate).getTime() : Infinity;
+        const aExpiry = a.expiryDate
+          ? new Date(a.expiryDate).getTime()
+          : Infinity;
+        const bExpiry = b.expiryDate
+          ? new Date(b.expiryDate).getTime()
+          : Infinity;
         return aExpiry - bExpiry;
       });
   }, [products, searchTerm, searchLower]);

@@ -248,7 +248,7 @@ export class InventoryRetriever extends BaseRAGRetriever {
     if (row.dosageForm) {
       parts.push(`Form: ${row.dosageForm}`);
     }
-    
+
     parts.push(`Stock: ${row.quantity} ${row.unit || 'units'}`);
 
     if (row.sellingPrice) {
