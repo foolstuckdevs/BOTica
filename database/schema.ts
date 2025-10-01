@@ -37,15 +37,21 @@ export const DOSAGE_FORM_ENUM = pgEnum('dosage_form', [
 ]);
 
 export const UNIT_ENUM = pgEnum('unit', [
-  'PIECE', // tablets, capsules, suppositories
-  'BOTTLE', // syrups, suspensions, drops, solutions, mouthwash
-  'VIAL', // injections
-  'SACHET', // ORS, powders
-  'TUBE', // ointments, creams, gels
-  'BOX', // bulk packs
-  'PACK', // inhalers, patches, strips
-  'BLISTER', // blister packaging
+  'PIECE',    // tablets, capsules, suppositories
+  'BOTTLE',   // syrups, suspensions, drops, solutions, mouthwash
+  'VIAL',     // injections
+  'SACHET',   // ORS, powders
+  'TUBE',     // ointments, creams, gels
+  'BOX',      // bulk packs
+  'PACK',     // inhalers, patches, strips
+  'BLISTER',  // blister packaging
+  'GRANULES', // granules
+  'SYRUP',    // syrups
+  'DROPS',    // infant/adult drops
+  'CAPSULE',  // capsules
+  'TABLET',   // tablets
 ]);
+
 
 export const NOTIFICATION_TYPE_ENUM = pgEnum('notification_type', [
   'LOW_STOCK',
