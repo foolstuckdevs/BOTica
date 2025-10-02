@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
-import { Category, Product, Supplier } from '@/types';
+import { Category, Product, Supplier, DosageFormType, UnitType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { ImageUpload } from './ImageUpload';
@@ -50,6 +50,30 @@ interface Props extends Partial<Product> {
   pharmacyId: number;
 }
 
+const UNIT_OPTIONS: { value: UnitType; label: string }[] = [
+  { value: 'PIECE', label: 'Piece' },
+  { value: 'BOX', label: 'Box' },
+];
+
+const DOSAGE_FORM_OPTIONS: { value: DosageFormType; label: string }[] = [
+  { value: 'TABLET', label: 'Tablet' },
+  { value: 'CAPSULE', label: 'Capsule' },
+  { value: 'CHEWABLE_TABLET', label: 'Chewable Tablet' },
+  { value: 'SYRUP', label: 'Syrup' },
+  { value: 'SUSPENSION', label: 'Suspension' },
+  { value: 'GRANULES', label: 'Granules' },
+  { value: 'INJECTION', label: 'Injection' },
+  { value: 'DROPS', label: 'Drops' },
+  { value: 'SOLUTION', label: 'Solution' },
+  { value: 'SUPPOSITORY', label: 'Suppository' },
+  { value: 'INHALER', label: 'Inhaler' },
+  { value: 'CREAM', label: 'Cream' },
+  { value: 'OINTMENT', label: 'Ointment' },
+  { value: 'GEL', label: 'Gel' },
+  { value: 'LOTION', label: 'Lotion' },
+  { value: 'PATCH', label: 'Patch' },
+];
+
 const ProductForm = ({
   type = 'create',
   categories,
@@ -71,21 +95,13 @@ const ProductForm = ({
       lotNumber: product.lotNumber || '',
       brandName: product.brandName || '',
       dosageForm:
-        (product.dosageForm as
-          | 'TABLET'
-          | 'CAPSULE'
-          | 'SYRUP'
-          | 'SUSPENSION'
-          | 'INJECTION'
-          | 'OINTMENT') || undefined,
+        (product.dosageForm as DosageFormType | undefined) ?? undefined,
       expiryDate: product.expiryDate ? new Date(product.expiryDate) : undefined,
       quantity: product.quantity || 1,
       costPrice: product.costPrice || '',
       sellingPrice: product.sellingPrice || '',
       minStockLevel: product.minStockLevel || 10,
-      unit:
-        (product.unit as 'PIECE' | 'BOTTLE' | 'VIAL' | 'SACHET' | 'TUBE') ||
-        undefined,
+      unit: (product.unit as UnitType | undefined) ?? undefined,
       supplierId: product.supplierId || undefined,
       imageUrl: product.imageUrl || '',
     },
@@ -241,21 +257,15 @@ const ProductForm = ({
                               <SelectValue placeholder="Select unit" />
                             </SelectTrigger>
                             <SelectContent>
-  <SelectItem value="PIECE">Piece</SelectItem>
-  <SelectItem value="BOTTLE">Bottle</SelectItem>
-  <SelectItem value="VIAL">Vial</SelectItem>
-  <SelectItem value="SACHET">Sachet</SelectItem>
-  <SelectItem value="TUBE">Tube</SelectItem>
-  <SelectItem value="BOX">Box</SelectItem>
-  <SelectItem value="PACK">Pack</SelectItem>
-  <SelectItem value="BLISTER">Blister</SelectItem>
-  <SelectItem value="GRANULES">Granules</SelectItem>
-  <SelectItem value="SYRUP">Syrup</SelectItem>
-  <SelectItem value="DROPS">Drops</SelectItem>
-  <SelectItem value="CAPSULE">Capsule</SelectItem>
-  <SelectItem value="TABLET">Tablet</SelectItem>
-</SelectContent>
-
+                              {UNIT_OPTIONS.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
                           </Select>
                         </FormControl>
                         <FormMessage className="text-xs" />
@@ -304,35 +314,14 @@ const ProductForm = ({
                               <SelectValue placeholder="Select dosage form" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="TABLET">Tablet</SelectItem>
-                              <SelectItem value="CAPSULE">Capsule</SelectItem>
-                              <SelectItem value="SYRUP">Syrup</SelectItem>
-                              <SelectItem value="SUSPENSION">
-                                Suspension
-                              </SelectItem>
-                              <SelectItem value="INJECTION">
-                                Injection
-                              </SelectItem>
-                              <SelectItem value="OINTMENT">Ointment</SelectItem>
-                              <SelectItem value="CREAM">Cream</SelectItem>
-                              <SelectItem value="GEL">Gel</SelectItem>
-                              <SelectItem value="DROPS">Drops</SelectItem>
-                              <SelectItem value="INHALER">Inhaler</SelectItem>
-                              <SelectItem value="SPRAY">Spray</SelectItem>
-                              <SelectItem value="PATCH">Patch</SelectItem>
-                              <SelectItem value="SUPPOSITORY">
-                                Suppository
-                              </SelectItem>
-                              <SelectItem value="SOLUTION">Solution</SelectItem>
-                              <SelectItem value="LOTION">Lotion</SelectItem>
-                              <SelectItem value="POWDER">Powder</SelectItem>
-                              {/* Removed GRANULES & NEBULIZER_SOLUTION per updated enum */}
-                              <SelectItem value="MOUTHWASH">
-                                Mouthwash
-                              </SelectItem>
-                              <SelectItem value="OTHER">
-                                Other / Non-med
-                              </SelectItem>
+                              {DOSAGE_FORM_OPTIONS.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </FormControl>

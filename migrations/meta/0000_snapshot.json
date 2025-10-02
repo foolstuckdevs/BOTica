@@ -1,5 +1,5 @@
 {
-  "id": "0a38eaa0-65b5-4878-8901-51e42e2f1a1c",
+  "id": "9da4b194-86a0-4310-8257-2461a33e782e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -380,6 +380,57 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.pnf_chat_logs": {
+      "name": "pnf_chat_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "question": {
+          "name": "question",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "answer": {
+          "name": "answer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "citations": {
+          "name": "citations",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "latency_ms": {
+          "name": "latency_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.products": {
       "name": "products",
       "schema": "",
@@ -418,7 +469,7 @@
           "name": "lot_number",
           "type": "varchar(50)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "brand_name": {
           "name": "brand_name",
@@ -431,13 +482,13 @@
           "type": "dosage_form",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "expiry_date": {
           "name": "expiry_date",
           "type": "date",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "quantity": {
           "name": "quantity",
@@ -469,7 +520,7 @@
           "type": "unit",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "supplier_id": {
           "name": "supplier_id",
@@ -1222,22 +1273,20 @@
       "values": [
         "TABLET",
         "CAPSULE",
+        "CHEWABLE_TABLET",
         "SYRUP",
         "SUSPENSION",
+        "GRANULES",
         "INJECTION",
-        "OINTMENT",
-        "CREAM",
-        "GEL",
         "DROPS",
-        "INHALER",
-        "SPRAY",
-        "PATCH",
-        "SUPPOSITORY",
         "SOLUTION",
+        "SUPPOSITORY",
+        "INHALER",
+        "CREAM",
+        "OINTMENT",
+        "GEL",
         "LOTION",
-        "POWDER",
-        "MOUTHWASH",
-        "OTHER"
+        "PATCH"
       ]
     },
     "public.notification_type": {
@@ -1284,13 +1333,7 @@
       "schema": "public",
       "values": [
         "PIECE",
-        "BOTTLE",
-        "VIAL",
-        "SACHET",
-        "TUBE",
-        "BOX",
-        "PACK",
-        "BLISTER"
+        "BOX"
       ]
     }
   },

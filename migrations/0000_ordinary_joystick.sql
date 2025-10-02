@@ -1,10 +1,10 @@
 CREATE TYPE "public"."adjustment_reason" AS ENUM('DAMAGED', 'EXPIRED', 'LOST_OR_STOLEN', 'STOCK_CORRECTION');--> statement-breakpoint
-CREATE TYPE "public"."dosage_form" AS ENUM('TABLET', 'CAPSULE', 'SYRUP', 'SUSPENSION', 'INJECTION', 'OINTMENT', 'CREAM', 'GEL', 'DROPS', 'INHALER', 'SPRAY', 'PATCH', 'SUPPOSITORY', 'SOLUTION', 'LOTION', 'POWDER', 'MOUTHWASH', 'OTHER');--> statement-breakpoint
+CREATE TYPE "public"."dosage_form" AS ENUM('TABLET', 'CAPSULE', 'CHEWABLE_TABLET', 'SYRUP', 'SUSPENSION', 'GRANULES', 'INJECTION', 'DROPS', 'SOLUTION', 'SUPPOSITORY', 'INHALER', 'CREAM', 'OINTMENT', 'GEL', 'LOTION', 'PATCH');--> statement-breakpoint
 CREATE TYPE "public"."notification_type" AS ENUM('LOW_STOCK', 'OUT_OF_STOCK', 'EXPIRING', 'EXPIRED');--> statement-breakpoint
 CREATE TYPE "public"."payment_method" AS ENUM('CASH', 'GCASH');--> statement-breakpoint
 CREATE TYPE "public"."purchase_order_status" AS ENUM('DRAFT', 'EXPORTED', 'SUBMITTED', 'CONFIRMED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED');--> statement-breakpoint
 CREATE TYPE "public"."role" AS ENUM('Admin', 'Pharmacist');--> statement-breakpoint
-CREATE TYPE "public"."unit" AS ENUM('PIECE', 'BOTTLE', 'VIAL', 'SACHET', 'TUBE', 'BOX', 'PACK', 'BLISTER');--> statement-breakpoint
+CREATE TYPE "public"."unit" AS ENUM('PIECE', 'BOX');--> statement-breakpoint
 CREATE TABLE "activity_logs" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -52,21 +52,30 @@ CREATE TABLE "pharmacies" (
 	CONSTRAINT "pharmacies_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
+CREATE TABLE "pnf_chat_logs" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"question" text NOT NULL,
+	"answer" text NOT NULL,
+	"citations" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"latency_ms" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now()
+);
+--> statement-breakpoint
 CREATE TABLE "products" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(100) NOT NULL,
 	"generic_name" varchar(100),
 	"category_id" integer,
 	"barcode" varchar(50),
-	"lot_number" varchar(50) NOT NULL,
+	"lot_number" varchar(50),
 	"brand_name" varchar(100),
-	"dosage_form" "dosage_form" NOT NULL,
-	"expiry_date" date NOT NULL,
+	"dosage_form" "dosage_form",
+	"expiry_date" date,
 	"quantity" integer NOT NULL,
 	"cost_price" numeric(10, 2) NOT NULL,
 	"selling_price" numeric(10, 2) NOT NULL,
 	"min_stock_level" integer DEFAULT 10 NOT NULL,
-	"unit" "unit" NOT NULL,
+	"unit" "unit",
 	"supplier_id" integer,
 	"image_url" text,
 	"pharmacy_id" integer NOT NULL,

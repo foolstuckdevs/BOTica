@@ -11,7 +11,6 @@ import {
   uuid,
   pgEnum,
   jsonb,
-  vector,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -21,40 +20,23 @@ export const PAYMENT_METHOD_ENUM = pgEnum('payment_method', ['CASH', 'GCASH']);
 export const DOSAGE_FORM_ENUM = pgEnum('dosage_form', [
   'TABLET',
   'CAPSULE',
+  'CHEWABLE_TABLET',
   'SYRUP',
   'SUSPENSION',
+  'GRANULES',
   'INJECTION',
-  'OINTMENT',
-  'CREAM',
-  'GEL',
   'DROPS',
-  'INHALER',
-  'SPRAY',
-  'PATCH',
-  'SUPPOSITORY',
   'SOLUTION',
+  'SUPPOSITORY',
+  'INHALER',
+  'CREAM',
+  'OINTMENT',
+  'GEL',
   'LOTION',
-  'POWDER',
-  'MOUTHWASH',
-  'OTHER',
+  'PATCH',
 ]);
 
-export const UNIT_ENUM = pgEnum('unit', [
-  'PIECE',    // tablets, capsules, suppositories
-  'BOTTLE',   // syrups, suspensions, drops, solutions, mouthwash
-  'VIAL',     // injections
-  'SACHET',   // ORS, powders
-  'TUBE',     // ointments, creams, gels
-  'BOX',      // bulk packs
-  'PACK',     // inhalers, patches, strips
-  'BLISTER',  // blister packaging
-  'GRANULES', // granules
-  'SYRUP',    // syrups
-  'DROPS',    // infant/adult drops
-  'CAPSULE',  // capsules
-  'TABLET',   // tablets
-]);
-
+export const UNIT_ENUM = pgEnum('unit', ['PIECE', 'BOX']);
 
 export const NOTIFICATION_TYPE_ENUM = pgEnum('notification_type', [
   'LOW_STOCK',
@@ -287,15 +269,6 @@ export const refreshTokens = pgTable('refresh_tokens', {
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at').defaultNow(),
   replacedByTokenHash: varchar('replaced_by_token_hash', { length: 128 }),
-});
-
-// PNF RAG tables
-export const pnfChunks = pgTable('pnf_chunks', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  content: text('content').notNull(),
-  metadata: jsonb('metadata').notNull(),
-  embedding: vector('embedding', { dimensions: 3072 }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
 export const pnfChatLogs = pgTable('pnf_chat_logs', {

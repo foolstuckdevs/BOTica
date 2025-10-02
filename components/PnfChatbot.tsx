@@ -199,7 +199,9 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
             <span className="font-semibold">
               BOTica Drug Reference Assistant
             </span>
-            <span className="text-xs text-blue-100">Powered by RAG</span>
+            <span className="text-xs text-blue-100">
+              Based on the Philippine National Formulary
+            </span>
           </div>
         </div>
         {onClose ? (

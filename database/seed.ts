@@ -22,7 +22,7 @@ async function seedUsers() {
     {
       fullName: 'Ian Tristan Landagura',
       email: 'iantristanlandagura21@gmail.com',
-      password: 'WELOVEYOU2025=nv',
+      password: 'Testing.1',
       role: 'Admin' as const,
     },
     {
