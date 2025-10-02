@@ -241,15 +241,21 @@ const ProductForm = ({
                               <SelectValue placeholder="Select unit" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="PIECE">Piece</SelectItem>
-                              <SelectItem value="BOTTLE">Bottle</SelectItem>
-                              <SelectItem value="VIAL">Vial</SelectItem>
-                              <SelectItem value="SACHET">Sachet</SelectItem>
-                              <SelectItem value="TUBE">Tube</SelectItem>
-                              <SelectItem value="BOX">Box</SelectItem>
-                              <SelectItem value="PACK">Pack</SelectItem>
-                              <SelectItem value="BLISTER">Blister</SelectItem>
-                            </SelectContent>
+  <SelectItem value="PIECE">Piece</SelectItem>
+  <SelectItem value="BOTTLE">Bottle</SelectItem>
+  <SelectItem value="VIAL">Vial</SelectItem>
+  <SelectItem value="SACHET">Sachet</SelectItem>
+  <SelectItem value="TUBE">Tube</SelectItem>
+  <SelectItem value="BOX">Box</SelectItem>
+  <SelectItem value="PACK">Pack</SelectItem>
+  <SelectItem value="BLISTER">Blister</SelectItem>
+  <SelectItem value="GRANULES">Granules</SelectItem>
+  <SelectItem value="SYRUP">Syrup</SelectItem>
+  <SelectItem value="DROPS">Drops</SelectItem>
+  <SelectItem value="CAPSULE">Capsule</SelectItem>
+  <SelectItem value="TABLET">Tablet</SelectItem>
+</SelectContent>
+
                           </Select>
                         </FormControl>
                         <FormMessage className="text-xs" />
