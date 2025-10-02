@@ -80,7 +80,12 @@ export type UnitType =
   | 'TUBE'
   | 'BOX'
   | 'PACK'
-  | 'BLISTER';
+  | 'BLISTER'
+  | 'GRANULES'
+  | 'SYRUP'
+  | 'DROPS'
+  | 'CAPSULE'
+  | 'TABLET';
 
 export type DosageFormType =
   | 'TABLET'
