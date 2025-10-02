@@ -1,7 +1,7 @@
 import { auth } from '@/auth';
 import Header from '@/components/Header';
 import Sidebar, { SidebarProvider } from '@/components/Sidebar';
-import Chatbot from '@/components/Chatbot';
+import PnfChatbot from '@/components/PnfChatbot';
 import { ReactNode } from 'react';
 import InactivityWatcher from '@/components/InactivityWatcher';
 import SessionLifecycle from '@/components/SessionLifecycle';
@@ -35,9 +35,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
             </div>
           </main>
         </div>
-        <div className="fixed bottom-4 right-4 z-50">
-          <Chatbot />
-        </div>
+        <PnfChatbot variant="floating" />
         <InactivityWatcher role={session.user.role} />
         <SessionLifecycle />
       </div>

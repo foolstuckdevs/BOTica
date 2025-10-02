@@ -10,10 +10,12 @@
     "db:generate": "npx drizzle-kit generate",
     "db:migrate": "npx drizzle-kit migrate",
     "db:studio": "npx drizzle-kit studio",
-    "db:seed": "tsx database/seed.ts"
+    "db:seed": "tsx database/seed.ts",
+    "pnf:ingest": "tsx scripts/pnf-ingest.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
+    "@langchain/community": "^0.3.57",
     "@langchain/core": "^0.3.77",
     "@langchain/openai": "^0.6.13",
     "@neondatabase/serverless": "^1.0.1",
@@ -53,6 +55,8 @@
     "next-auth": "^5.0.0-beta.27",
     "next-themes": "^0.4.6",
     "openai": "^5.22.0",
+    "p-limit": "^4.0.0",
+    "pdf-parse": "^1.1.1",
     "postcss": "^8.5.6",
     "puppeteer-core": "^24.19.0",
     "react": "^19.0.0",

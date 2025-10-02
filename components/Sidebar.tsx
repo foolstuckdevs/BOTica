@@ -665,7 +665,6 @@ const Sidebar = () => {
             )}
           </>
         )}
-
         {/* Manage Staff (Admin only) */}
         {isAdmin && (
           <>

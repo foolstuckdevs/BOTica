@@ -40,4 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# storage (PDFs and large files)
+/storage/
+
+# scripts (ingest and processing scripts)
+/scripts/
+
 .fake

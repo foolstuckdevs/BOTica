@@ -10,7 +10,10 @@ import {
   decimal,
   uuid,
   pgEnum,
+  jsonb,
+  vector,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 // Enums
 export const ROLE_ENUM = pgEnum('role', ['Admin', 'Pharmacist']);
@@ -278,4 +281,24 @@ export const refreshTokens = pgTable('refresh_tokens', {
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at').defaultNow(),
   replacedByTokenHash: varchar('replaced_by_token_hash', { length: 128 }),
+});
+
+// PNF RAG tables
+export const pnfChunks = pgTable('pnf_chunks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  content: text('content').notNull(),
+  metadata: jsonb('metadata').notNull(),
+  embedding: vector('embedding', { dimensions: 3072 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const pnfChatLogs = pgTable('pnf_chat_logs', {
+  id: serial('id').primaryKey(),
+  question: text('question').notNull(),
+  answer: text('answer').notNull(),
+  citations: jsonb('citations')
+    .default(sql`'[]'::jsonb`)
+    .notNull(),
+  latencyMs: integer('latency_ms').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });

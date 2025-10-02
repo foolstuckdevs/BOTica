@@ -38,22 +38,3 @@ export const getExpiryUrgency = (expiryDate: string) => {
     icon: '🟢',
   };
 };
-
-export const sortProductsByFEFO = <
-  T extends { expiryDate: string; name: string },
->(
-  products: T[],
-): T[] => {
-  return products.sort((a, b) => {
-    // First sort by expiry date (FEFO)
-    const expiryA = new Date(a.expiryDate);
-    const expiryB = new Date(b.expiryDate);
-
-    if (expiryA.getTime() !== expiryB.getTime()) {
-      return expiryA.getTime() - expiryB.getTime();
-    }
-
-    // Then sort by product name for consistent grouping
-    return a.name.localeCompare(b.name);
-  });
-};

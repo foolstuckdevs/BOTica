@@ -3,6 +3,7 @@ import { addDays, addHours } from 'date-fns';
 import { db } from '@/database/drizzle';
 import { refreshTokens } from '@/database/schema';
 import { eq, and, isNull } from 'drizzle-orm';
+import { needsRefresh } from './token-utils';
 
 // CONFIG
 const REFRESH_TOKEN_LENGTH_BYTES = 48; // 64 chars base64url-ish after encoding
@@ -116,9 +117,4 @@ export function clearRefreshTokenCookie(resHeaders: Headers) {
   );
 }
 
-export function needsRefresh(tokenExp?: number) {
-  if (!tokenExp) return true;
-  const now = Date.now() / 1000;
-  const threshold = 5 * 60; // 5 minutes to expiry
-  return tokenExp - now < threshold;
-}
+export { needsRefresh };

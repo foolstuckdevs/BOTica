@@ -35,7 +35,3 @@ export const formatDateTimePH = (
     hour12: true,
   }).format(dt);
 };
-
-export const formatToTimestamp = (
-  date: Date | string | number | null | undefined,
-): string => formatDateTimePH(date);

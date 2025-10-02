@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { needsRefresh } from '@/lib/auth/refresh-tokens';
+import { needsRefresh } from '@/lib/auth/token-utils';
 
 // Enhanced: visibility-aware + exponential backoff
 export function useAutoRefreshToken(intervalMs = 60_000) {
