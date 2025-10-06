@@ -7,18 +7,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-interface Citation {
-  chunkId?: string;
-  drugName?: string;
-  section?: string;
-  pageRange?: string;
-  snippet?: string;
-}
-
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
-  citations?: Citation[];
   createdAt: number;
   latencyMs?: number;
 }
@@ -34,13 +25,30 @@ export interface PnfChatbotProps {
   className?: string;
 }
 
-type CitationSummary = {
-  id: string;
-  drugName: string;
-  pageRange?: string;
-};
-
 const GREETING = `Good day. I'm BOTica Drug Reference Assistant. How can I help you today?`;
+
+function extractDrugCandidate(text: string): string | undefined {
+  const match = text.match(
+    /(?:about|regarding|info on|information on|for| versus | vs\.? )\s+([a-z0-9][a-z0-9\s\-]+)/i,
+  );
+
+  if (match?.[1]) {
+    const cleaned = match[1]
+      .replace(/[?.!,]/g, ' ')
+      .split(' ')
+      .map((word) => word.trim())
+      .filter(Boolean)
+      .slice(0, 3) // capture up to first few tokens (e.g., "sodium chloride")
+      .join(' ')
+      .trim();
+
+    if (cleaned.length > 2) {
+      return cleaned;
+    }
+  }
+
+  return undefined;
+}
 
 function renderAssistantContent(message: ChatMessage) {
   return message.content.split('\n').map((line, index) => {
@@ -87,25 +95,6 @@ function renderTimestamp(createdAt: number, latencyMs?: number) {
   );
 }
 
-function summarizeCitations(citations?: Citation[]): CitationSummary[] {
-  if (!citations?.length) return [];
-
-  const unique = new Map<string, CitationSummary>();
-
-  citations.forEach((citation, index) => {
-    const drugName = citation.drugName?.trim() || 'Referenced section';
-    const pageRange = citation.pageRange?.trim();
-    const keyBase = `${drugName}|${pageRange ?? ''}`;
-    const key = keyBase.length ? keyBase : String(index);
-
-    if (!unique.has(key)) {
-      unique.set(key, { id: key, drugName, pageRange });
-    }
-  });
-
-  return Array.from(unique.values());
-}
-
 function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -116,6 +105,7 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [lastDrugDiscussed, setLastDrugDiscussed] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -142,6 +132,21 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
       (m) => `${m.role}: ${m.content}`,
     );
 
+    const candidate = extractDrugCandidate(question);
+    let contextHint = lastDrugDiscussed || undefined;
+
+    if (candidate) {
+      const candidateNormalized = candidate.toLowerCase();
+      if (
+        lastDrugDiscussed &&
+        lastDrugDiscussed.toLowerCase() !== candidateNormalized
+      ) {
+        contextHint = undefined;
+      } else if (!lastDrugDiscussed) {
+        contextHint = candidate;
+      }
+    }
+
     try {
       const response = await fetch('/api/pnf-chat', {
         method: 'POST',
@@ -151,6 +156,7 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
         body: JSON.stringify({
           question,
           chatHistory: history,
+          lastDrugDiscussed: contextHint,
         }),
       });
 
@@ -160,10 +166,14 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
 
       const payload = await response.json();
 
+      // Update the drug context for next question
+      if (typeof payload.drugContext === 'string') {
+        setLastDrugDiscussed(payload.drugContext);
+      }
+
       const assistant: ChatMessage = {
         role: 'assistant',
         content: payload.answer,
-        citations: payload.citations ?? payload.sources,
         createdAt: Date.now(),
         latencyMs: payload.latencyMs,
       };
@@ -222,49 +232,28 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
           ref={scrollRef}
           className="flex-1 overflow-y-auto space-y-4 p-3 bg-slate-50 min-h-0"
         >
-          {messages.map((message, index) => {
-            const citationSummaries = summarizeCitations(message.citations);
-
-            return (
-              <div key={index} className="flex flex-col gap-2">
-                <div
-                  className={`max-w-[100%] rounded-xl p-2 text-xs shadow-sm whitespace-pre-line ${
-                    message.role === 'assistant'
-                      ? 'bg-white border border-slate-200 text-slate-900'
-                      : 'bg-blue-600 text-white self-end'
-                  }`}
-                >
-                  {message.role === 'assistant' ? (
-                    renderAssistantContent(message)
-                  ) : (
-                    <p className="text-xs leading-relaxed">{message.content}</p>
-                  )}
-                </div>
+          {messages.map((message, index) => (
+            <div key={index} className="flex flex-col gap-2">
+              <div
+                className={`max-w-[100%] rounded-xl p-2 text-xs shadow-sm whitespace-pre-line ${
+                  message.role === 'assistant'
+                    ? 'bg-white border border-slate-200 text-slate-900'
+                    : 'bg-blue-600 text-white self-end'
+                }`}
+              >
                 {message.role === 'assistant' ? (
-                  <div className="ml-1 mt-1">
-                    {renderTimestamp(message.createdAt, message.latencyMs)}
-                  </div>
-                ) : null}
-
-                {message.role === 'assistant' && citationSummaries.length ? (
-                  <div className="ml-4 space-y-1.5 text-[10px] text-slate-600">
-                    {citationSummaries.map((summary) => (
-                      <div
-                        key={summary.id}
-                        className="rounded-md border border-slate-200 bg-white px-2.5 py-2 shadow-sm"
-                      >
-                        <span className="font-semibold text-slate-700">
-                          Source:
-                        </span>{' '}
-                        Philippine National Formulary
-                        {summary.pageRange ? ` (pp. ${summary.pageRange})` : ''}
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
+                  renderAssistantContent(message)
+                ) : (
+                  <p className="text-xs leading-relaxed">{message.content}</p>
+                )}
               </div>
-            );
-          })}
+              {message.role === 'assistant' ? (
+                <div className="ml-1 mt-1">
+                  {renderTimestamp(message.createdAt, message.latencyMs)}
+                </div>
+              ) : null}
+            </div>
+          ))}
 
           {isLoading && (
             <div className="flex justify-start">

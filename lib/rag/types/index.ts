@@ -1,10 +1,5 @@
 import { z } from 'zod';
 
-export interface PageMetadata {
-  pageNumber: number;
-  section?: string;
-}
-
 export interface PNFDrugEntry {
   drugName: string;
   rawContent: string;
@@ -12,7 +7,7 @@ export interface PNFDrugEntry {
   sections: Partial<Record<PNFSectionKey, string>>;
   pregnancyCategory?: string;
   atcCode?: string;
-  pageRange: {
+  entryRange: {
     start: number;
     end: number;
   };
@@ -39,8 +34,8 @@ export type PNFRawChunk = {
 export type PNFChunkMetadata = {
   drugName: string;
   section?: string;
-  sourcePages: number[];
-  pageRange: string;
+  sourceEntries: number[];
+  entryRange: string;
   pregnancyCategory?: string;
   atcCode?: string;
   classification?: 'Rx' | 'OTC' | 'Unknown';
@@ -87,17 +82,6 @@ export const PNF_CHAT_SECTION_LABELS: Record<keyof PNFChatSections, string> = {
 export const pnfChatResponseSchema = z.object({
   sections: pnfChatSectionsSchema,
   answer: z.string().optional(),
-  citations: z
-    .array(
-      z.object({
-        chunkId: z.string().optional(),
-        drugName: z.string().optional(),
-        section: z.string().optional(),
-        pageRange: z.string().optional(),
-        snippet: z.string().optional(),
-      }),
-    )
-    .default([]),
   followUpQuestions: z.array(z.string()).optional(),
   notes: z.string().optional(),
 });

@@ -7,12 +7,21 @@ import {
 } from '@/lib/rag/chains/pnf-chat-chain';
 import { db } from '@/database/drizzle';
 import { pnfChatLogs } from '@/database/schema';
+import type { DocumentInterface } from '@langchain/core/documents';
 
 const requestSchema = z.object({
   question: z.string().min(6, 'Question must be at least 6 characters'),
   chatHistory: z.array(z.string()).default([]),
+  lastDrugDiscussed: z.string().optional(), // Track the current conversation drug
   k: z.number().min(1).max(12).optional(),
 });
+
+function normalizeDrugName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s\+\-]/g, '')
+    .trim();
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,51 +33,128 @@ export async function POST(req: NextRequest) {
       .map((entry) => entry.trim())
       .filter(Boolean);
 
-    const userOnlyHistory = normalizedHistory.filter((entry) =>
-      entry.toLowerCase().startsWith('user:'),
-    );
+    const activeDrugHint = parsed.lastDrugDiscussed?.trim() || undefined;
 
     const retriever = await createPNFRetriever({
       k: parsed.k ?? 6,
       useCompression: true,
     });
 
-    const documents = await retriever.getRelevantDocuments(parsed.question);
+    const queryVariants = new Map<string, number>();
+    queryVariants.set(parsed.question, 1);
 
-    const response = await runPNFChatChain({
+    if (activeDrugHint) {
+      const normalizedHint = activeDrugHint.trim();
+      const combinedQuery = `${normalizedHint} ${parsed.question}`;
+      queryVariants.set(combinedQuery, 2);
+      if (
+        !parsed.question.toLowerCase().includes(normalizedHint.toLowerCase())
+      ) {
+        queryVariants.set(normalizedHint, 0.5);
+      }
+    } else if (normalizedHistory.length) {
+      // Use most recent user turn as a fallback hint for continuity
+      for (let i = normalizedHistory.length - 1; i >= 0; i -= 1) {
+        const entry = normalizedHistory[i];
+        if (entry.toLowerCase().startsWith('user:')) {
+          const content = entry.slice(entry.indexOf(':') + 1).trim();
+          if (content && content.length > 6 && content !== parsed.question) {
+            queryVariants.set(`${content} ${parsed.question}`, 1.5);
+          }
+          break;
+        }
+      }
+    }
+
+    const mergedDocuments: DocumentInterface[] = [];
+    for (const query of queryVariants.keys()) {
+      const docs = await retriever.getRelevantDocuments(query);
+      docs.forEach((doc) => {
+        mergedDocuments.push(doc);
+      });
+    }
+
+    const dedupedDocuments: DocumentInterface[] = [];
+    const seen = new Set<string>();
+
+    mergedDocuments.forEach((doc) => {
+      const rawId =
+        typeof doc.metadata?.id === 'string' && doc.metadata.id.trim().length
+          ? doc.metadata.id.trim()
+          : undefined;
+
+      const keyParts = [
+        doc.metadata?.drugName ?? 'unknown',
+        doc.metadata?.section ?? 'general',
+        doc.metadata?.entryRange ?? doc.metadata?.source ?? '',
+      ];
+
+      const fallbackKey = keyParts
+        .map((part) =>
+          String(part ?? '')
+            .trim()
+            .toLowerCase(),
+        )
+        .filter(Boolean)
+        .join('|');
+
+      const key = rawId ?? fallbackKey ?? doc.pageContent.slice(0, 80);
+
+      if (!key) {
+        dedupedDocuments.push(doc);
+        return;
+      }
+
+      if (seen.has(key)) return;
+      seen.add(key);
+      dedupedDocuments.push(doc);
+    });
+
+    if (activeDrugHint) {
+      const normalizedHint = normalizeDrugName(activeDrugHint);
+      dedupedDocuments.sort((a, b) => {
+        const aMatch = a.metadata?.drugName
+          ? normalizeDrugName(String(a.metadata.drugName)) === normalizedHint
+          : false;
+        const bMatch = b.metadata?.drugName
+          ? normalizeDrugName(String(b.metadata.drugName)) === normalizedHint
+          : false;
+        if (aMatch === bMatch) return 0;
+        return aMatch ? -1 : 1;
+      });
+    }
+
+    const documents = dedupedDocuments.slice(0, parsed.k ?? 6);
+
+    const chainResult = await runPNFChatChain({
       question: parsed.question,
-      chatHistory: userOnlyHistory,
+      chatHistory: normalizedHistory,
       documents,
       chain: createPNFChatChain(),
     });
 
-    const citations = response.citations ?? [];
-    const answerText = response.answer ?? 'No formatted answer returned.';
+    const answerText =
+      chainResult.response.answer ?? 'No formatted answer returned.';
 
     const latencyMs = Date.now() - startedAt;
+
+    const responseDrug = chainResult.primaryDrug ?? activeDrugHint ?? '';
 
     await db.insert(pnfChatLogs).values({
       question: parsed.question,
       answer: answerText,
-      citations,
       latencyMs,
     });
 
     return Response.json(
       {
         answer: answerText,
-        sections: response.sections,
-        citations,
-        followUpQuestions: response.followUpQuestions ?? [],
-        notes: response.notes,
-        sources: documents.map((doc, index) => ({
-          id: doc.metadata?.id ?? `chunk-${index}`,
-          drugName: doc.metadata?.drugName,
-          section: doc.metadata?.section,
-          pageRange: doc.metadata?.pageRange,
-          snippet: doc.pageContent.slice(0, 400),
-        })),
+        sections: chainResult.response.sections,
+        followUpQuestions: chainResult.response.followUpQuestions ?? [],
+        notes: chainResult.response.notes,
         latencyMs,
+        drugContext: responseDrug, // Send back the drug being discussed
+        relatedDrugs: chainResult.supportingDrugs,
       },
       { status: 200 },
     );

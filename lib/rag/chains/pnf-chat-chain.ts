@@ -3,6 +3,7 @@ import { StructuredOutputParser } from '@langchain/core/output_parsers';
 import { buildPNFChatPrompt } from '@/lib/rag/prompts/pnf-chat-prompt';
 import type { DocumentInterface } from '@langchain/core/documents';
 import type { PNFChatResponse, PNFChatSections } from '@/lib/rag/types';
+import { resolveEntryRange } from '@/lib/rag/utils/metadata';
 import {
   PNF_CHAT_SECTION_LABELS,
   pnfChatResponseSchema,
@@ -74,48 +75,26 @@ function resolveActiveDrug(
     return null;
   }
 
+  // First check if the current question mentions a drug directly
   const direct = matchDrugInText(question, candidates);
   if (direct) {
     return direct;
   }
 
+  // Search through chat history (both user and assistant messages) from most recent to oldest
   for (let index = chatHistory.length - 1; index >= 0; index -= 1) {
-    const entry = chatHistory[index].replace(/^user:\s*/i, '');
-    const match = matchDrugInText(entry, candidates);
+    const entry = chatHistory[index];
+
+    // Extract the actual message content (remove "user:" or "assistant:" prefix)
+    const content = entry.replace(/^(user|assistant):\s*/i, '');
+
+    const match = matchDrugInText(content, candidates);
     if (match) {
       return match;
     }
   }
 
   return candidates[0] ?? null;
-}
-
-function buildCitations(documents: DocumentInterface[]) {
-  const seen = new Set<string>();
-
-  return documents
-    .map((doc, index) => {
-      const drugName = doc.metadata?.drugName ?? 'Unknown Drug';
-      const section = doc.metadata?.section;
-      const pageRange =
-        doc.metadata?.pageRange ?? doc.metadata?.pageNumber ?? 'Unknown';
-      const citationKey = `${drugName}|${section ?? 'general'}|${pageRange}`;
-
-      if (seen.has(citationKey)) {
-        return null;
-      }
-
-      seen.add(citationKey);
-
-      return {
-        chunkId: doc.metadata?.id ?? `chunk-${index}`,
-        drugName,
-        section,
-        pageRange: typeof pageRange === 'number' ? `${pageRange}` : pageRange,
-        snippet: doc.pageContent.slice(0, 200),
-      };
-    })
-    .filter((value): value is NonNullable<typeof value> => Boolean(value));
 }
 
 // Intent detection patterns
@@ -294,6 +273,13 @@ export function createPNFChatChain({
   return withPrompt;
 }
 
+export interface PNFChatChainResult {
+  response: PNFChatResponse;
+  primaryDrug?: string;
+  supportingDrugs: string[];
+  usedDocuments: DocumentInterface[];
+}
+
 export async function runPNFChatChain({
   question,
   chatHistory,
@@ -304,12 +290,22 @@ export async function runPNFChatChain({
   chatHistory: string[];
   documents: DocumentInterface[];
   chain?: ReturnType<typeof createPNFChatChain>;
-}): Promise<PNFChatResponse> {
+}): Promise<PNFChatChainResult> {
   const resolvedChain = chain ?? createPNFChatChain();
 
   // Detect user intent to determine which sections to return
   const requestedSections = detectIntent(question);
+
+  console.log('[DEBUG] Question:', question);
+  console.log('[DEBUG] Chat history:', chatHistory);
+  console.log(
+    '[DEBUG] Retrieved documents:',
+    documents.map((d) => d.metadata?.drugName),
+  );
+
   const activeDrug = resolveActiveDrug(question, chatHistory, documents);
+
+  console.log('[DEBUG] Resolved active drug:', activeDrug);
 
   let workingDocuments = documents;
 
@@ -322,6 +318,13 @@ export async function runPNFChatChain({
       );
     });
 
+    console.log(
+      '[DEBUG] Filtered to',
+      filtered.length,
+      'documents for drug:',
+      activeDrug,
+    );
+
     if (filtered.length) {
       workingDocuments = filtered;
     }
@@ -329,12 +332,25 @@ export async function runPNFChatChain({
 
   const context = workingDocuments
     .map((doc, index) => {
-      const citation = doc.metadata?.pageRange ?? doc.metadata?.pageNumber;
+      const citation = resolveEntryRange(doc.metadata);
       return `[#${index + 1}] Drug: ${
         doc.metadata?.drugName ?? 'Unknown'
-      } | Pages: ${citation}\n${doc.pageContent}`;
+      } | Entries: ${citation}\n${doc.pageContent}`;
     })
     .join('\n\n');
+
+  const supportingDrugs = Array.from(
+    new Set(
+      workingDocuments
+        .map((doc) => doc.metadata?.drugName)
+        .filter((value): value is string => Boolean(value))
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  );
+
+  const resolvedPrimaryDrug =
+    activeDrug ?? (supportingDrugs.length ? supportingDrugs[0] : undefined);
 
   const response = await resolvedChain.invoke({
     question,
@@ -346,10 +362,14 @@ export async function runPNFChatChain({
 
   if (!response || !response.sections) {
     return {
-      sections: { ...FALLBACK_SECTIONS },
-      answer: FALLBACK_MESSAGE,
-      citations: [],
-      notes: 'No structured answer returned by LLM',
+      response: {
+        sections: { ...FALLBACK_SECTIONS },
+        answer: FALLBACK_MESSAGE,
+        notes: 'No structured answer returned by LLM',
+      },
+      primaryDrug: resolvedPrimaryDrug,
+      supportingDrugs,
+      usedDocuments: workingDocuments,
     };
   }
 
@@ -374,16 +394,14 @@ export async function runPNFChatChain({
     requestedSections ?? undefined,
   );
 
-  const derivedCitations = buildCitations(workingDocuments);
-  const finalCitations =
-    response.citations && response.citations.length
-      ? response.citations
-      : derivedCitations;
-
   return {
-    ...response,
-    sections: filteredSections,
-    answer: formattedAnswer,
-    citations: finalCitations,
+    response: {
+      ...response,
+      sections: filteredSections,
+      answer: formattedAnswer,
+    },
+    primaryDrug: resolvedPrimaryDrug,
+    supportingDrugs,
+    usedDocuments: workingDocuments,
   };
 }
