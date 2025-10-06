@@ -132,6 +132,9 @@ export interface ProductPOS {
   imageUrl: string | null;
   unit: UnitType | null;
   brandName: string | null;
+  genericName?: string | null;
+  barcode?: string | null;
+  supplierName?: string | null;
 }
 
 export interface ProductParams {

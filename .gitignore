@@ -46,4 +46,7 @@ next-env.d.ts
 # scripts (ingest and processing scripts)
 /scripts/
 
+# sql scripts (generated SQL files)
+/sql-scripts/
+
 .fake

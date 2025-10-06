@@ -18,12 +18,15 @@ export const ProductCard = ({
     id: number;
     name: string;
     brandName?: string | null;
+    genericName?: string | null;
     lotNumber: string | null;
     expiryDate: string | null;
     sellingPrice: string;
     imageUrl?: string | null;
     quantity: number;
     unit?: string | null;
+    supplierName?: string | null;
+    barcode?: string | null;
   };
   onAddToCart: () => void;
 }) => {
@@ -41,7 +44,7 @@ export const ProductCard = ({
 
   return (
     <div
-      className={`bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border ${urgency.borderColor} hover:-translate-y-1 overflow-hidden`}
+      className={`bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border ${urgency.borderColor} hover:-translate-y-1 overflow-hidden flex flex-col h-full`}
     >
       {/* Image Section */}
       <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 border-b-2 border-gray-200">
@@ -81,7 +84,7 @@ export const ProductCard = ({
       </div>
 
       {/* Content Section */}
-      <div className="p-4 space-y-3">
+      <div className="p-4 flex flex-col flex-1 gap-3">
         {/* Product Name */}
         <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 leading-tight">
           {product.name}
@@ -97,6 +100,22 @@ export const ProductCard = ({
               </span>
             </div>
           )}
+          {product.genericName && (
+            <div className="flex items-center gap-2 text-xs">
+              <Package className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+              <span className="text-gray-600 truncate italic">
+                {product.genericName}
+              </span>
+            </div>
+          )}
+          {product.supplierName && (
+            <div className="flex items-center gap-2 text-xs">
+              <Package className="w-3 h-3 text-purple-500 flex-shrink-0" />
+              <span className="text-gray-600 truncate">
+                {product.supplierName}
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 text-xs">
             <Hash className="w-3 h-3 text-amber-500 flex-shrink-0" />
@@ -104,6 +123,13 @@ export const ProductCard = ({
               {product.lotNumber || 'No lot number'}
             </span>
           </div>
+
+          {product.barcode && (
+            <div className="flex items-center gap-2 text-xs">
+              <Hash className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              <span className="text-gray-500 font-mono">{product.barcode}</span>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 text-xs">
             <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />
@@ -123,34 +149,35 @@ export const ProductCard = ({
           </div>
         </div>
 
-        {/* Price and Stock */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <div className="font-bold text-lg text-blue-600">
-            ₱{parseFloat(product.sellingPrice).toFixed(2)}
+        {/* Price, Stock, and Action */}
+        <div className="mt-auto pt-2 border-t border-gray-100 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="font-bold text-lg text-blue-600">
+              ₱{parseFloat(product.sellingPrice).toFixed(2)}
+            </div>
+            <div
+              className={`text-xs font-medium px-2 py-1 rounded-full ${
+                product.quantity > 0
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-red-100 text-red-700'
+              }`}
+            >
+              {product.quantity > 0
+                ? `${product.quantity} ${product.unit?.toLowerCase() || 'pcs'}`
+                : 'Out of stock'}
+            </div>
           </div>
-          <div
-            className={`text-xs font-medium px-2 py-1 rounded-full ${
-              product.quantity > 0
-                ? 'bg-green-100 text-green-700'
-                : 'bg-red-100 text-red-700'
-            }`}
-          >
-            {product.quantity > 0
-              ? `${product.quantity} ${product.unit?.toLowerCase() || 'pcs'}`
-              : 'Out of stock'}
-          </div>
-        </div>
 
-        {/* Add to Sale Button */}
-        <Button
-          size="sm"
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-sm hover:shadow-md transition-all duration-200"
-          onClick={onAddToCart}
-          disabled={product.quantity <= 0}
-        >
-          <ShoppingCart className="w-4 h-4 mr-2" />
-          {product.quantity > 0 ? 'Add to Sale' : 'Out of Stock'}
-        </Button>
+          <Button
+            size="sm"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-sm hover:shadow-md transition-all duration-200"
+            onClick={onAddToCart}
+            disabled={product.quantity <= 0}
+          >
+            <ShoppingCart className="w-4 h-4 mr-2" />
+            {product.quantity > 0 ? 'Add to Sale' : 'Out of Stock'}
+          </Button>
+        </div>
       </div>
     </div>
   );

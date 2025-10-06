@@ -38,6 +38,30 @@ export function ProductsPageClient({
   const [serverData, setServerData] = useState<PaginatedProducts | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleFiltersChange = useCallback(
+    (nextFilters: typeof filters) => {
+      setFilters((prev) => {
+        const hasChanged =
+          prev.search !== nextFilters.search ||
+          prev.categoryId !== nextFilters.categoryId ||
+          prev.supplierId !== nextFilters.supplierId ||
+          prev.status !== nextFilters.status;
+
+        if (!hasChanged) {
+          return prev;
+        }
+
+        if (pageIndex !== 0) {
+          setPageIndex(0);
+        }
+
+        return nextFilters;
+      });
+    },
+    [pageIndex],
+  );
 
   const loadPage = useCallback(
     async (
@@ -48,6 +72,10 @@ export function ProductsPageClient({
       supplierId: string,
       status: string,
     ) => {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       try {
         setLoading(true);
         setError(null);
@@ -61,15 +89,26 @@ export function ProductsPageClient({
         if (status !== 'all') params.set('status', status);
         const res = await fetch(`/api/products?${params.toString()}`, {
           cache: 'no-store',
+          signal: controller.signal,
         });
         if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
         const json = await res.json();
-        setServerData(json);
+        if (!controller.signal.aborted) {
+          setServerData(json);
+        }
       } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') {
+          return;
+        }
+        if (e instanceof Error && e.name === 'AbortError') {
+          return;
+        }
         const msg = e instanceof Error ? e.message : 'Failed to load products';
         setError(msg);
       } finally {
-        setLoading(false);
+        if (abortControllerRef.current === controller) {
+          setLoading(false);
+        }
       }
     },
     [],
@@ -111,6 +150,12 @@ export function ProductsPageClient({
     loadPage,
   ]);
 
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const products = serverData?.data ?? [];
 
   return (
@@ -120,7 +165,7 @@ export function ProductsPageClient({
           categories={categories}
           suppliers={suppliers}
           filters={filters}
-          setFilters={setFilters}
+          setFilters={handleFiltersChange}
         />
         {canEditMasterData && (
           <Button>
@@ -136,17 +181,7 @@ export function ProductsPageClient({
           data={products}
           isLoading={loading && !serverData}
           searchConfig={{
-            enabled: true,
-            placeholder:
-              'Search products by name, brand, batch, or supplier...',
-            globalFilter: true,
-            searchableColumns: [
-              'name',
-              'brandName',
-              'genericName',
-              'lotNumber',
-              'supplierName',
-            ],
+            enabled: false,
           }}
           manualPagination={
             serverData

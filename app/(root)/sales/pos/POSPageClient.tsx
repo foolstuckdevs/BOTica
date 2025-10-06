@@ -46,7 +46,8 @@ export default function POSPage({
   const [hasMore, setHasMore] = useState(true);
   const initialLoadedRef = useRef(false);
 
-  const searchLower = searchTerm.toLowerCase();
+  const trimmedSearch = searchTerm.trim();
+  const searchLower = trimmedSearch.toLowerCase();
 
   // Helper utilities
   const isBarcodePattern = (code: string) => /^[0-9]{8,14}$/.test(code.trim());
@@ -91,45 +92,57 @@ export default function POSPage({
 
   // Derived filtered list (still client-side pass) after remote fetch
   const filteredProducts = useMemo(() => {
+    const hasSearch =
+      trimmedSearch.length >= 2 || isBarcodePattern(trimmedSearch);
+    const includesTerm = (value?: string | null) =>
+      value ? value.toLowerCase().includes(searchLower) : false;
+
     return products
       .filter((product) => {
-        // If no search term, only show in-stock products
-        if (!searchTerm || searchTerm.length < 2) {
+        // If no active search, only show in-stock products
+        if (!hasSearch || trimmedSearch.length < 2) {
           return product.quantity > 0; // Hide out-of-stock products by default
         }
 
         // Check if product matches search criteria
         const matchesSearch =
-          product.name.toLowerCase().includes(searchLower) ||
-          (product.brandName &&
-            product.brandName.toLowerCase().includes(searchLower)) ||
-          (product.lotNumber &&
-            product.lotNumber.toLowerCase().includes(searchLower));
+          includesTerm(product.name) ||
+          includesTerm(product.brandName) ||
+          includesTerm(product.genericName) ||
+          includesTerm(product.lotNumber) ||
+          includesTerm(product.barcode) ||
+          includesTerm(product.supplierName);
 
         // If product doesn't match search, exclude it
         if (!matchesSearch) return false;
 
         // If product is out-of-stock, only show it if search specifically matches it
         if (product.quantity <= 0) {
-          // Allow out-of-stock products only if search term closely matches name, brand, or lot
-          return (
-            product.name.toLowerCase().includes(searchLower) ||
-            (product.brandName &&
-              product.brandName.toLowerCase().includes(searchLower)) ||
-            (product.lotNumber &&
-              product.lotNumber.toLowerCase().includes(searchLower))
-          );
+          return matchesSearch;
         }
 
         // Show in-stock products that match search
         return true;
       })
       .sort((a, b) => {
-        // Step 1: Prioritize exact/startsWith name matches
-        const aNameMatch = a.name.toLowerCase().startsWith(searchLower) ? 0 : 1;
-        const bNameMatch = b.name.toLowerCase().startsWith(searchLower) ? 0 : 1;
+        const scoreStartsWith = (product: ProductPOS) => {
+          if (searchLower.length < 1) return 3;
+          const candidates = [
+            product.name,
+            product.brandName || '',
+            product.genericName || '',
+            product.supplierName || '',
+            product.barcode || '',
+          ];
+          const foundIndex = candidates.findIndex((value) =>
+            value.toLowerCase().startsWith(searchLower),
+          );
+          return foundIndex === -1 ? candidates.length : foundIndex;
+        };
 
-        if (aNameMatch !== bNameMatch) return aNameMatch - bNameMatch;
+        const aScore = scoreStartsWith(a);
+        const bScore = scoreStartsWith(b);
+        if (aScore !== bScore) return aScore - bScore;
 
         // Step 2: Sort by soonest expiry (FEFO)
         const aExpiry = a.expiryDate
@@ -140,7 +153,7 @@ export default function POSPage({
           : Infinity;
         return aExpiry - bExpiry;
       });
-  }, [products, searchTerm, searchLower]);
+  }, [products, trimmedSearch, searchLower]);
 
   // Unified fetch function
   interface FetchParams {
@@ -164,6 +177,7 @@ export default function POSPage({
       if (query) params.set('query', query);
       if (barcode) params.set('barcode', barcode);
       const res = await fetch(`/api/pos/lookup?${params.toString()}`, {
+        cache: 'no-store',
         signal,
       });
       if (!res.ok) throw new Error(`Lookup failed: ${res.status}`);
@@ -197,7 +211,7 @@ export default function POSPage({
       .finally(() => setLoadingLookup(false));
   }, [searchTerm, products.length, fetchProducts]);
   useEffect(() => {
-    const code = searchTerm.trim();
+    const code = trimmedSearch;
     if (!isBarcodePattern(code)) return; // Not a barcode pattern
     if (lastBarcodeRef.current === code) return; // Already processed
     lastBarcodeRef.current = code;
@@ -206,6 +220,7 @@ export default function POSPage({
     abortRef.current = controller;
     setLoadingLookup(true);
     fetch(`/api/pos/lookup?barcode=${encodeURIComponent(code)}`, {
+      cache: 'no-store',
       signal: controller.signal,
     })
       .then(async (res) => {
@@ -239,11 +254,11 @@ export default function POSPage({
         toast.error(e.message || 'Barcode lookup error');
       })
       .finally(() => setLoadingLookup(false));
-  }, [searchTerm]);
+  }, [trimmedSearch]);
 
   // Lookup effect (debounced name/brand/lot query). Skips when barcode pattern active.
   useEffect(() => {
-    const term = searchTerm.trim();
+    const term = trimmedSearch;
     if (term.length === 0) {
       // Clearing search resets pagination (but initial loader handles fetch)
       setOffset(products.length); // keep existing offset for now
@@ -276,12 +291,13 @@ export default function POSPage({
         .finally(() => setLoadingLookup(false));
     }, 250);
     return () => clearTimeout(handle);
-  }, [searchTerm, pageSize, products.length, fetchProducts]);
+  }, [trimmedSearch, pageSize, products.length, fetchProducts]);
 
   // Load more handler (for current mode: search results if active, else base listing)
   const handleLoadMore = () => {
     if (loadingLookup || !hasMore) return;
-    const term = searchTerm.trim();
+    const term = trimmedSearch;
+    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     setLoadingLookup(true);
@@ -289,6 +305,7 @@ export default function POSPage({
       query: term.length >= 2 && !isBarcodePattern(term) ? term : undefined,
       offset,
       limit: pageSize,
+      signal: controller.signal,
     })
       .then((list) => {
         setProducts((prev) => mergeUniqueProducts(prev, list));

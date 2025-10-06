@@ -1,5 +1,5 @@
 import { db } from '@/database/drizzle';
-import { products } from '@/database/schema';
+import { products, suppliers } from '@/database/schema';
 import { and, eq, ilike, sql, or, asc, SQL } from 'drizzle-orm';
 
 // Lightweight POS lookup (name/brand/lot or barcode exact). Excludes expired & deleted.
@@ -40,7 +40,10 @@ export async function lookupProductsPOS({
       or(
         ilike(products.name, q),
         ilike(products.brandName, q),
+        ilike(products.genericName, q),
         ilike(products.lotNumber, q),
+        ilike(products.barcode, q),
+        ilike(suppliers.name, q),
       ),
     );
   }
@@ -55,8 +58,13 @@ export async function lookupProductsPOS({
       sellingPrice: products.sellingPrice,
       quantity: products.quantity,
       unit: products.unit,
+      imageUrl: products.imageUrl,
+      genericName: products.genericName,
+      barcode: products.barcode,
+      supplierName: suppliers.name,
     })
     .from(products)
+    .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
     .where(whereExpr)
     .orderBy(asc(products.name), asc(products.expiryDate))
     .offset(safeOffset)

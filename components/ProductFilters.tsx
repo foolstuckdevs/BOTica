@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Category, Supplier } from '@/types';
+import { Input } from '@/components/ui/input';
 
 interface ProductFiltersProps {
   categories: Category[];
@@ -44,6 +45,16 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
 
   return (
     <div className="flex flex-wrap gap-4 items-end">
+      <Input
+        type="search"
+        value={filters.search}
+        onChange={(event) =>
+          onChange({ ...filters, search: event.target.value })
+        }
+        placeholder="Search products..."
+        aria-label="Search products"
+        className="w-64"
+      />
       <Select
         value={filters.status}
         onValueChange={(value) => onChange({ ...filters, status: value })}

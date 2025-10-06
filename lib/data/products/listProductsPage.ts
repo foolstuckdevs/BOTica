@@ -32,7 +32,7 @@ export async function listProductsPage(params: ProductListPageParams) {
   if (params.search) {
     const s = `%${params.search}%`;
     predicates.push(
-      sql`(${products.name} ILIKE ${s} OR ${products.brandName} ILIKE ${s} OR ${products.genericName} ILIKE ${s} OR ${products.lotNumber} ILIKE ${s})`,
+      sql`(${products.name} ILIKE ${s} OR ${products.brandName} ILIKE ${s} OR ${products.genericName} ILIKE ${s} OR ${products.lotNumber} ILIKE ${s} OR ${suppliers.name} ILIKE ${s})`,
     );
   }
   if (params.categoryId) {
@@ -69,6 +69,7 @@ export async function listProductsPage(params: ProductListPageParams) {
   const [{ total }] = await db
     .select({ total: sql<number>`COUNT(*)` })
     .from(products)
+    .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
     .where(where);
 
   // Page rows
