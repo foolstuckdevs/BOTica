@@ -16,7 +16,7 @@ export interface PNFTextLoaderOptions {
 }
 
 const DEFAULT_OPTIONS: Required<PNFTextLoaderOptions> = {
-  minEntryLength: 120,
+  minEntryLength: 80,
   collapseEmptyLines: true,
 };
 
@@ -72,7 +72,7 @@ export class PNFTextLoader extends BaseDocumentLoader {
 
   private sliceEntries(content: string): string[] {
     return content
-      .split(/\n-{3,}\s*\n/g)
+      .split(/\n\s*-{3,}\s*\n/g)
       .map((entry) => entry.trim())
       .filter((entry) => entry.length >= this.options.minEntryLength);
   }

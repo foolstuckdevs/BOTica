@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const retriever = await createPNFRetriever({
       k: parsed.k ?? 6,
-      useCompression: true,
+      useCompression: false,
     });
 
     const queryVariants = new Map<string, number>();
@@ -66,13 +66,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const prioritizedQueries = [...queryVariants.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, Math.min(queryVariants.size, activeDrugHint ? 2 : 1))
+      .map(([query]) => query);
+
     const mergedDocuments: DocumentInterface[] = [];
-    for (const query of queryVariants.keys()) {
-      const docs = await retriever.getRelevantDocuments(query);
+
+    const retrievalResults = await Promise.all(
+      prioritizedQueries.map((query) => retriever.getRelevantDocuments(query)),
+    );
+
+    retrievalResults.forEach((docs) => {
       docs.forEach((doc) => {
         mergedDocuments.push(doc);
       });
-    }
+    });
 
     const dedupedDocuments: DocumentInterface[] = [];
     const seen = new Set<string>();
@@ -124,13 +133,30 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const documents = dedupedDocuments.slice(0, parsed.k ?? 6);
+    let documents = dedupedDocuments;
+    if (activeDrugHint) {
+      const normalizedHint = normalizeDrugName(activeDrugHint);
+      const matching = dedupedDocuments.filter((doc) =>
+        doc.metadata?.drugName
+          ? normalizeDrugName(String(doc.metadata.drugName)) === normalizedHint
+          : false,
+      );
+      if (matching.length) {
+        const nonMatching = dedupedDocuments.filter(
+          (doc) => !matching.includes(doc),
+        );
+        documents = [...matching, ...nonMatching];
+      }
+    }
+
+    documents = documents.slice(0, parsed.k ?? 6);
 
     const chainResult = await runPNFChatChain({
       question: parsed.question,
       chatHistory: normalizedHistory,
       documents,
       chain: createPNFChatChain(),
+      activeDrugHint,
     });
 
     const answerText =

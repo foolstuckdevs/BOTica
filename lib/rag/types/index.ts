@@ -42,21 +42,21 @@ export type PNFChunkMetadata = {
 };
 
 export const pnfChatSectionsSchema = z.object({
-  overview: z.string(),
-  formulations: z.string(),
-  indications: z.string(),
-  contraindications: z.string(),
-  dosage: z.string(),
-  doseAdjustment: z.string(),
-  precautions: z.string(),
-  adverseReactions: z.string(),
-  interactions: z.string(),
-  administration: z.string(),
-  monitoring: z.string(),
-  notes: z.string(),
-  pregnancy: z.string(),
-  atcCode: z.string(),
-  classification: z.string(),
+  overview: z.string().default(''),
+  formulations: z.string().default(''),
+  indications: z.string().default(''),
+  contraindications: z.string().default(''),
+  dosage: z.string().default(''),
+  doseAdjustment: z.string().default(''),
+  precautions: z.string().default(''),
+  adverseReactions: z.string().default(''),
+  interactions: z.string().default(''),
+  administration: z.string().default(''),
+  monitoring: z.string().default(''),
+  notes: z.string().default(''),
+  pregnancy: z.string().default(''),
+  atcCode: z.string().default(''),
+  classification: z.string().default(''),
 });
 
 export type PNFChatSections = z.infer<typeof pnfChatSectionsSchema>;

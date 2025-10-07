@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { SendHorizonal, Activity, Bot, Clock, X } from 'lucide-react';
+import { SendHorizonal, Activity, Bot, Clock, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,13 @@ export interface PnfChatbotProps {
 }
 
 const GREETING = `Good day. I'm BOTica Drug Reference Assistant. How can I help you today?`;
+
+const SAMPLE_QUESTIONS = [
+  'What is the dosage for Paracetamol?',
+  'Tell me about amoxicillin side effects',
+  'What are contraindications for Sodium Bicarbonate?',
+  'What are the drug interactions for Aluminum Hydroxide?',
+];
 
 function extractDrugCandidate(text: string): string | undefined {
   const match = text.match(
@@ -58,7 +65,7 @@ function renderAssistantContent(message: ChatMessage) {
       return (
         <p
           key={index}
-          className="text-xs font-semibold text-slate-900 mt-3 first:mt-0 mb-1"
+          className="text-xs font-bold text-slate-900 mt-3 first:mt-0 mb-1.5"
         >
           {line.replace(/:\s*$/, '')}
         </p>
@@ -66,12 +73,12 @@ function renderAssistantContent(message: ChatMessage) {
     }
 
     if (!line.trim()) {
-      return <div key={index} className="h-1" />;
+      return <div key={index} className="h-2" />;
     }
 
     // Render regular content lines
     return (
-      <p key={index} className="text-xs text-slate-700 leading-relaxed">
+      <p key={index} className="text-xs text-slate-700 leading-[1.6]">
         {line}
       </p>
     );
@@ -95,6 +102,40 @@ function renderTimestamp(createdAt: number, latencyMs?: number) {
   );
 }
 
+function SuggestionChips({
+  onSelect,
+  disabled,
+}: {
+  onSelect: (question: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="space-y-3 mt-3">
+      <div className="flex items-center gap-2 px-1">
+        <Sparkles className="h-3.5 w-3.5 text-blue-600" />
+        <p className="text-xs font-semibold text-slate-700">
+          Suggested Questions
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-2">
+        {SAMPLE_QUESTIONS.map((question, index) => (
+          <button
+            key={index}
+            onClick={() => onSelect(question)}
+            disabled={disabled}
+            className="group text-left text-xs px-4 py-3 rounded-lg bg-gradient-to-br from-blue-50 to-blue-50/50 border border-blue-100 text-slate-700 hover:from-blue-100 hover:to-blue-50 hover:border-blue-200 hover:shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-start gap-2"
+          >
+            <span className="text-blue-600 font-medium mt-0.5 group-hover:translate-x-0.5 transition-transform">
+              →
+            </span>
+            <span className="flex-1 leading-relaxed">{question}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -114,9 +155,15 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-    const question = input.trim();
+  const handleSuggestionClick = (question: string) => {
+    setInput(question);
+    // Auto-send the question
+    sendMessage(question);
+  };
+
+  const sendMessage = async (presetQuestion?: string) => {
+    const question = presetQuestion || input.trim();
+    if (!question) return;
 
     const outgoing: ChatMessage = {
       role: 'user',
@@ -198,19 +245,21 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
   return (
     <Card
       className={cn(
-        'w-full h-full max-h-[85vh] flex flex-col border border-blue-100 shadow-md overflow-hidden rounded-xl py-0 gap-0 min-h-0',
+        'w-full h-full max-h-[85vh] flex flex-col border border-gray-200 shadow-lg overflow-hidden rounded-2xl py-0 gap-0 min-h-0',
         className,
       )}
     >
-      <div className="px-4 py-3 border-b bg-gradient-to-r from-blue-600 to-blue-500 text-white flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Bot className="h-6 w-6" />
-          <div className="flex flex-col text-sm">
-            <span className="font-semibold">
-              BOTica Drug Reference Assistant
+      <div className="px-4 py-4 border-b bg-white flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl flex items-center justify-center shadow-sm">
+            <Bot className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold text-slate-900">
+              Drug Reference Assistant
             </span>
-            <span className="text-xs text-blue-100">
-              Based on the Philippine National Formulary
+            <span className="text-xs text-slate-500">
+              Philippine National Formulary
             </span>
           </div>
         </div>
@@ -218,7 +267,7 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="text-white/80 hover:text-white hover:bg-white/10 rounded-full h-8 w-8"
+            className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg h-8 w-8"
             onClick={onClose}
             aria-label="Close PNF assistant"
           >
@@ -230,15 +279,15 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
       <CardContent className="flex-1 flex flex-col p-0 min-h-0">
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto space-y-4 p-3 bg-slate-50 min-h-0"
+          className="flex-1 overflow-y-auto space-y-4 p-4 bg-gradient-to-b from-slate-50 to-white min-h-0"
         >
           {messages.map((message, index) => (
             <div key={index} className="flex flex-col gap-2">
               <div
-                className={`max-w-[100%] rounded-xl p-2 text-xs shadow-sm whitespace-pre-line ${
+                className={`max-w-[100%] rounded-2xl p-3.5 text-xs shadow-sm whitespace-pre-line ${
                   message.role === 'assistant'
-                    ? 'bg-white border border-slate-200 text-slate-900'
-                    : 'bg-blue-600 text-white self-end'
+                    ? 'bg-white border border-gray-200 text-slate-900'
+                    : 'bg-gradient-to-br from-blue-600 to-blue-500 text-white self-end shadow-md'
                 }`}
               >
                 {message.role === 'assistant' ? (
@@ -252,23 +301,32 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
                   {renderTimestamp(message.createdAt, message.latencyMs)}
                 </div>
               ) : null}
+              {/* Show suggestion chips after the greeting (first message) */}
+              {index === 0 && messages.length === 1 && !isLoading ? (
+                <div className="mt-2">
+                  <SuggestionChips
+                    onSelect={handleSuggestionClick}
+                    disabled={isLoading}
+                  />
+                </div>
+              ) : null}
             </div>
           ))}
 
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-                <div className="flex items-center gap-1">
+              <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+                <div className="flex items-center gap-1.5">
                   <div
-                    className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                    className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
                     style={{ animationDelay: '0ms' }}
                   ></div>
                   <div
-                    className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                    className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
                     style={{ animationDelay: '150ms' }}
                   ></div>
                   <div
-                    className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                    className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"
                     style={{ animationDelay: '300ms' }}
                   ></div>
                 </div>
@@ -282,19 +340,19 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
             event.preventDefault();
             sendMessage();
           }}
-          className="border-t p-2 bg-white flex gap-2 items-center"
+          className="border-t border-gray-200 p-3 bg-white flex gap-2 items-center"
         >
           <Input
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="Ask about drug related questions..."
-            className="text-xs flex-1"
+            placeholder="Ask about dosage, side effects, contraindications..."
+            className="text-sm flex-1 h-11 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             disabled={isLoading}
           />
           <Button
             type="submit"
             size="sm"
-            className="rounded-full bg-blue-600 hover:bg-blue-700"
+            className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-sm hover:shadow transition-all"
             disabled={isLoading || !input.trim()}
           >
             {isLoading ? (
@@ -337,18 +395,22 @@ function FloatingPnfAssistant({
         />
       ) : null}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-        {isOpen ? (
-          <div className="w-[380px] max-w-[calc(100vw-3rem)] h-[560px] max-h-[calc(100vh-8rem)] shadow-2xl">
-            <PnfChatbotPanel
-              onClose={() => setIsOpen(false)}
-              className={cn('h-full min-h-0', className)}
-            />
-          </div>
-        ) : null}
+        <div
+          aria-hidden={!isOpen}
+          className={cn(
+            'w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-8rem)] shadow-2xl',
+            isOpen ? 'pointer-events-auto' : 'hidden pointer-events-none',
+          )}
+        >
+          <PnfChatbotPanel
+            onClose={() => setIsOpen(false)}
+            className={cn('h-full min-h-0', className)}
+          />
+        </div>
         <Button
           onClick={() => setIsOpen((prev) => !prev)}
           size="lg"
-          className="rounded-full p-4 bg-gradient-to-br from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg transition-all hover:scale-105"
+          className="rounded-2xl p-4 bg-gradient-to-br from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-xl hover:shadow-2xl transition-all hover:scale-105 border border-blue-400/20"
           aria-pressed={isOpen}
         >
           <Bot className="text-white w-6 h-6" />

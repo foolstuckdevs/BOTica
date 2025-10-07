@@ -25,6 +25,18 @@ const DEFAULT_OPTIONS: Required<PNFTextParserOptions> = {
   includeOverviewChunk: true,
 };
 
+const SECTION_MINIMUM_LENGTHS: Partial<Record<PNFSectionKey, number>> = {
+  indications: 60,
+  contraindications: 60,
+  dosage: 40,
+  doseAdjustment: 40,
+  precautions: 60,
+  adverseReactions: 60,
+  drugInteractions: 60,
+  administration: 40,
+  formulations: 60,
+};
+
 type DraftEntry = {
   drugName: string;
   classification: 'Rx' | 'OTC' | 'Unknown';
@@ -316,7 +328,9 @@ export class PNFTextParser {
     (Object.entries(draft.sectionLines) as [PNFSectionKey, string[]][]).forEach(
       ([key, lines]) => {
         const normalized = normalizeWhitespace(lines.join('\n'));
-        if (normalized.length >= this.options.minSectionLength) {
+        const threshold =
+          SECTION_MINIMUM_LENGTHS[key] ?? this.options.minSectionLength;
+        if (normalized.length >= threshold) {
           sections[key] = normalized;
         }
       },

@@ -41,13 +41,21 @@ export function createPNFEmbeddings() {
   });
 }
 
-export async function createPNFVectorStore() {
-  const client = createSupabaseClient();
-  const embeddings = createPNFEmbeddings();
+let vectorStorePromise: Promise<SupabaseVectorStore> | null = null;
 
-  return SupabaseVectorStore.fromExistingIndex(embeddings, {
-    client,
-    tableName: 'pnf_chunks',
-    queryName: 'match_pnf_chunks',
-  });
+export async function createPNFVectorStore() {
+  if (!vectorStorePromise) {
+    vectorStorePromise = (async () => {
+      const client = createSupabaseClient();
+      const embeddings = createPNFEmbeddings();
+
+      return SupabaseVectorStore.fromExistingIndex(embeddings, {
+        client,
+        tableName: 'pnf_chunks',
+        queryName: 'match_pnf_chunks',
+      });
+    })();
+  }
+
+  return vectorStorePromise;
 }

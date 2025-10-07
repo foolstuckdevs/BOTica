@@ -69,10 +69,22 @@ function resolveActiveDrug(
   question: string,
   chatHistory: string[],
   documents: DocumentInterface[],
+  preferredDrug?: string,
 ): string | null {
   const candidates = uniqueDrugNames(documents);
   if (!candidates.length) {
     return null;
+  }
+
+  if (preferredDrug) {
+    const normalizedPreferred = normalizeDrugName(preferredDrug);
+    const preferredMatch = candidates.find(
+      (candidate) => normalizeDrugName(candidate) === normalizedPreferred,
+    );
+
+    if (preferredMatch) {
+      return preferredMatch;
+    }
   }
 
   // First check if the current question mentions a drug directly
@@ -134,7 +146,7 @@ const INTENT_PATTERNS = {
   },
   interactions: {
     patterns: [/\b(interaction|interactions|drug interaction|interact)\b/i],
-    sections: ['overview', 'interactions'] as Array<keyof PNFChatSections>,
+    sections: ['overview', 'drugInteractions'] as Array<keyof PNFChatSections>,
   },
   formulations: {
     patterns: [
@@ -205,7 +217,7 @@ const FALLBACK_SECTIONS: PNFChatSections = {
   administration: EMPTY_SECTION_VALUE,
   monitoring: EMPTY_SECTION_VALUE,
   notes: EMPTY_SECTION_VALUE,
-  pregnancy: 'Not requested', // Excluded from all responses
+  pregnancy: EMPTY_SECTION_VALUE,
   atcCode: EMPTY_SECTION_VALUE,
   classification: EMPTY_SECTION_VALUE,
 };
@@ -262,6 +274,9 @@ export function createPNFChatChain({
     apiKey: process.env.AI_API_KEY,
     model: responseModel,
     temperature,
+    modelKwargs: {
+      response_format: { type: 'json_object' },
+    },
   });
 
   const parser = StructuredOutputParser.fromZodSchema(pnfChatResponseSchema);
@@ -285,27 +300,25 @@ export async function runPNFChatChain({
   chatHistory,
   documents,
   chain,
+  activeDrugHint,
 }: {
   question: string;
   chatHistory: string[];
   documents: DocumentInterface[];
   chain?: ReturnType<typeof createPNFChatChain>;
+  activeDrugHint?: string;
 }): Promise<PNFChatChainResult> {
   const resolvedChain = chain ?? createPNFChatChain();
 
   // Detect user intent to determine which sections to return
   const requestedSections = detectIntent(question);
 
-  console.log('[DEBUG] Question:', question);
-  console.log('[DEBUG] Chat history:', chatHistory);
-  console.log(
-    '[DEBUG] Retrieved documents:',
-    documents.map((d) => d.metadata?.drugName),
+  const activeDrug = resolveActiveDrug(
+    question,
+    chatHistory,
+    documents,
+    activeDrugHint,
   );
-
-  const activeDrug = resolveActiveDrug(question, chatHistory, documents);
-
-  console.log('[DEBUG] Resolved active drug:', activeDrug);
 
   let workingDocuments = documents;
 
@@ -318,17 +331,50 @@ export async function runPNFChatChain({
       );
     });
 
-    console.log(
-      '[DEBUG] Filtered to',
-      filtered.length,
-      'documents for drug:',
-      activeDrug,
-    );
-
     if (filtered.length) {
       workingDocuments = filtered;
     }
   }
+
+  if (requestedSections && workingDocuments.length > 1) {
+    const allowedSections = new Set<string>([...requestedSections]);
+    const intentFiltered = workingDocuments.filter((doc) => {
+      const sectionKey = doc.metadata?.section;
+      if (!sectionKey) return true;
+      return allowedSections.has(String(sectionKey));
+    });
+
+    if (intentFiltered.length) {
+      workingDocuments = intentFiltered;
+    }
+  }
+
+  const maxDocuments = requestedSections ? 4 : 6;
+  if (workingDocuments.length > maxDocuments) {
+    workingDocuments = workingDocuments.slice(0, maxDocuments);
+  }
+
+  const seenDrugSections = new Map<string, Set<string>>();
+  workingDocuments = workingDocuments.filter((doc) => {
+    const drugName = doc.metadata?.drugName;
+    const sectionKey = doc.metadata?.section;
+    if (!drugName || !sectionKey) {
+      return true;
+    }
+    const normalizedDrug = normalizeDrugName(String(drugName));
+    const normalizedSection = String(sectionKey).toLowerCase();
+
+    if (!seenDrugSections.has(normalizedDrug)) {
+      seenDrugSections.set(normalizedDrug, new Set());
+    }
+
+    const drugSections = seenDrugSections.get(normalizedDrug)!;
+    if (drugSections.has(normalizedSection)) {
+      return false;
+    }
+    drugSections.add(normalizedSection);
+    return true;
+  });
 
   const context = workingDocuments
     .map((doc, index) => {
@@ -350,15 +396,23 @@ export async function runPNFChatChain({
   );
 
   const resolvedPrimaryDrug =
-    activeDrug ?? (supportingDrugs.length ? supportingDrugs[0] : undefined);
+    activeDrug ??
+    (supportingDrugs.length ? supportingDrugs[0] : activeDrugHint);
 
-  const response = await resolvedChain.invoke({
-    question,
-    context,
-    chat_history: chatHistory.length
-      ? chatHistory.join('\n')
-      : 'No previous turns.',
-  });
+  let response: PNFChatResponse | null = null;
+
+  try {
+    const rawResponse = await resolvedChain.invoke({
+      question,
+      context,
+      chat_history: chatHistory.length
+        ? chatHistory.join('\n')
+        : 'No previous turns.',
+    });
+    response = rawResponse;
+  } catch (error) {
+    console.error('[pnf-chat] failed to parse LLM response', error);
+  }
 
   if (!response || !response.sections) {
     return {
