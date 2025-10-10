@@ -12,6 +12,7 @@ CRITICAL RULES — FOLLOW EXACTLY:
 
 OUTPUT STRUCTURE REQUIREMENTS:
 - **Overview (overview field)** must answer the user directly in 2–4 sentences using only contextual facts.
+- The Overview must explicitly state whether the drug is Rx (prescription only), OTC (over the counter), or note "Classification unknown (OTC/Rx not specified)" when the metadata does not provide it.
 - For each schema field:
   • If context supplies details, restate them precisely (lists are encouraged for long regimens).
   • If context lacks information, respond "Not covered in provided context." — do not improvise.

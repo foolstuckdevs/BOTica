@@ -25,7 +25,7 @@ export interface PnfChatbotProps {
   className?: string;
 }
 
-const GREETING = `Good day. I'm BOTica Drug Reference Assistant. How can I help you today?`;
+const GREETING = `Good day. I'm BOTica Drug Reference Assistant. How can I help you?`;
 
 const SAMPLE_QUESTIONS = [
   'What is the dosage for Paracetamol?',
