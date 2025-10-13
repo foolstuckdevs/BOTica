@@ -170,6 +170,35 @@ export const createProduct = async (
     // Validate with Zod
     const validatedData = createProductSchema.parse(params);
 
+    // Check for duplicate: same name + lot number + expiry date
+    // This ensures each batch is unique even for products with same name
+    if (
+      validatedData.name &&
+      validatedData.lotNumber &&
+      validatedData.expiryDate
+    ) {
+      const existingProduct = await db
+        .select()
+        .from(products)
+        .where(
+          and(
+            eq(products.name, validatedData.name),
+            eq(products.lotNumber, validatedData.lotNumber),
+            eq(products.expiryDate, validatedData.expiryDate),
+            eq(products.pharmacyId, validatedData.pharmacyId),
+            sql`${products.deletedAt} IS NULL`,
+          ),
+        );
+
+      if (existingProduct.length > 0) {
+        return {
+          success: false,
+          message:
+            'A product with this name, lot number, and expiry date already exists.',
+        };
+      }
+    }
+
     const newProduct = await db
       .insert(products)
       .values(validatedData)
