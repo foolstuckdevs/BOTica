@@ -25,6 +25,9 @@ import {
   PackageOpen,
   Filter,
   X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import type { InventoryProductRow } from '@/types';
 
@@ -45,6 +48,60 @@ export function AvailableProductsTable({
 }: Props) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [sortField, setSortField] = React.useState<
+    | 'product'
+    | 'brand'
+    | 'category'
+    | 'lotNumber'
+    | 'expiry'
+    | 'quantity'
+    | 'costPrice'
+    | 'sellingPrice'
+    | null
+  >(null);
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
+    'asc',
+  );
+
+  const handleSort = (
+    field:
+      | 'product'
+      | 'brand'
+      | 'category'
+      | 'lotNumber'
+      | 'expiry'
+      | 'quantity'
+      | 'costPrice'
+      | 'sellingPrice',
+  ) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (
+    field:
+      | 'product'
+      | 'brand'
+      | 'category'
+      | 'lotNumber'
+      | 'expiry'
+      | 'quantity'
+      | 'costPrice'
+      | 'sellingPrice',
+  ) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-50" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="ml-1 h-3.5 w-3.5" />
+    ) : (
+      <ArrowDown className="ml-1 h-3.5 w-3.5" />
+    );
+  };
 
   React.useEffect(() => {
     setCurrentPage(1);
@@ -71,10 +128,59 @@ export function AvailableProductsTable({
       );
   }, [products, searchTerm, categoryFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+  // Apply sorting
+  const sorted = React.useMemo(() => {
+    if (!sortField) return filtered;
+
+    return [...filtered].sort((a, b) => {
+      let aValue: string | number = '';
+      let bValue: string | number = '';
+
+      switch (sortField) {
+        case 'product':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'brand':
+          aValue = (a.brandName || '').toLowerCase();
+          bValue = (b.brandName || '').toLowerCase();
+          break;
+        case 'category':
+          aValue = a.categoryName.toLowerCase();
+          bValue = b.categoryName.toLowerCase();
+          break;
+        case 'lotNumber':
+          aValue = (a.lotNumber || '').toLowerCase();
+          bValue = (b.lotNumber || '').toLowerCase();
+          break;
+        case 'expiry':
+          aValue = a.expiryDate ? new Date(a.expiryDate).getTime() : 0;
+          bValue = b.expiryDate ? new Date(b.expiryDate).getTime() : 0;
+          break;
+        case 'quantity':
+          aValue = a.quantity;
+          bValue = b.quantity;
+          break;
+        case 'costPrice':
+          aValue = a.costPrice;
+          bValue = b.costPrice;
+          break;
+        case 'sellingPrice':
+          aValue = a.sellingPrice;
+          bValue = b.sellingPrice;
+          break;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filtered, sortField, sortDirection]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginated = filtered.slice(startIndex, endIndex);
+  const paginated = sorted.slice(startIndex, endIndex);
 
   const columns = [
     { header: 'Product', key: 'name' },
@@ -209,14 +315,78 @@ export function AvailableProductsTable({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  {columns.map((c) => (
-                    <th
-                      key={c.header}
-                      className="py-3 px-4 text-left font-medium"
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('product')}
                     >
-                      {c.header}
-                    </th>
-                  ))}
+                      Product
+                      {getSortIcon('product')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('brand')}
+                    >
+                      Brand
+                      {getSortIcon('brand')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('category')}
+                    >
+                      Category
+                      {getSortIcon('category')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('lotNumber')}
+                    >
+                      Lot #{getSortIcon('lotNumber')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('expiry')}
+                    >
+                      Expiry
+                      {getSortIcon('expiry')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('quantity')}
+                    >
+                      Qty
+                      {getSortIcon('quantity')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">Unit</th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('costPrice')}
+                    >
+                      Cost Price
+                      {getSortIcon('costPrice')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('sellingPrice')}
+                    >
+                      Selling Price
+                      {getSortIcon('sellingPrice')}
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>

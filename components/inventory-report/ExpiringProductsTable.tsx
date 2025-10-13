@@ -18,6 +18,9 @@ import {
   Filter,
   Package2,
   X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { TableExportMenu } from '@/components/TableExportMenu';
 import { buildFilterSubtitle } from '@/lib/filterSubtitle';
@@ -91,25 +94,31 @@ export function ExpiringProductsTable({
     return 'exclude'; // beyond 7 months, excluded from report
   };
 
-  const statusMeta: Record<
-    'expired' | 'expiring' | 'warning' | 'return',
-    { text: string; className: string }
-  > = {
-    expired: { text: 'Expired', className: 'bg-red-100 text-red-800' },
-    expiring: {
-      text: 'Expiring Soon',
-      className: 'bg-yellow-100 text-yellow-800',
-    },
-    warning: { text: 'Warning', className: 'bg-amber-100 text-amber-800' },
-    return: { text: 'For Return', className: 'bg-indigo-100 text-indigo-800' },
-  };
+  const statusMeta = React.useMemo(
+    () => ({
+      expired: { text: 'Expired', className: 'bg-red-100 text-red-800' },
+      expiring: {
+        text: 'Expiring Soon',
+        className: 'bg-yellow-100 text-yellow-800',
+      },
+      warning: { text: 'Warning', className: 'bg-amber-100 text-amber-800' },
+      return: {
+        text: 'For Return',
+        className: 'bg-indigo-100 text-indigo-800',
+      },
+    }),
+    [],
+  );
 
-  const getDisplayStatus = (daysRemaining: number) => {
-    const token = getStatusToken(daysRemaining);
-    if (token === 'exclude')
-      return { text: 'N/A', className: 'bg-muted text-muted-foreground' };
-    return statusMeta[token];
-  };
+  const getDisplayStatus = React.useCallback(
+    (daysRemaining: number) => {
+      const token = getStatusToken(daysRemaining);
+      if (token === 'exclude')
+        return { text: 'N/A', className: 'bg-muted text-muted-foreground' };
+      return statusMeta[token];
+    },
+    [statusMeta],
+  );
 
   // Internal unmanaged state fallbacks if parent did not pass handlers
   const [internalStatusFilter, setInternalStatusFilter] = React.useState<
@@ -127,6 +136,60 @@ export function ExpiringProductsTable({
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [sortField, setSortField] = React.useState<
+    | 'product'
+    | 'category'
+    | 'lotNumber'
+    | 'expiryDate'
+    | 'daysRemaining'
+    | 'quantity'
+    | 'value'
+    | 'status'
+    | null
+  >(null);
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
+    'asc',
+  );
+
+  const handleSort = (
+    field:
+      | 'product'
+      | 'category'
+      | 'lotNumber'
+      | 'expiryDate'
+      | 'daysRemaining'
+      | 'quantity'
+      | 'value'
+      | 'status',
+  ) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (
+    field:
+      | 'product'
+      | 'category'
+      | 'lotNumber'
+      | 'expiryDate'
+      | 'daysRemaining'
+      | 'quantity'
+      | 'value'
+      | 'status',
+  ) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-50" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="ml-1 h-3.5 w-3.5" />
+    ) : (
+      <ArrowDown className="ml-1 h-3.5 w-3.5" />
+    );
+  };
 
   React.useEffect(() => {
     setCurrentPage(1);
@@ -142,13 +205,62 @@ export function ExpiringProductsTable({
     });
   }, [products, effectiveStatusFilter]);
 
+  // Apply sorting
+  const sortedProducts = React.useMemo(() => {
+    if (!sortField) return filteredProducts;
+
+    return [...filteredProducts].sort((a, b) => {
+      let aValue: string | number = '';
+      let bValue: string | number = '';
+
+      switch (sortField) {
+        case 'product':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'category':
+          aValue = a.categoryName.toLowerCase();
+          bValue = b.categoryName.toLowerCase();
+          break;
+        case 'lotNumber':
+          aValue = (a.lotNumber || '').toLowerCase();
+          bValue = (b.lotNumber || '').toLowerCase();
+          break;
+        case 'expiryDate':
+          aValue = a.expiryDate ? new Date(a.expiryDate).getTime() : 0;
+          bValue = b.expiryDate ? new Date(b.expiryDate).getTime() : 0;
+          break;
+        case 'daysRemaining':
+          aValue = a.daysRemaining;
+          bValue = b.daysRemaining;
+          break;
+        case 'quantity':
+          aValue = a.quantity;
+          bValue = b.quantity;
+          break;
+        case 'value':
+          aValue = a.value;
+          bValue = b.value;
+          break;
+        case 'status':
+          aValue = getDisplayStatus(a.daysRemaining).text.toLowerCase();
+          bValue = getDisplayStatus(b.daysRemaining).text.toLowerCase();
+          break;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredProducts, sortField, sortDirection, getDisplayStatus]);
+
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredProducts.length / itemsPerPage),
+    Math.ceil(sortedProducts.length / itemsPerPage),
   );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginated = filteredProducts.slice(startIndex, endIndex);
+  const paginated = sortedProducts.slice(startIndex, endIndex);
 
   // Build export data (full filtered list, not paginated)
   const exportRows = filteredProducts.map((p) => {
@@ -350,20 +462,77 @@ export function ExpiringProductsTable({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="py-3 px-4 text-left font-medium">Product</th>
-                  <th className="py-3 px-4 text-left font-medium">Category</th>
                   <th className="py-3 px-4 text-left font-medium">
-                    Lot Number
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('product')}
+                    >
+                      Product
+                      {getSortIcon('product')}
+                    </button>
                   </th>
                   <th className="py-3 px-4 text-left font-medium">
-                    Expiry Date
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('category')}
+                    >
+                      Category
+                      {getSortIcon('category')}
+                    </button>
                   </th>
                   <th className="py-3 px-4 text-left font-medium">
-                    Days Remaining
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('lotNumber')}
+                    >
+                      Lot #{getSortIcon('lotNumber')}
+                    </button>
                   </th>
-                  <th className="py-3 px-4 text-left font-medium">Quantity</th>
-                  <th className="py-3 px-4 text-left font-medium">Value</th>
-                  <th className="py-3 px-4 text-left font-medium">Status</th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('expiryDate')}
+                    >
+                      Expiry
+                      {getSortIcon('expiryDate')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('daysRemaining')}
+                    >
+                      Days Remaining
+                      {getSortIcon('daysRemaining')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('quantity')}
+                    >
+                      Quantity
+                      {getSortIcon('quantity')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('value')}
+                    >
+                      Value
+                      {getSortIcon('value')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('status')}
+                    >
+                      Status
+                      {getSortIcon('status')}
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>

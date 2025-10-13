@@ -2,11 +2,10 @@ import { db } from '@/database/drizzle';
 import { products, suppliers } from '@/database/schema';
 import { and, eq, ilike, sql, or, asc, SQL } from 'drizzle-orm';
 
-// Lightweight POS lookup (name/brand/lot or barcode exact). Excludes expired & deleted.
+// Lightweight POS lookup (name/brand/lot). Excludes expired & deleted.
 export interface POSLookupParams {
   pharmacyId: number;
   query?: string; // free text for name/brand/lot
-  barcode?: string; // exact or prefix?
   limit?: number; // hard cap (default 30)
   offset?: number; // for pagination (default 0)
 }
@@ -14,7 +13,6 @@ export interface POSLookupParams {
 export async function lookupProductsPOS({
   pharmacyId,
   query,
-  barcode,
   limit = 30,
   offset = 0,
 }: POSLookupParams) {
@@ -30,10 +28,7 @@ export async function lookupProductsPOS({
 
   let whereExpr = and(...filters);
 
-  if (barcode) {
-    // Prioritize barcode exact match - if provided we ignore free text for speed
-    whereExpr = and(...filters, eq(products.barcode, barcode));
-  } else if (query && query.length >= 2) {
+  if (query && query.length >= 2) {
     const q = `%${query}%`;
     whereExpr = and(
       ...filters,
@@ -42,7 +37,6 @@ export async function lookupProductsPOS({
         ilike(products.brandName, q),
         ilike(products.genericName, q),
         ilike(products.lotNumber, q),
-        ilike(products.barcode, q),
         ilike(suppliers.name, q),
       ),
     );
@@ -60,7 +54,6 @@ export async function lookupProductsPOS({
       unit: products.unit,
       imageUrl: products.imageUrl,
       genericName: products.genericName,
-      barcode: products.barcode,
       supplierName: suppliers.name,
     })
     .from(products)

@@ -38,19 +38,24 @@ export default function POSPage({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
-  // Track last processed barcode to avoid duplicate fetches during rapid input
-  const lastBarcodeRef = useRef<string | null>(null);
   // Pagination state for POS incremental listing
   const [offset, setOffset] = useState(0);
   const pageSize = 40; // unified page size (initial & subsequent)
   const [hasMore, setHasMore] = useState(true);
+  const [pendingSearchTerm, setPendingSearchTerm] = useState<string | null>(
+    null,
+  );
   const initialLoadedRef = useRef(false);
+  const previousSearchRef = useRef('');
+  const SEARCH_DEBOUNCE_MS = 150;
 
   const trimmedSearch = searchTerm.trim();
   const searchLower = trimmedSearch.toLowerCase();
 
   // Helper utilities
-  const isBarcodePattern = (code: string) => /^[0-9]{8,14}$/.test(code.trim());
+  const hasSearchQuery = trimmedSearch.length >= 2;
+  const isTypingQuery = pendingSearchTerm !== null;
+  const isSearchLoading = hasSearchQuery && (loadingLookup || isTypingQuery);
   const mergeUniqueProducts = (
     existing: ProductPOS[],
     incoming: ProductPOS[],
@@ -61,7 +66,7 @@ export default function POSPage({
     for (const p of incoming) map.set(p.id, p);
     return Array.from(map.values());
   };
-  // Helper: add product to cart (single unit or increment) used by cards & barcode path
+  // Helper: add product to cart (single unit or increment) used by cards
   const addProductToCart = (product: ProductPOS) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
@@ -92,8 +97,7 @@ export default function POSPage({
 
   // Derived filtered list (still client-side pass) after remote fetch
   const filteredProducts = useMemo(() => {
-    const hasSearch =
-      trimmedSearch.length >= 2 || isBarcodePattern(trimmedSearch);
+    const hasSearch = trimmedSearch.length >= 2;
     const includesTerm = (value?: string | null) =>
       value ? value.toLowerCase().includes(searchLower) : false;
 
@@ -110,7 +114,6 @@ export default function POSPage({
           includesTerm(product.brandName) ||
           includesTerm(product.genericName) ||
           includesTerm(product.lotNumber) ||
-          includesTerm(product.barcode) ||
           includesTerm(product.supplierName);
 
         // If product doesn't match search, exclude it
@@ -132,7 +135,6 @@ export default function POSPage({
             product.brandName || '',
             product.genericName || '',
             product.supplierName || '',
-            product.barcode || '',
           ];
           const foundIndex = candidates.findIndex((value) =>
             value.toLowerCase().startsWith(searchLower),
@@ -158,24 +160,16 @@ export default function POSPage({
   // Unified fetch function
   interface FetchParams {
     query?: string;
-    barcode?: string;
     offset?: number;
     limit?: number;
     signal?: AbortSignal;
   }
   const fetchProducts = useCallback(
-    async ({
-      query,
-      barcode,
-      offset = 0,
-      limit = pageSize,
-      signal,
-    }: FetchParams) => {
+    async ({ query, offset = 0, limit = pageSize, signal }: FetchParams) => {
       const params = new URLSearchParams();
       params.set('limit', String(limit));
       params.set('offset', String(offset));
       if (query) params.set('query', query);
-      if (barcode) params.set('barcode', barcode);
       const res = await fetch(`/api/pos/lookup?${params.toString()}`, {
         cache: 'no-store',
         signal,
@@ -188,11 +182,19 @@ export default function POSPage({
   );
 
   // Initial load: fetch first page immediately (no debounce) to avoid empty grid flash.
-  // Barcode fast-path effect: immediate lookup when input is a likely barcode (all digits length 8-14)
   // Subsequent typed searches are debounced in separate effect below.
   useEffect(() => {
-    if (searchTerm.trim().length > 0) return; // only when empty
-    if (initialLoadedRef.current && products.length > 0) return; // already have data
+    const term = trimmedSearch;
+    const previousTerm = previousSearchRef.current;
+    previousSearchRef.current = term;
+
+    const isInitialLoadPending = !initialLoadedRef.current;
+    const clearedSearch = term.length === 0 && previousTerm.length > 0;
+    if (!isInitialLoadPending && !clearedSearch) {
+      return;
+    }
+
+    abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     setLoadingLookup(true);
@@ -209,64 +211,19 @@ export default function POSPage({
         toast.error(msg);
       })
       .finally(() => setLoadingLookup(false));
-  }, [searchTerm, products.length, fetchProducts]);
-  useEffect(() => {
-    const code = trimmedSearch;
-    if (!isBarcodePattern(code)) return; // Not a barcode pattern
-    if (lastBarcodeRef.current === code) return; // Already processed
-    lastBarcodeRef.current = code;
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setLoadingLookup(true);
-    fetch(`/api/pos/lookup?barcode=${encodeURIComponent(code)}`, {
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`Barcode lookup failed: ${res.status}`);
-        const json = await res.json();
-        const list: ProductPOS[] = json.data || [];
-        if (list.length === 1) {
-          const product = list[0];
-          // Merge into products state if not present (so quantity checks work)
-          setProducts((prev) => {
-            if (prev.find((p) => p.id === product.id)) return prev;
-            return [...prev, product];
-          });
-          if (product.quantity > 0) {
-            addProductToCart(product);
-            toast.success(`${product.name} added via barcode`);
-          } else {
-            toast.warning(`${product.name} is out of stock`);
-          }
-          setSearchTerm(''); // Clear input for next scan
-        } else if (list.length > 1) {
-          // Unlikely, but show candidates
-          setProducts(list);
-          toast.message('Multiple matches for barcode, select product');
-        } else {
-          toast.error('No product found for barcode');
-        }
-      })
-      .catch((e) => {
-        if (e.name === 'AbortError') return;
-        toast.error(e.message || 'Barcode lookup error');
-      })
-      .finally(() => setLoadingLookup(false));
-  }, [trimmedSearch]);
-
-  // Lookup effect (debounced name/brand/lot query). Skips when barcode pattern active.
+  }, [trimmedSearch, fetchProducts, pageSize]);
+  // Lookup effect (debounced name/brand/lot query)
   useEffect(() => {
     const term = trimmedSearch;
     if (term.length === 0) {
-      // Clearing search resets pagination (but initial loader handles fetch)
-      setOffset(products.length); // keep existing offset for now
+      setPendingSearchTerm(null);
       return;
     }
-    // Skip normal query path if term is a barcode pattern - handled by barcode effect
-    if (isBarcodePattern(term)) return;
-    if (term.length < 2) return; // enforce minimal chars
+    if (term.length < 2) {
+      setPendingSearchTerm(null);
+      return; // enforce minimal chars
+    }
+    setPendingSearchTerm(term);
     const handle = setTimeout(() => {
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -288,8 +245,13 @@ export default function POSPage({
           const msg = e instanceof Error ? e.message : 'Lookup error';
           toast.error(msg);
         })
-        .finally(() => setLoadingLookup(false));
-    }, 250);
+        .finally(() => {
+          setLoadingLookup(false);
+          if (trimmedSearch === term) {
+            setPendingSearchTerm(null);
+          }
+        });
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(handle);
   }, [trimmedSearch, pageSize, products.length, fetchProducts]);
 
@@ -302,7 +264,7 @@ export default function POSPage({
     abortRef.current = controller;
     setLoadingLookup(true);
     fetchProducts({
-      query: term.length >= 2 && !isBarcodePattern(term) ? term : undefined,
+      query: term.length >= 2 ? term : undefined,
       offset,
       limit: pageSize,
       signal: controller.signal,
@@ -548,6 +510,34 @@ export default function POSPage({
     }
   };
 
+  const showSearchSummary =
+    trimmedSearch.length > 0 && filteredProducts.length > 0;
+  const isBelowMinimumSearchLength =
+    trimmedSearch.length > 0 && trimmedSearch.length < 2;
+  const showNoResults =
+    hasSearchQuery && filteredProducts.length === 0 && !isSearchLoading;
+  const hasInventory = products.length > 0;
+
+  const emptyStateTitle = isSearchLoading
+    ? 'Searching…'
+    : showNoResults
+    ? 'No products found'
+    : isBelowMinimumSearchLength
+    ? 'Keep typing to search'
+    : hasInventory
+    ? 'Start searching for products'
+    : 'No products available yet';
+
+  const emptyStateDescription = isSearchLoading
+    ? 'Fetching matching products, just a moment.'
+    : showNoResults
+    ? 'Try adjusting your search terms or verify spelling.'
+    : isBelowMinimumSearchLength
+    ? 'Enter at least two characters to see matching results.'
+    : hasInventory
+    ? 'Enter a product name, brand, or lot number to begin.'
+    : 'Add products to your inventory to start selling from the POS.';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
       <div className="max-w-7xl mx-auto">
@@ -570,11 +560,17 @@ export default function POSPage({
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 h-12 bg-gray-50 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base"
                 />
+                {isSearchLoading && (
+                  <div className="absolute inset-y-0 right-4 flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="h-4 w-4 rounded-full border-2 border-gray-300 border-t-blue-600 animate-spin" />
+                    <span className="hidden sm:inline">Searching…</span>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Product Summary */}
-            {searchTerm && filteredProducts.length > 0 && (
+            {showSearchSummary && (
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200 shadow-sm p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -593,12 +589,12 @@ export default function POSPage({
             )}
 
             {/* Products Grid */}
-            {loadingLookup && products.length === 0 ? (
+            {isSearchLoading && filteredProducts.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-16 relative min-h-[240px] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                   <div className="h-12 w-12 rounded-full border-4 border-gray-200 border-t-blue-600 animate-spin" />
                   <p className="text-sm text-gray-500 tracking-wide">
-                    Loading products...
+                    Searching...
                   </p>
                 </div>
               </div>
@@ -632,14 +628,10 @@ export default function POSPage({
                     <Search className="w-10 h-10 text-gray-400" />
                   </div>
                   <h3 className="text-lg font-medium mb-2 text-gray-900">
-                    {searchTerm
-                      ? 'No products found'
-                      : 'Start searching for products'}
+                    {emptyStateTitle}
                   </h3>
                   <p className="text-sm text-gray-500">
-                    {searchTerm
-                      ? 'Try adjusting your search terms or browse all products'
-                      : 'Enter a product name, brand, or lot number to begin'}
+                    {emptyStateDescription}
                   </p>
                 </div>
               </div>

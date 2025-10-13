@@ -91,7 +91,6 @@ const ProductForm = ({
       name: product.name || '',
       genericName: product.genericName || '',
       categoryId: product.categoryId || undefined,
-      barcode: product.barcode || '',
       lotNumber: product.lotNumber || '',
       brandName: product.brandName || '',
       dosageForm:
@@ -152,7 +151,6 @@ const ProductForm = ({
         delete toSend.expiryDate; // server validates too; UI stays disabled
         delete toSend.unit;
         delete toSend.dosageForm;
-        delete toSend.barcode;
         delete toSend.supplierId;
         // Optionally freeze costPrice after sales; server enforces strictly
       }
@@ -444,34 +442,6 @@ const ProductForm = ({
                           <div className="w-full">
                             <Input
                               placeholder="e.g., LOT2025-001"
-                              {...field}
-                              className="w-full"
-                              readOnly={
-                                type === 'update' &&
-                                (product as Product).hasReferences
-                              }
-                              disabled={
-                                type === 'update' &&
-                                (product as Product).hasReferences
-                              }
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="barcode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Barcode</FormLabel>
-                        <FormControl>
-                          <div className="w-full">
-                            <Input
-                              placeholder="Enter barcode"
                               {...field}
                               className="w-full"
                               readOnly={

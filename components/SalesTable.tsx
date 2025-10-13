@@ -9,6 +9,9 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import {
   Select,
@@ -31,6 +34,17 @@ type Props = {
   comprehensiveProductData: Array<ProductPerformanceData & { date: string }>;
 };
 
+type SortColumn =
+  | 'name'
+  | 'category'
+  | 'unit'
+  | 'quantity'
+  | 'avgPrice'
+  | 'revenue'
+  | 'cost'
+  | 'profit';
+type SortDirection = 'asc' | 'desc' | null;
+
 export default function SalesTable({ comprehensiveProductData }: Props) {
   const [timePeriod, setTimePeriod] = React.useState<
     'today' | 'week' | 'month' | ''
@@ -40,6 +54,9 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
   >();
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [sortColumn, setSortColumn] = React.useState<SortColumn>('quantity');
+  const [sortDirection, setSortDirection] =
+    React.useState<SortDirection>('desc');
 
   const handleQuickPeriod = (period: 'today' | 'week' | 'month') => {
     setTimePeriod(period);
@@ -116,13 +133,106 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
         });
       }
     }
-    return Array.from(map.values()).sort((a, b) => b.quantity - a.quantity);
-  }, [comprehensiveProductData, bounds.from, bounds.to]);
+    const dataArray = Array.from(map.values());
+
+    // Apply sorting
+    if (sortDirection) {
+      dataArray.sort((a, b) => {
+        let aVal: string | number;
+        let bVal: string | number;
+
+        switch (sortColumn) {
+          case 'name':
+            aVal = a.name.toLowerCase();
+            bVal = b.name.toLowerCase();
+            break;
+          case 'category':
+            aVal = a.category.toLowerCase();
+            bVal = b.category.toLowerCase();
+            break;
+          case 'unit':
+            aVal = (a.unit ?? '').toLowerCase();
+            bVal = (b.unit ?? '').toLowerCase();
+            break;
+          case 'quantity':
+            aVal = a.quantity;
+            bVal = b.quantity;
+            break;
+          case 'avgPrice':
+            aVal = a.quantity > 0 ? a.revenue / a.quantity : 0;
+            bVal = b.quantity > 0 ? b.revenue / b.quantity : 0;
+            break;
+          case 'revenue':
+            aVal = a.revenue;
+            bVal = b.revenue;
+            break;
+          case 'cost':
+            aVal = a.revenue - a.profit;
+            bVal = b.revenue - b.profit;
+            break;
+          case 'profit':
+            aVal = a.profit;
+            bVal = b.profit;
+            break;
+          default:
+            return 0;
+        }
+
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          return sortDirection === 'asc'
+            ? aVal.localeCompare(bVal)
+            : bVal.localeCompare(aVal);
+        } else {
+          return sortDirection === 'asc'
+            ? (aVal as number) - (bVal as number)
+            : (bVal as number) - (aVal as number);
+        }
+      });
+    }
+
+    return dataArray;
+  }, [
+    comprehensiveProductData,
+    bounds.from,
+    bounds.to,
+    sortColumn,
+    sortDirection,
+  ]);
 
   // Reset pagination on filter changes
   React.useEffect(() => {
     setCurrentPage(1);
   }, [timePeriod, customDateRange, bounds.from, bounds.to]);
+
+  // Handle column sorting
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      // Toggle through: desc -> asc -> null -> desc
+      if (sortDirection === 'desc') {
+        setSortDirection('asc');
+      } else if (sortDirection === 'asc') {
+        setSortDirection(null);
+        setSortColumn('quantity'); // Reset to default
+      } else {
+        setSortDirection('desc');
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  // Render sort icon
+  const renderSortIcon = (column: SortColumn) => {
+    if (sortColumn !== column || !sortDirection) {
+      return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-50" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="ml-1 h-3.5 w-3.5" />
+    ) : (
+      <ArrowDown className="ml-1 h-3.5 w-3.5" />
+    );
+  };
 
   // Pagination calculations
   const totalPages = Math.max(1, Math.ceil(aggregated.length / itemsPerPage));
@@ -310,14 +420,78 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="py-3 px-4 text-left font-medium">Product</th>
-                <th className="py-3 px-4 text-left font-medium">Category</th>
-                <th className="py-3 px-4 text-left font-medium">Unit</th>
-                <th className="py-3 px-4 text-right font-medium">Quantity</th>
-                <th className="py-3 px-4 text-right font-medium">Avg Price</th>
-                <th className="py-3 px-4 text-right font-medium">Revenue</th>
-                <th className="py-3 px-4 text-right font-medium">Cost</th>
-                <th className="py-3 px-4 text-right font-medium">Profit</th>
+                <th className="py-3 px-4 text-left font-medium">
+                  <button
+                    className="flex items-center hover:text-primary transition-colors"
+                    onClick={() => handleSort('name')}
+                  >
+                    Product
+                    {renderSortIcon('name')}
+                  </button>
+                </th>
+                <th className="py-3 px-4 text-left font-medium">
+                  <button
+                    className="flex items-center hover:text-primary transition-colors"
+                    onClick={() => handleSort('category')}
+                  >
+                    Category
+                    {renderSortIcon('category')}
+                  </button>
+                </th>
+                <th className="py-3 px-4 text-left font-medium">
+                  <button
+                    className="flex items-center hover:text-primary transition-colors"
+                    onClick={() => handleSort('unit')}
+                  >
+                    Unit
+                    {renderSortIcon('unit')}
+                  </button>
+                </th>
+                <th className="py-3 px-4 text-right font-medium">
+                  <button
+                    className="flex items-center ml-auto hover:text-primary transition-colors"
+                    onClick={() => handleSort('quantity')}
+                  >
+                    Quantity
+                    {renderSortIcon('quantity')}
+                  </button>
+                </th>
+                <th className="py-3 px-4 text-right font-medium">
+                  <button
+                    className="flex items-center ml-auto hover:text-primary transition-colors"
+                    onClick={() => handleSort('avgPrice')}
+                  >
+                    Avg Price
+                    {renderSortIcon('avgPrice')}
+                  </button>
+                </th>
+                <th className="py-3 px-4 text-right font-medium">
+                  <button
+                    className="flex items-center ml-auto hover:text-primary transition-colors"
+                    onClick={() => handleSort('revenue')}
+                  >
+                    Revenue
+                    {renderSortIcon('revenue')}
+                  </button>
+                </th>
+                <th className="py-3 px-4 text-right font-medium">
+                  <button
+                    className="flex items-center ml-auto hover:text-primary transition-colors"
+                    onClick={() => handleSort('cost')}
+                  >
+                    Cost
+                    {renderSortIcon('cost')}
+                  </button>
+                </th>
+                <th className="py-3 px-4 text-right font-medium">
+                  <button
+                    className="flex items-center ml-auto hover:text-primary transition-colors"
+                    onClick={() => handleSort('profit')}
+                  >
+                    Profit
+                    {renderSortIcon('profit')}
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>

@@ -31,7 +31,6 @@ type ExistingProductSubset = Pick<
   | 'expiryDate'
   | 'unit'
   | 'dosageForm'
-  | 'barcode'
   | 'supplierId'
   | 'quantity'
   | 'lotNumber'
@@ -108,7 +107,6 @@ export const getProductById = async (
         categoryName: categories.name,
         unit: products.unit,
         lotNumber: products.lotNumber,
-        barcode: products.barcode,
         expiryDate: products.expiryDate,
         quantity: products.quantity,
         costPrice: products.costPrice,
@@ -171,29 +169,6 @@ export const createProduct = async (
     }
     // Validate with Zod
     const validatedData = createProductSchema.parse(params);
-
-    // For batch tracking: Allow same barcode with different batch/lot numbers
-    // Only check for duplicate barcode + lot combination if both are provided
-    if (validatedData.barcode && validatedData.lotNumber) {
-      const existingProduct = await db
-        .select()
-        .from(products)
-        .where(
-          and(
-            eq(products.barcode, validatedData.barcode),
-            eq(products.lotNumber, validatedData.lotNumber),
-            eq(products.pharmacyId, validatedData.pharmacyId),
-            sql`${products.deletedAt} IS NULL`,
-          ),
-        );
-
-      if (existingProduct.length > 0) {
-        return {
-          success: false,
-          message: 'A product with this barcode and lot number already exists.',
-        };
-      }
-    }
 
     const newProduct = await db
       .insert(products)
@@ -327,11 +302,6 @@ export const updateProduct = async (
       )
         attemptedChanges.push('dosageForm');
       if (
-        validatedData.params.barcode !== undefined &&
-        validatedData.params.barcode !== existingProduct.barcode
-      )
-        attemptedChanges.push('barcode');
-      if (
         validatedData.params.supplierId !== undefined &&
         validatedData.params.supplierId !== existingProduct.supplierId
       )
@@ -358,44 +328,6 @@ export const updateProduct = async (
         message:
           'Cost price cannot be changed after sales exist for this product. Update cost via new purchase receipts instead.',
       };
-    }
-
-    // Only check for duplicate barcode+lot if either is being changed
-    const willUpdateBarcode =
-      typeof validatedData.params.barcode === 'string' &&
-      validatedData.params.barcode !== existingProduct.barcode;
-    const willUpdateLot =
-      typeof validatedData.params.lotNumber === 'string' &&
-      validatedData.params.lotNumber !== existingProduct.lotNumber;
-    if (willUpdateBarcode || willUpdateLot) {
-      const newBarcode =
-        typeof validatedData.params.barcode === 'string'
-          ? validatedData.params.barcode
-          : existingProduct.barcode;
-      const newLot =
-        typeof validatedData.params.lotNumber === 'string'
-          ? validatedData.params.lotNumber
-          : existingProduct.lotNumber;
-      if (typeof newBarcode === 'string' && typeof newLot === 'string') {
-        const duplicate = await db
-          .select()
-          .from(products)
-          .where(
-            and(
-              eq(products.barcode, newBarcode),
-              eq(products.lotNumber, newLot),
-              eq(products.pharmacyId, validatedData.pharmacyId),
-              sql`${products.deletedAt} IS NULL`,
-            ),
-          );
-        if (duplicate.length > 0 && duplicate[0].id !== validatedData.id) {
-          return {
-            success: false,
-            message:
-              'A product with this barcode and lot number already exists in your pharmacy records.',
-          };
-        }
-      }
     }
 
     // Handle image deletion if imageUrl is set to empty string

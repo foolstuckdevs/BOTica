@@ -98,7 +98,6 @@ export interface Product {
   genericName: string | null;
   categoryId: number | null;
   categoryName: string | null;
-  barcode: string | null;
   lotNumber: string | null;
   brandName?: string | null;
   dosageForm: DosageFormType | null;
@@ -133,7 +132,6 @@ export interface ProductPOS {
   unit: UnitType | null;
   brandName: string | null;
   genericName?: string | null;
-  barcode?: string | null;
   supplierName?: string | null;
 }
 
@@ -141,7 +139,6 @@ export interface ProductParams {
   name: string;
   genericName?: string;
   categoryId?: number;
-  barcode?: string;
   lotNumber?: string;
   brandName?: string;
   dosageForm?: DosageFormType;

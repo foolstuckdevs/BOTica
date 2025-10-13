@@ -25,6 +25,9 @@ import {
   Package2,
   Filter,
   X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import type { LowStockProductData } from '@/types';
 
@@ -58,15 +61,114 @@ export function LowStockTable({
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [sortField, setSortField] = React.useState<
+    | 'product'
+    | 'category'
+    | 'lotNumber'
+    | 'quantity'
+    | 'reorderPoint'
+    | 'supplier'
+    | 'status'
+    | null
+  >(null);
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
+    'asc',
+  );
+
+  const handleSort = (
+    field:
+      | 'product'
+      | 'category'
+      | 'lotNumber'
+      | 'quantity'
+      | 'reorderPoint'
+      | 'supplier'
+      | 'status',
+  ) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (
+    field:
+      | 'product'
+      | 'category'
+      | 'lotNumber'
+      | 'quantity'
+      | 'reorderPoint'
+      | 'supplier'
+      | 'status',
+  ) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-50" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="ml-1 h-3.5 w-3.5" />
+    ) : (
+      <ArrowDown className="ml-1 h-3.5 w-3.5" />
+    );
+  };
 
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, categoryFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(products.length / itemsPerPage));
+  // Apply sorting
+  const sortedProducts = React.useMemo(() => {
+    if (!sortField) return products;
+
+    return [...products].sort((a, b) => {
+      let aValue: string | number = '';
+      let bValue: string | number = '';
+
+      switch (sortField) {
+        case 'product':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'category':
+          aValue = a.categoryName.toLowerCase();
+          bValue = b.categoryName.toLowerCase();
+          break;
+        case 'lotNumber':
+          aValue = (a.lotNumber || '').toLowerCase();
+          bValue = (b.lotNumber || '').toLowerCase();
+          break;
+        case 'quantity':
+          aValue = a.quantity;
+          bValue = b.quantity;
+          break;
+        case 'reorderPoint':
+          aValue = a.reorderPoint;
+          bValue = b.reorderPoint;
+          break;
+        case 'supplier':
+          aValue = (a.supplierName || '').toLowerCase();
+          bValue = (b.supplierName || '').toLowerCase();
+          break;
+        case 'status':
+          aValue = a.status === 'out_of_stock' ? 'out of stock' : 'low';
+          bValue = b.status === 'out_of_stock' ? 'out of stock' : 'low';
+          break;
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [products, sortField, sortDirection]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedProducts.length / itemsPerPage),
+  );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginated = products.slice(startIndex, endIndex);
+  const paginated = sortedProducts.slice(startIndex, endIndex);
 
   // Build export data (full list respects current filters already applied upstream if any)
   const exportRows = products.map((p) => ({
@@ -217,17 +319,68 @@ export function LowStockTable({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="py-3 px-4 text-left font-medium">Product</th>
-                  <th className="py-3 px-4 text-left font-medium">Category</th>
                   <th className="py-3 px-4 text-left font-medium">
-                    Lot Number
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('product')}
+                    >
+                      Product
+                      {getSortIcon('product')}
+                    </button>
                   </th>
-                  <th className="py-3 px-4 text-left font-medium">Quantity</th>
                   <th className="py-3 px-4 text-left font-medium">
-                    Minimum Qty
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('category')}
+                    >
+                      Category
+                      {getSortIcon('category')}
+                    </button>
                   </th>
-                  <th className="py-3 px-4 text-left font-medium">Supplier</th>
-                  <th className="py-3 px-4 text-left font-medium">Status</th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('lotNumber')}
+                    >
+                      Lot #{getSortIcon('lotNumber')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('quantity')}
+                    >
+                      Quantity
+                      {getSortIcon('quantity')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('reorderPoint')}
+                    >
+                      Min Qty
+                      {getSortIcon('reorderPoint')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('supplier')}
+                    >
+                      Supplier
+                      {getSortIcon('supplier')}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-left font-medium">
+                    <button
+                      className="group flex items-center hover:text-foreground transition-colors"
+                      onClick={() => handleSort('status')}
+                    >
+                      Status
+                      {getSortIcon('status')}
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>

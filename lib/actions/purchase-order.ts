@@ -38,7 +38,6 @@ export const getOrderableProducts = async (pharmacyId: number) => {
         genericName: products.genericName,
         categoryId: products.categoryId,
         categoryName: categories.name,
-        barcode: products.barcode,
         lotNumber: products.lotNumber,
         expiryDate: products.expiryDate,
         quantity: products.quantity,

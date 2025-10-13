@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('query') || undefined;
-    const barcode = searchParams.get('barcode') || undefined;
     const limit = searchParams.get('limit')
       ? parseInt(searchParams.get('limit') || '30', 10)
       : 30;
@@ -22,7 +21,6 @@ export async function GET(req: NextRequest) {
     const data = await lookupProductsPOS({
       pharmacyId: session.user.pharmacyId,
       query,
-      barcode,
       limit,
       offset,
     });

@@ -26,7 +26,6 @@ export const ProductCard = ({
     quantity: number;
     unit?: string | null;
     supplierName?: string | null;
-    barcode?: string | null;
   };
   onAddToCart: () => void;
 }) => {
@@ -123,13 +122,6 @@ export const ProductCard = ({
               {product.lotNumber || 'No lot number'}
             </span>
           </div>
-
-          {product.barcode && (
-            <div className="flex items-center gap-2 text-xs">
-              <Hash className="w-3 h-3 text-gray-400 flex-shrink-0" />
-              <span className="text-gray-500 font-mono">{product.barcode}</span>
-            </div>
-          )}
 
           <div className="flex items-center gap-2 text-xs">
             <Calendar className="w-3 h-3 text-gray-400 flex-shrink-0" />

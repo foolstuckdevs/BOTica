@@ -10,10 +10,6 @@ export const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   genericName: z.string().optional(),
   categoryId: z.number().min(1, 'Category is required').optional(),
-  barcode: z
-    .string()
-    .max(50, 'Barcode must be at most 50 characters')
-    .optional(),
   lotNumber: z.string().optional(),
   brandName: z.string().optional(),
   dosageForm: dosageFormSchemaOptional,
@@ -54,10 +50,6 @@ export const productFormSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   genericName: z.string().optional(),
   categoryId: z.number().min(1, 'Category is required').optional(),
-  barcode: z
-    .string()
-    .max(50, 'Barcode must be at most 50 characters')
-    .optional(),
   lotNumber: z.string().optional(),
   brandName: z.string().optional(),
   dosageForm: dosageFormSchemaOptional,
