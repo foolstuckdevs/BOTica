@@ -31,6 +31,12 @@ async function seedUsers() {
       password: 'Testing.1',
       role: 'Admin' as const,
     },
+    {
+      fullName: 'Krystel Kate Dulnuan',
+      email: 'krysteldulnuan@gmail.com',
+      password: 'Testing.1',
+      role: 'Admin' as const,
+    },
   ];
 
   const hashedUsers = await Promise.all(
