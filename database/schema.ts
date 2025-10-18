@@ -34,6 +34,7 @@ export const DOSAGE_FORM_ENUM = pgEnum('dosage_form', [
   'GEL',
   'LOTION',
   'PATCH',
+  'SACHET',
 ]);
 
 export const UNIT_ENUM = pgEnum('unit', ['PIECE', 'BOX']);

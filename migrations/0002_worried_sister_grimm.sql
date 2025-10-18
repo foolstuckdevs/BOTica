@@ -1,0 +1,1 @@
+ALTER TYPE "public"."dosage_form" ADD VALUE 'SACHET';
