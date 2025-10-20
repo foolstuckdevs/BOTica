@@ -29,6 +29,7 @@ export const dosageFormSchema = z.enum([
   'GEL',
   'LOTION',
   'PATCH',
+  'SACHET',
 ]);
 
 export const unitSchema = z.enum(['PIECE', 'BOX']);

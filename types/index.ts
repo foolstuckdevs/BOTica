@@ -90,7 +90,8 @@ export type DosageFormType =
   | 'OINTMENT'
   | 'GEL'
   | 'LOTION'
-  | 'PATCH';
+  | 'PATCH'
+  | 'SACHET';
 
 export interface Product {
   id: number;
