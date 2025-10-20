@@ -324,27 +324,36 @@ export const getChartData = async (
   days: number = 30,
 ): Promise<ChartDataPoint[]> => {
   try {
-    // Get current date in Philippines timezone for more accurate range calculation
+    const timeZone = 'Asia/Manila';
+
+    // Get current date in Philippines timezone
     const now = new Date();
     const currentPhilippinesDate = formatInTimeZone(
       now,
-      'Asia/Manila',
+      timeZone,
       'yyyy-MM-dd',
     );
 
     // Calculate start date (days ago from current Philippines date)
-    const endDateCalc = new Date(currentPhilippinesDate + 'T00:00:00.000Z');
-    const startDate = new Date(endDateCalc);
-    startDate.setDate(startDate.getDate() - days);
+    // Create dates in Manila timezone by using +08:00 offset
+    const startLocalDate = new Date(currentPhilippinesDate);
+    startLocalDate.setDate(startLocalDate.getDate() - days);
+    const startDateStr = formatInTimeZone(
+      startLocalDate,
+      timeZone,
+      'yyyy-MM-dd',
+    );
 
-    // Set end to include the full current day in Philippines timezone
-    // Use end of day instead of just current Philippines date
-    const endDate = new Date(currentPhilippinesDate + 'T23:59:59.999Z');
+    // Convert Manila local dates to UTC timestamps for database query
+    const startDate = new Date(startDateStr + 'T00:00:00+08:00');
+    const endDate = new Date(currentPhilippinesDate + 'T23:59:59.999+08:00');
 
-    // Get daily aggregated data
+    // Get daily aggregated data - convert timestamps to Manila timezone dates
+    const salesDateInManila = sql<string>`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`;
+
     const result = await db
       .select({
-        date: sql<string>`DATE(${sales.createdAt})`,
+        date: salesDateInManila,
         totalSales: sum(sales.totalAmount),
         totalCost: sum(
           sql`CAST(${products.costPrice} AS NUMERIC) * ${saleItems.quantity}`,
@@ -361,16 +370,16 @@ export const getChartData = async (
           lte(sales.createdAt, endDate),
         ),
       )
-      .groupBy(sql`DATE(${sales.createdAt})`)
-      .orderBy(sql`DATE(${sales.createdAt})`);
+      .groupBy(salesDateInManila)
+      .orderBy(salesDateInManila);
 
-    // Create array of all dates in range
+    // Create array of all dates in range using Manila timezone
     const chartData: ChartDataPoint[] = [];
-    const currentDate = new Date(startDate);
-    const endDateForLoop = new Date(currentPhilippinesDate + 'T00:00:00.000Z');
+    const currentDate = new Date(startDateStr + 'T00:00:00+08:00');
+    const endDateForLoop = new Date(currentPhilippinesDate + 'T00:00:00+08:00');
 
     while (currentDate <= endDateForLoop) {
-      const dateStr = currentDate.toISOString().split('T')[0];
+      const dateStr = formatInTimeZone(currentDate, timeZone, 'yyyy-MM-dd');
 
       // Find data for this date
       const dayData = result.find((r) => r.date === dateStr);
