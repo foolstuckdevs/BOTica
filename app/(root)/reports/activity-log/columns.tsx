@@ -25,7 +25,7 @@ export const columns: ColumnDef<ActivityRow>[] = [
         typeof v === 'string' || v instanceof Date ? new Date(v) : new Date();
       return (
         <div className="leading-tight">
-          <div className="font-medium">{format(d, 'PP pp')}</div>
+          <div className="font-medium">{format(d, 'PP p')}</div>
           <div className="text-xs text-muted-foreground">
             {formatDistanceToNow(d, { addSuffix: true })}
           </div>
