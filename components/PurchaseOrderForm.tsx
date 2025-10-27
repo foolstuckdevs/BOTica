@@ -17,7 +17,6 @@ import { Supplier, Product } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { formatDatePH } from '@/lib/date-format';
 import {
   Select,
   SelectTrigger,
@@ -28,6 +27,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { ChevronLeft } from 'lucide-react';
+import PurchaseOrderProductsTable from '@/components/PurchaseOrderProductsTable';
 
 type PurchaseOrderFormValues = z.infer<typeof purchaseOrderSchema>;
 
@@ -35,6 +35,7 @@ interface PurchaseOrderFormProps {
   type?: 'create' | 'update';
   suppliers: Supplier[];
   products: Product[];
+  lowStockProducts?: Product[];
   initialValues?: PurchaseOrderFormValues & { id?: number; status?: string };
   userId: string; // Pass userId from server component
   pharmacyId: number; // Pass pharmacyId from server component
@@ -50,7 +51,6 @@ const PurchaseOrderForm = ({
 }: PurchaseOrderFormProps) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [search, setSearch] = useState('');
   const [itemError, setItemError] = useState('');
 
   // Check if the purchase order is in a final state (not editable)
@@ -77,16 +77,6 @@ const PurchaseOrderForm = ({
     name: 'items',
   });
 
-  const filteredProducts =
-    search.length >= 2
-      ? products.filter(
-          (p) =>
-            p.name.toLowerCase().includes(search.toLowerCase()) ||
-            (p.brandName &&
-              p.brandName.toLowerCase().includes(search.toLowerCase())),
-        )
-      : [];
-
   const handleAddProduct = (product: Product) => {
     if (fields.some((item) => item.productId === product.id)) {
       setItemError('Product already added');
@@ -98,7 +88,6 @@ const PurchaseOrderForm = ({
       quantity: 1,
     });
 
-    setSearch('');
     setItemError('');
   };
 
@@ -290,95 +279,21 @@ const PurchaseOrderForm = ({
           </CardContent>
         </Card>
 
-        {/* Product Search */}
+        {/* Product Search & Selection */}
         {!isReadOnly && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Add Products</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-3">
-              <Input
-                placeholder="Search by product name or brand..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full"
-              />
+          <PurchaseOrderProductsTable
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            products={products as any}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onAddProduct={handleAddProduct as any}
+            addedProductIds={fields.map((f) => f.productId)}
+          />
+        )}
 
-              {search.length >= 2 && (
-                <div className="mt-2 border rounded-lg bg-white max-h-60 overflow-y-auto">
-                  {filteredProducts.length > 0 ? (
-                    filteredProducts.map((product) => {
-                      // For batch tracking: Only consider as "already added" if it's the exact same product
-                      // (same ID, which means same brand, lot, etc.)
-                      const alreadyAdded = fields.some(
-                        (item) => item.productId === product.id,
-                      );
-
-                      return (
-                        <div
-                          key={product.id}
-                          className={`flex justify-between items-center px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 ${
-                            alreadyAdded ? 'opacity-50 cursor-not-allowed' : ''
-                          }`}
-                          onClick={() => {
-                            if (!alreadyAdded) handleAddProduct(product);
-                          }}
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-medium text-gray-900">
-                                {product.name}
-                              </p>
-                              {product.brandName && (
-                                <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">
-                                  {product.brandName}
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="flex items-center gap-3 text-xs text-gray-500">
-                              <span>
-                                {product.unit} • Stock: {product.quantity}
-                              </span>
-                              {product.lotNumber && (
-                                <span className="bg-gray-50 px-2 py-0.5 rounded">
-                                  Lot: {product.lotNumber}
-                                </span>
-                              )}
-                              {product.expiryDate && (
-                                <span className="text-amber-600">
-                                  Exp: {formatDatePH(product.expiryDate)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="text-right">
-                            <div className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">
-                              Min: {product.minStockLevel}
-                            </div>
-                            {alreadyAdded && (
-                              <p className="text-xs text-gray-400 mt-1">
-                                Already added
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-4 text-sm text-gray-500">
-                      No matching products found
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {itemError && (
-                <p className="text-sm text-red-500 mt-2">{itemError}</p>
-              )}
-            </CardContent>
-          </Card>
+        {itemError && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {itemError}
+          </div>
         )}
 
         {/* Order Items Table */}

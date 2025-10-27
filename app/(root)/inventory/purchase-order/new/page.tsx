@@ -19,6 +19,7 @@ export default async function Page() {
   const pharmacyId = session.user.pharmacyId;
   const suppliers = await getSuppliers(pharmacyId);
   const products = await getOrderableProducts(pharmacyId);
+
   return (
     <div>
       <PurchaseOrderForm
