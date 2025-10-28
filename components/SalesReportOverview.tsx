@@ -147,9 +147,9 @@ export const SalesReportOverview = ({
       case 'today':
         return 'Today';
       case 'week':
-        return 'Week';
+        return 'Last 7 Days';
       case 'month':
-        return 'Month';
+        return 'Last 30 Days';
       default:
         return 'Today';
     }

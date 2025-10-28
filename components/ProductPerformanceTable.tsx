@@ -7,8 +7,6 @@ import {
   Package,
   ChevronLeft,
   ChevronRight,
-  Filter,
-  X,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -20,16 +18,64 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { ProductPerformanceData } from '@/types';
 import { TableExportMenu } from '@/components/TableExportMenu';
 import { buildFilterSubtitle } from '@/lib/filterSubtitle';
-import { CustomDatePicker, DateRange } from './CustomDatePicker';
 import { formatInTimeZone } from 'date-fns-tz';
+import DateFilterComponent, {
+  type DateFilterRange,
+  type FilterPeriod,
+} from '@/components/filters/DateFilterComponent';
+import {
+  endOfDay,
+  endOfMonth,
+  endOfWeek,
+  endOfYear,
+  format,
+  isSameDay,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+} from 'date-fns';
+const WEEK_START: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1;
+
+function computeRangeForPeriod(
+  period: FilterPeriod,
+  referenceDate: Date = new Date(),
+): DateFilterRange {
+  const today = referenceDate;
+
+  switch (period) {
+    case 'today':
+      return { from: startOfDay(today), to: endOfDay(today) };
+    case 'week': {
+      const start = startOfWeek(today, { weekStartsOn: WEEK_START });
+      const end = endOfWeek(today, { weekStartsOn: WEEK_START });
+      return { from: startOfDay(start), to: endOfDay(end) };
+    }
+    case 'month': {
+      const start = startOfMonth(today);
+      const end = endOfMonth(today);
+      return { from: startOfDay(start), to: endOfDay(end) };
+    }
+    case 'year': {
+      const start = startOfYear(today);
+      const end = endOfYear(today);
+      return { from: startOfDay(start), to: endOfDay(end) };
+    }
+    case 'custom':
+    default:
+      return {};
+  }
+}
+
+function rangesMatch(a: DateFilterRange, b: DateFilterRange) {
+  const fromMatch =
+    (!a.from && !b.from) || (a.from && b.from && isSameDay(a.from, b.from));
+  const toMatch = (!a.to && !b.to) || (a.to && b.to && isSameDay(a.to, b.to));
+  return fromMatch && toMatch;
+}
 // Export temporarily disabled for this report
 
 interface ProductPerformanceTableProps {
@@ -48,69 +94,76 @@ export const ProductPerformanceTable = ({
   productData,
   comprehensiveProductData = [],
 }: ProductPerformanceTableProps) => {
-  const [timePeriod, setTimePeriod] = React.useState('today');
+  const [filterPeriod, setFilterPeriod] = React.useState<FilterPeriod>('today');
+  const [selectedRange, setSelectedRange] = React.useState<DateFilterRange>(
+    () => computeRangeForPeriod('today'),
+  );
   const [category, setCategory] = React.useState('all');
-  const [customDateRange, setCustomDateRange] = React.useState<
-    DateRange | undefined
-  >();
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [itemsPerPage, setItemsPerPage] = React.useState(20);
   const [sortColumn, setSortColumn] = React.useState<SortColumn>('quantity');
   const [sortDirection, setSortDirection] =
     React.useState<SortDirection>('desc');
 
-  // Get current data based on selected time period
-  const getCurrentData = (): ProductPerformanceData[] => {
-    // If custom date range is selected, calculate from comprehensive data
-    if (
-      customDateRange?.from &&
-      customDateRange?.to &&
-      comprehensiveProductData.length > 0
-    ) {
-      // Convert dates to Philippines timezone for comparison
-      const startDate = formatInTimeZone(
-        customDateRange.from,
-        'Asia/Manila',
-        'yyyy-MM-dd',
-      );
-      const endDate = formatInTimeZone(
-        customDateRange.to,
-        'Asia/Manila',
-        'yyyy-MM-dd',
-      );
+  const activeRange = React.useMemo(() => {
+    if (selectedRange?.from && selectedRange?.to) {
+      return selectedRange;
+    }
+    return computeRangeForPeriod(filterPeriod);
+  }, [selectedRange, filterPeriod]);
 
-      const filteredData = comprehensiveProductData.filter(
-        (item) => item.date >= startDate && item.date <= endDate,
-      );
-
-      // Group by product name + brand and aggregate
-      const productMap = new Map<string, ProductPerformanceData>();
-
-      filteredData.forEach((item) => {
-        const key = `${item.name}__${item.brandName ?? ''}`;
-        const existing = productMap.get(key);
-        if (existing) {
-          existing.quantity += item.quantity;
-          existing.revenue += item.revenue;
-          existing.profit += item.profit;
-        } else {
-          productMap.set(key, {
-            name: item.name,
-            brandName: item.brandName,
-            category: item.category,
-            quantity: item.quantity,
-            revenue: item.revenue,
-            profit: item.profit,
-          });
-        }
-      });
-
-      return Array.from(productMap.values()).sort(
-        (a, b) => b.quantity - a.quantity,
-      );
+  const bounds = React.useMemo(() => {
+    if (!activeRange.from || !activeRange.to) {
+      return undefined;
     }
 
-    switch (timePeriod) {
+    return {
+      from: formatInTimeZone(activeRange.from, 'Asia/Manila', 'yyyy-MM-dd'),
+      to: formatInTimeZone(activeRange.to, 'Asia/Manila', 'yyyy-MM-dd'),
+    };
+  }, [activeRange]);
+
+  const aggregatedRangeData = React.useMemo(() => {
+    if (!bounds || comprehensiveProductData.length === 0) {
+      return undefined;
+    }
+
+    const filtered = comprehensiveProductData.filter(
+      (item) => item.date >= bounds.from && item.date <= bounds.to,
+    );
+
+    const productMap = new Map<string, ProductPerformanceData>();
+
+    filtered.forEach((item) => {
+      const key = `${item.name}__${item.brandName ?? ''}`;
+      const existing = productMap.get(key);
+      if (existing) {
+        existing.quantity += item.quantity;
+        existing.revenue += item.revenue;
+        existing.profit += item.profit;
+      } else {
+        productMap.set(key, {
+          name: item.name,
+          brandName: item.brandName,
+          category: item.category,
+          quantity: item.quantity,
+          revenue: item.revenue,
+          profit: item.profit,
+        });
+      }
+    });
+
+    return Array.from(productMap.values()).sort(
+      (a, b) => b.quantity - a.quantity,
+    );
+  }, [bounds, comprehensiveProductData]);
+
+  const baseData = React.useMemo(() => {
+    if (aggregatedRangeData !== undefined) {
+      return aggregatedRangeData;
+    }
+
+    switch (filterPeriod) {
       case 'today':
         return productData.today;
       case 'week':
@@ -118,24 +171,17 @@ export const ProductPerformanceTable = ({
       case 'month':
         return productData.month;
       default:
-        return productData.today;
+        return [];
     }
-  };
+  }, [
+    aggregatedRangeData,
+    filterPeriod,
+    productData.today,
+    productData.week,
+    productData.month,
+  ]);
 
-  const handleQuickPeriod = (period: string) => {
-    setTimePeriod(period);
-    setCustomDateRange(undefined); // Clear custom range when using quick periods
-  };
-
-  const handleCustomDateChange = (range: DateRange | undefined) => {
-    setCustomDateRange(range);
-    if (range?.from && range?.to) {
-      setTimePeriod(''); // Clear quick period when using custom range
-    }
-  };
-
-  // Get unique categories from the data
-  const getCategories = () => {
+  const categories = React.useMemo(() => {
     const allData = [
       ...productData.today,
       ...productData.week,
@@ -144,67 +190,126 @@ export const ProductPerformanceTable = ({
     ];
     const uniqueCategories = [...new Set(allData.map((item) => item.category))];
     return ['all', ...uniqueCategories];
-  };
+  }, [
+    productData.today,
+    productData.week,
+    productData.month,
+    comprehensiveProductData,
+  ]);
 
-  const categories = getCategories();
-  let currentData = getCurrentData();
+  const categoryFilteredData = React.useMemo(() => {
+    if (category === 'all') {
+      return baseData;
+    }
+    return baseData.filter((product) => product.category === category);
+  }, [baseData, category]);
 
-  // Filter by category
-  if (category !== 'all') {
-    currentData = currentData.filter(
-      (product) => product.category === category,
-    );
-  }
+  const currentData = React.useMemo(() => {
+    const data = [...categoryFilteredData];
 
-  // Apply sorting
-  currentData = [...currentData].sort((a, b) => {
     if (!sortDirection) {
-      return b.quantity - a.quantity; // Default sort
+      return data.sort((a, b) => b.quantity - a.quantity);
     }
 
-    let aVal: string | number;
-    let bVal: string | number;
+    data.sort((a, b) => {
+      let aVal: string | number;
+      let bVal: string | number;
 
-    switch (sortColumn) {
-      case 'name':
-        aVal = a.name.toLowerCase();
-        bVal = b.name.toLowerCase();
-        break;
-      case 'category':
-        aVal = a.category.toLowerCase();
-        bVal = b.category.toLowerCase();
-        break;
-      case 'quantity':
-        aVal = a.quantity;
-        bVal = b.quantity;
-        break;
-      case 'revenue':
-        aVal = a.revenue;
-        bVal = b.revenue;
-        break;
-      case 'profit':
-        aVal = a.profit;
-        bVal = b.profit;
-        break;
-      default:
-        return 0;
-    }
+      switch (sortColumn) {
+        case 'name':
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case 'category':
+          aVal = a.category.toLowerCase();
+          bVal = b.category.toLowerCase();
+          break;
+        case 'quantity':
+          aVal = a.quantity;
+          bVal = b.quantity;
+          break;
+        case 'revenue':
+          aVal = a.revenue;
+          bVal = b.revenue;
+          break;
+        case 'profit':
+          aVal = a.profit;
+          bVal = b.profit;
+          break;
+        default:
+          return 0;
+      }
 
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      return sortDirection === 'asc'
-        ? aVal.localeCompare(bVal)
-        : bVal.localeCompare(aVal);
-    } else {
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDirection === 'asc'
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+
       return sortDirection === 'asc'
         ? (aVal as number) - (bVal as number)
         : (bVal as number) - (aVal as number);
-    }
-  });
+    });
 
-  // Reset pagination on filter changes
+    return data;
+  }, [categoryFilteredData, sortColumn, sortDirection]);
+
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [timePeriod, category, customDateRange]);
+  }, [filterPeriod, category, bounds?.from, bounds?.to]);
+
+  const rangeLabel = React.useMemo(() => {
+    const fromDate = activeRange.from;
+    const toDate = activeRange.to ?? activeRange.from;
+
+    if (!fromDate) {
+      return filterPeriod === 'custom' ? 'Custom range' : filterPeriod;
+    }
+
+    const endDate = toDate ?? fromDate;
+
+    switch (filterPeriod) {
+      case 'today':
+        return format(fromDate, 'MMMM d, yyyy');
+      case 'week':
+      case 'custom':
+        return `${format(fromDate, 'MMMM d, yyyy')} – ${format(
+          endDate,
+          'MMMM d, yyyy',
+        )}`;
+      case 'month':
+        return format(fromDate, 'MMMM yyyy');
+      case 'year':
+        return format(fromDate, 'yyyy');
+      default:
+        return `${format(fromDate, 'MMMM d, yyyy')} – ${format(
+          endDate,
+          'MMMM d, yyyy',
+        )}`;
+    }
+  }, [activeRange, filterPeriod]);
+
+  const filterSubtitle = buildFilterSubtitle([
+    ['Period', rangeLabel],
+    ['Category', category === 'all' ? 'All' : category],
+  ]);
+
+  const defaultTodayRange = React.useMemo(
+    () => computeRangeForPeriod('today'),
+    [],
+  );
+
+  const hasActiveFilters =
+    filterPeriod !== 'today' ||
+    category !== 'all' ||
+    !rangesMatch(selectedRange, defaultTodayRange);
+
+  const handleResetFilters = () => {
+    const todayRange = computeRangeForPeriod('today');
+    setFilterPeriod('today');
+    setSelectedRange(todayRange);
+    setCategory('all');
+  };
 
   // Handle column sorting
   const handleSort = (column: SortColumn) => {
@@ -288,25 +393,6 @@ export const ProductPerformanceTable = ({
     { header: 'Profit', key: 'profit', currency: true },
   ];
 
-  const filterSubtitle = buildFilterSubtitle([
-    [
-      'Period',
-      customDateRange?.from && customDateRange?.to ? 'custom' : timePeriod,
-    ],
-    ['Category', category],
-  ]);
-
-  const hasActiveFilters =
-    (timePeriod !== 'today' && !customDateRange) ||
-    !!(customDateRange?.from && customDateRange?.to) ||
-    category !== 'all';
-
-  const clearAllFilters = () => {
-    setTimePeriod('today');
-    setCustomDateRange(undefined);
-    setCategory('all');
-  };
-
   return (
     <Card>
       <CardHeader className="py-3">
@@ -323,7 +409,7 @@ export const ProductPerformanceTable = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-end">
             <TableExportMenu
               title="Product Performance (Top Selling Products)"
               subtitle="Includes total Quantity, Revenue & Profit"
@@ -334,89 +420,36 @@ export const ProductPerformanceTable = ({
                 exportRowsWithTotals as unknown as Record<string, unknown>[]
               }
             />
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 px-2.5">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filters
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 p-2">
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">
-                      Time
-                    </p>
-                    <div className="inline-flex bg-muted/50 rounded-md p-0 gap-0">
-                      {['today', 'week', 'month'].map((period) => (
-                        <Button
-                          key={period}
-                          variant={
-                            timePeriod === period && !customDateRange
-                              ? 'default'
-                              : 'ghost'
-                          }
-                          size="sm"
-                          onClick={() => handleQuickPeriod(period)}
-                          className="h-8 px-2.5 text-xs"
-                        >
-                          {period === 'week'
-                            ? 'Week'
-                            : period === 'month'
-                            ? 'Month'
-                            : 'Today'}
-                        </Button>
-                      ))}
-                    </div>
-                    <p className="text-xs font-medium text-muted-foreground mt-2 mb-1">
-                      Custom range
-                    </p>
-                    <div>
-                      <CustomDatePicker
-                        dateRange={customDateRange}
-                        onDateRangeChange={handleCustomDateChange}
-                        buttonClassName="h-8 px-2.5 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">
-                      Category
-                    </p>
-                    <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger className="h-8 w-full text-xs px-2 py-1">
-                        <SelectValue placeholder="All Categories" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {cat === 'all' ? 'All Categories' : cat}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {hasActiveFilters && (
-                    <div className="pt-2 border-t">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearAllFilters}
-                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground w-full"
-                      >
-                        <X className="h-3 w-3 mr-1" />
-                        Clear filters
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <DateFilterComponent
+              period={filterPeriod}
+              dateRange={selectedRange}
+              onPeriodChange={setFilterPeriod}
+              onDateRangeChange={setSelectedRange}
+            />
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="h-8 w-[160px] px-3 py-0 text-sm leading-none">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat === 'all' ? 'All Categories' : cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleResetFilters}
+                className="h-8 px-2.5 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Reset
+              </Button>
+            )}
           </div>
         </div>
-        {/* Filters moved into popover for a minimal header */}
       </CardHeader>
 
       <CardContent className="p-0">
@@ -542,11 +575,11 @@ export const ProductPerformanceTable = ({
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="flex items-center space-x-6 lg:space-x-8">
-                        <div className="flex w-[120px] items-center justify-center text-sm font-medium">
+                      <div className="flex items-center gap-3">
+                        <div className="text-sm font-medium text-muted-foreground">
                           Page {currentPage} of {totalPages}
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-1.5">
                           <Button
                             variant="outline"
                             className="h-8 w-8 p-0"
@@ -558,6 +591,10 @@ export const ProductPerformanceTable = ({
                             <span className="sr-only">Go to previous page</span>
                             <ChevronLeft className="h-4 w-4" />
                           </Button>
+                          <div className="min-w-[68px] text-center text-xs text-muted-foreground">
+                            {currentData.length.toLocaleString('en-PH')}{' '}
+                            {currentData.length === 1 ? 'item' : 'items'}
+                          </div>
                           <Button
                             variant="outline"
                             className="h-8 w-8 p-0"

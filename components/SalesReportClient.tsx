@@ -6,8 +6,9 @@ import { SalesReportOverview } from '@/components/SalesReportOverview';
 import { ProductPerformanceTable } from '@/components/ProductPerformanceTable';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SkeletonTable } from '@/components/ui/skeleton';
-import { LayoutDashboard, Receipt, LineChart } from 'lucide-react';
+import { LayoutDashboard, Receipt, LineChart, Calendar } from 'lucide-react';
 import SalesTable from '@/components/SalesTable';
+import DailyBreakdownTable from '@/components/DailyBreakdownTable';
 import type { SalesOverviewData, ProductPerformanceData } from '@/types';
 
 interface Props {
@@ -42,6 +43,7 @@ export default function SalesReportClient({
   // Lazy tab loading
   const [salesTabLoaded, setSalesTabLoaded] = useState(false);
   const [productsTabLoaded, setProductsTabLoaded] = useState(false);
+  const [dailyTabLoaded, setDailyTabLoaded] = useState(false);
 
   const handleTabChange = useCallback(
     (val: string) => {
@@ -51,8 +53,11 @@ export default function SalesReportClient({
       if (val === 'products' && !productsTabLoaded) {
         setProductsTabLoaded(true);
       }
+      if (val === 'daily' && !dailyTabLoaded) {
+        setDailyTabLoaded(true);
+      }
     },
-    [salesTabLoaded, productsTabLoaded],
+    [salesTabLoaded, productsTabLoaded, dailyTabLoaded],
   );
 
   return (
@@ -67,7 +72,7 @@ export default function SalesReportClient({
           className="w-full"
         >
           <div className="border-b bg-gray-50 dark:bg-gray-800/50">
-            <TabsList className="grid w-full grid-cols-3 bg-transparent p-2 h-auto gap-1">
+            <TabsList className="grid w-full grid-cols-4 bg-transparent p-2 h-auto gap-1">
               <TabsTrigger
                 value="overview"
                 className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-blue-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
@@ -84,6 +89,15 @@ export default function SalesReportClient({
                 <div className="flex items-center gap-3">
                   <Receipt className="w-4 h-4 text-indigo-600" />
                   <span>Sales</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
+                value="daily"
+                className="data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:border-orange-200 rounded-lg py-4 px-6 text-sm font-semibold transition-all duration-200 hover:bg-white/60 border border-transparent"
+              >
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-4 h-4 text-orange-600" />
+                  <span>Daily Breakdown</span>
                 </div>
               </TabsTrigger>
               <TabsTrigger
@@ -115,6 +129,18 @@ export default function SalesReportClient({
               ) : (
                 <div className="p-6">
                   <SkeletonTable rows={8} columns={6} />
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="daily" className="m-0">
+              {dailyTabLoaded ? (
+                <DailyBreakdownTable
+                  comprehensiveSalesData={comprehensiveSalesData}
+                />
+              ) : (
+                <div className="p-6">
+                  <SkeletonTable rows={8} columns={7} />
                 </div>
               )}
             </TabsContent>

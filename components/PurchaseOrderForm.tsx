@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,9 +25,15 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { toast } from 'sonner';
-import { ChevronLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft } from 'lucide-react';
 import PurchaseOrderProductsTable from '@/components/PurchaseOrderProductsTable';
+import { format } from 'date-fns';
 
 type PurchaseOrderFormValues = z.infer<typeof purchaseOrderSchema>;
 
@@ -52,15 +58,17 @@ const PurchaseOrderForm = ({
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [itemError, setItemError] = useState('');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const today = useMemo(() => new Date(), []);
 
   // Check if the purchase order is in a final state (not editable)
-  const isReadOnly =
+  const isReadOnly = Boolean(
     type === 'update' &&
-    initialValues?.status &&
-    (initialValues.status === 'CONFIRMED' ||
-      initialValues.status === 'PARTIALLY_RECEIVED' ||
-      initialValues.status === 'RECEIVED' ||
-      initialValues.status === 'CANCELLED');
+      initialValues?.status &&
+      ['CONFIRMED', 'PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED'].includes(
+        initialValues.status,
+      ),
+  );
 
   const form = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(purchaseOrderSchema),
@@ -147,6 +155,33 @@ const PurchaseOrderForm = ({
       setIsSubmitting(false);
     }
   };
+
+  const orderDateValue = form.watch('orderDate');
+  const selectedOrderDate = useMemo(() => {
+    if (!orderDateValue) {
+      return undefined;
+    }
+
+    const parsed = new Date(orderDateValue);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }, [orderDateValue]);
+
+  const handleOrderDateSelect = (date: Date | undefined) => {
+    if (!date) {
+      return;
+    }
+
+    form.setValue('orderDate', date.toISOString(), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
+  const orderDateLabel = selectedOrderDate
+    ? format(selectedOrderDate, 'MMM d, yyyy')
+    : 'Select date';
+
+  const popoverOpen = isReadOnly ? false : isCalendarOpen;
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-8 py-6">
@@ -246,20 +281,38 @@ const PurchaseOrderForm = ({
               <label className="block text-sm font-medium mb-1">
                 Order Date <span className="text-red-500">*</span>
               </label>
-              <Calendar
-                disabled={!!isReadOnly}
-                selected={
-                  form.watch('orderDate')
-                    ? new Date(form.watch('orderDate'))
-                    : new Date()
-                }
-                onChange={(date) =>
-                  form.setValue(
-                    'orderDate',
-                    date ? date.toISOString() : new Date().toISOString(),
-                  )
-                }
-              />
+              <Popover open={popoverOpen} onOpenChange={setIsCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isReadOnly}
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {orderDateLabel}
+                  </Button>
+                </PopoverTrigger>
+                {!isReadOnly && (
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedOrderDate}
+                      defaultMonth={selectedOrderDate ?? today}
+                      onSelect={(date) => {
+                        if (!date) {
+                          return;
+                        }
+
+                        handleOrderDateSelect(date);
+                        setIsCalendarOpen(false);
+                      }}
+                      disabled={{ after: today }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                )}
+              </Popover>
               {form.formState.errors.orderDate && (
                 <p className="text-sm text-red-500 mt-1">
                   {form.formState.errors.orderDate.message}

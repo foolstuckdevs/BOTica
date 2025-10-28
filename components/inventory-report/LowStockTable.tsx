@@ -60,7 +60,7 @@ export function LowStockTable({
     statusFilter !== 'all' || categoryFilter !== 'all' || searchTerm !== '';
 
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [itemsPerPage, setItemsPerPage] = React.useState(20);
   const [sortField, setSortField] = React.useState<
     | 'product'
     | 'category'
@@ -459,11 +459,11 @@ export function LowStockTable({
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="flex items-center space-x-6 lg:space-x-8">
-                          <div className="flex w-[120px] items-center justify-center text-sm font-medium">
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm font-medium text-muted-foreground">
                             Page {currentPage} of {totalPages}
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center gap-1.5">
                             <Button
                               variant="outline"
                               className="h-8 w-8 p-0"
@@ -477,6 +477,10 @@ export function LowStockTable({
                               </span>
                               <ChevronLeft className="h-4 w-4" />
                             </Button>
+                            <div className="min-w-[68px] text-center text-xs text-muted-foreground">
+                              {sortedProducts.length.toLocaleString('en-PH')}{' '}
+                              {sortedProducts.length === 1 ? 'item' : 'items'}
+                            </div>
                             <Button
                               variant="outline"
                               className="h-8 w-8 p-0"

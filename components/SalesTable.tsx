@@ -4,9 +4,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-  Filter,
   ShoppingCart,
-  X,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
@@ -20,12 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DateRange } from './CustomDatePicker';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { CustomDatePicker, DateRange } from './CustomDatePicker';
+  DateFilterComponent,
+  type DateFilterRange,
+} from '@/components/filters/DateFilterComponent';
 import { formatInTimeZone } from 'date-fns-tz';
 import type { ProductPerformanceData } from '@/types';
 import { TableExportMenu } from '@/components/TableExportMenu';
@@ -47,25 +44,32 @@ type SortDirection = 'asc' | 'desc' | null;
 
 export default function SalesTable({ comprehensiveProductData }: Props) {
   const [timePeriod, setTimePeriod] = React.useState<
-    'today' | 'week' | 'month' | ''
+    'today' | 'week' | 'month' | 'year' | 'custom'
   >('today');
-  const [customDateRange, setCustomDateRange] = React.useState<
+  const [selectedDateRange, setSelectedDateRange] = React.useState<
     DateRange | undefined
   >();
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [itemsPerPage, setItemsPerPage] = React.useState(20);
   const [sortColumn, setSortColumn] = React.useState<SortColumn>('quantity');
   const [sortDirection, setSortDirection] =
     React.useState<SortDirection>('desc');
 
-  const handleQuickPeriod = (period: 'today' | 'week' | 'month') => {
+  const handleQuickPeriod = (
+    period: 'today' | 'week' | 'month' | 'year' | 'custom',
+  ) => {
     setTimePeriod(period);
-    setCustomDateRange(undefined);
+    if (period !== 'custom') {
+      setSelectedDateRange(undefined);
+    }
   };
 
-  const handleCustomDateChange = (range: DateRange | undefined) => {
-    setCustomDateRange(range);
-    if (range?.from && range?.to) setTimePeriod('');
+  const handleDateRangeChange = (range: DateFilterRange | undefined) => {
+    if (range?.from && range?.to) {
+      setSelectedDateRange({ from: range.from, to: range.to });
+    } else {
+      setSelectedDateRange(undefined);
+    }
   };
 
   const getBounds = () => {
@@ -73,14 +77,14 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
     const now = new Date();
     const todayStr = formatInTimeZone(now, 'Asia/Manila', 'yyyy-MM-dd');
 
-    if (customDateRange?.from && customDateRange?.to) {
+    if (selectedDateRange?.from && selectedDateRange?.to) {
       const fromStr = formatInTimeZone(
-        customDateRange.from,
+        selectedDateRange.from,
         'Asia/Manila',
         'yyyy-MM-dd',
       );
       const toStr = formatInTimeZone(
-        customDateRange.to,
+        selectedDateRange.to,
         'Asia/Manila',
         'yyyy-MM-dd',
       );
@@ -98,6 +102,14 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
     if (timePeriod === 'month') {
       const start = new Date(now);
       start.setDate(start.getDate() - 30);
+      return {
+        from: formatInTimeZone(start, 'Asia/Manila', 'yyyy-MM-dd'),
+        to: todayStr,
+      };
+    }
+    if (timePeriod === 'year') {
+      const start = new Date(now);
+      start.setFullYear(start.getFullYear() - 1);
       return {
         from: formatInTimeZone(start, 'Asia/Manila', 'yyyy-MM-dd'),
         to: todayStr,
@@ -202,7 +214,7 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
   // Reset pagination on filter changes
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [timePeriod, customDateRange, bounds.from, bounds.to]);
+  }, [timePeriod, selectedDateRange, bounds.from, bounds.to]);
 
   // Handle column sorting
   const handleSort = (column: SortColumn) => {
@@ -242,7 +254,7 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
 
   // Build a more descriptive range label for export headers
   const rangeLabel = React.useMemo(() => {
-    if (customDateRange?.from && customDateRange?.to) {
+    if (selectedDateRange?.from && selectedDateRange?.to) {
       return `${bounds.from} to ${bounds.to}`;
     }
     if (timePeriod === 'week')
@@ -251,8 +263,8 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
       return `Last 30 days (${bounds.from} - ${bounds.to})`;
     return `Today (${bounds.from})`;
   }, [
-    customDateRange?.from,
-    customDateRange?.to,
+    selectedDateRange?.from,
+    selectedDateRange?.to,
     bounds.from,
     bounds.to,
     timePeriod,
@@ -318,14 +330,7 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
     { header: 'Profit', key: 'profit', currency: true },
   ];
 
-  // ...rest of component uses onExportPDF/onExportExcel in the dropdown
-
-  const hasActiveFilters =
-    timePeriod !== 'today' || !!(customDateRange?.from && customDateRange?.to);
-  const clearAllFilters = () => {
-    setTimePeriod('today');
-    setCustomDateRange(undefined);
-  };
+  // DateFilterComponent handles its own state management and clear functionality
 
   return (
     <Card>
@@ -340,7 +345,7 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <TableExportMenu
               title="Sales by Product"
               subtitle="Includes totals for Quantity, Revenue, Cost & Profit"
@@ -352,65 +357,12 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
               }
             />
 
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 px-2.5">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filters
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 p-2">
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">
-                      Time
-                    </p>
-                    <div className="inline-flex bg-muted/50 rounded-md p-0 gap-0">
-                      {(['today', 'week', 'month'] as const).map((period) => (
-                        <Button
-                          key={period}
-                          variant={
-                            timePeriod === period && !customDateRange
-                              ? 'default'
-                              : 'ghost'
-                          }
-                          size="sm"
-                          onClick={() => handleQuickPeriod(period)}
-                          className="h-8 px-2.5 text-xs"
-                        >
-                          {period === 'week'
-                            ? 'Week'
-                            : period === 'month'
-                            ? 'Month'
-                            : 'Today'}
-                        </Button>
-                      ))}
-                    </div>
-                    <p className="text-xs font-medium text-muted-foreground mt-2 mb-1">
-                      Custom range
-                    </p>
-                    <CustomDatePicker
-                      dateRange={customDateRange}
-                      onDateRangeChange={handleCustomDateChange}
-                      buttonClassName="h-8 px-2.5 text-xs"
-                    />
-                  </div>
-                  {hasActiveFilters && (
-                    <div className="pt-2 border-t">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearAllFilters}
-                        className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground w-full"
-                      >
-                        <X className="h-3 w-3 mr-1" />
-                        Clear filters
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <DateFilterComponent
+              period={timePeriod}
+              onPeriodChange={handleQuickPeriod}
+              dateRange={selectedDateRange}
+              onDateRangeChange={handleDateRangeChange}
+            />
           </div>
         </div>
       </CardHeader>
@@ -582,11 +534,11 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="flex items-center space-x-6 lg:space-x-8">
-                        <div className="flex w-[120px] items-center justify-center text-sm font-medium">
+                      <div className="flex items-center gap-3">
+                        <div className="text-sm font-medium text-muted-foreground">
                           Page {currentPage} of {totalPages}
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-1.5">
                           <Button
                             variant="outline"
                             className="h-8 w-8 p-0"
@@ -598,6 +550,10 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
                             <span className="sr-only">Go to previous page</span>
                             <ChevronLeft className="h-4 w-4" />
                           </Button>
+                          <div className="min-w-[68px] text-center text-xs text-muted-foreground">
+                            {aggregated.length.toLocaleString('en-PH')}{' '}
+                            {aggregated.length === 1 ? 'item' : 'items'}
+                          </div>
                           <Button
                             variant="outline"
                             className="h-8 w-8 p-0"

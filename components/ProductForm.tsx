@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import { Category, Product, Supplier, DosageFormType, UnitType } from '@/types';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ImageUpload } from './ImageUpload';
 import {
   Select,
@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { Calendar } from './ui/calendar';
 import {
+  Calendar as CalendarIcon,
   PackageIcon,
   TagIcon,
   Banknote,
@@ -42,6 +43,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface Props extends Partial<Product> {
   type?: 'create' | 'update';
@@ -84,6 +92,12 @@ const ProductForm = ({
   const router = useRouter();
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExpiryOpen, setIsExpiryOpen] = useState(false);
+  const today = useMemo(() => {
+    const base = new Date();
+    base.setHours(0, 0, 0, 0);
+    return base;
+  }, []);
 
   const form = useForm<z.infer<typeof productFormSchema>>({
     resolver: zodResolver(productFormSchema),
@@ -463,29 +477,97 @@ const ProductForm = ({
                   <FormField
                     control={form.control}
                     name="expiryDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel className="flex items-center gap-1">
-                          Expiry Date
-                        </FormLabel>
-                        <FormControl>
-                          <div className="w-full">
-                            <Calendar
-                              selected={field.value || null}
-                              onChange={field.onChange}
-                              minDate={new Date()}
-                              placeholderText="Pick a date"
-                              className="rounded-md border w-full"
-                              disabled={
-                                type === 'update' &&
-                                (product as Product).hasReferences
-                              }
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const expiryDisabled =
+                        type === 'update' && (product as Product).hasReferences;
+                      const selectedDate = field.value
+                        ? new Date(field.value)
+                        : undefined;
+                      const currentYear = today.getFullYear();
+                      const dropdownStartYear = selectedDate
+                        ? Math.min(currentYear, selectedDate.getFullYear())
+                        : currentYear;
+                      const dropdownEndYear = selectedDate
+                        ? Math.max(currentYear + 10, selectedDate.getFullYear())
+                        : currentYear + 10;
+
+                      return (
+                        <FormItem className="flex flex-col">
+                          <FormLabel className="flex items-center gap-1">
+                            Expiry Date
+                          </FormLabel>
+                          <FormControl>
+                            <Popover
+                              open={expiryDisabled ? false : isExpiryOpen}
+                              onOpenChange={(open) => {
+                                if (!expiryDisabled) {
+                                  setIsExpiryOpen(open);
+                                }
+                              }}
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  disabled={expiryDisabled}
+                                  className={cn(
+                                    'w-full justify-start text-left font-normal',
+                                    !selectedDate && 'text-muted-foreground',
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {selectedDate
+                                    ? format(selectedDate, 'MMM d, yyyy')
+                                    : 'Select date'}
+                                </Button>
+                              </PopoverTrigger>
+                              {!expiryDisabled && (
+                                <PopoverContent
+                                  className="w-auto p-0"
+                                  align="start"
+                                >
+                                  <Calendar
+                                    mode="single"
+                                    captionLayout="dropdown"
+                                    selected={selectedDate}
+                                    defaultMonth={selectedDate ?? today}
+                                    onSelect={(date) => {
+                                      if (!date) {
+                                        return;
+                                      }
+
+                                      field.onChange(date);
+                                      setIsExpiryOpen(false);
+                                    }}
+                                    disabled={{ before: today }}
+                                    fromYear={dropdownStartYear}
+                                    toYear={dropdownEndYear}
+                                    initialFocus
+                                    className="rounded-md border border-emerald-100 p-2"
+                                  />
+                                  {selectedDate && (
+                                    <div className="border-t p-2">
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        className="w-full justify-center text-xs"
+                                        onClick={() => {
+                                          field.onChange(undefined);
+                                          setIsExpiryOpen(false);
+                                        }}
+                                      >
+                                        Clear date
+                                      </Button>
+                                    </div>
+                                  )}
+                                </PopoverContent>
+                              )}
+                            </Popover>
+                          </FormControl>
+                          <FormMessage className="text-xs" />
+                        </FormItem>
+                      );
+                    }}
                   />
 
                   <FormField

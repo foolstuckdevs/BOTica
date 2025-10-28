@@ -47,7 +47,7 @@ export function InactiveProductsTable({
   onCategoryFilterChange,
 }: Props) {
   const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage, setItemsPerPage] = React.useState(10);
+  const [itemsPerPage, setItemsPerPage] = React.useState(20);
   const [sortField, setSortField] = React.useState<
     | 'product'
     | 'brand'
@@ -355,8 +355,7 @@ export function InactiveProductsTable({
                       className="group flex items-center hover:text-foreground transition-colors"
                       onClick={() => handleSort('lotNumber')}
                     >
-                      Lot #
-                      {getSortIcon('lotNumber')}
+                      Lot #{getSortIcon('lotNumber')}
                     </button>
                   </th>
                   <th className="py-3 px-4 text-left font-medium">
@@ -480,11 +479,11 @@ export function InactiveProductsTable({
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="flex items-center space-x-6 lg:space-x-8">
-                          <div className="flex w-[120px] items-center justify-center text-sm font-medium">
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm font-medium text-muted-foreground">
                             Page {currentPage} of {totalPages}
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center gap-1.5">
                             <Button
                               variant="outline"
                               className="h-8 w-8 p-0"
@@ -498,6 +497,10 @@ export function InactiveProductsTable({
                               </span>
                               <ChevronLeft className="h-4 w-4" />
                             </Button>
+                            <div className="min-w-[68px] text-center text-xs text-muted-foreground">
+                              {sorted.length.toLocaleString('en-PH')}{' '}
+                              {sorted.length === 1 ? 'item' : 'items'}
+                            </div>
                             <Button
                               variant="outline"
                               className="h-8 w-8 p-0"
