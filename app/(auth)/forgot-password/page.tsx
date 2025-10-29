@@ -18,10 +18,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { requestPasswordReset } from '@/lib/actions/auth';
+import { passwordResetRequestSchema } from '@/lib/validations';
 
-const forgotPasswordSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-});
+const forgotPasswordSchema = passwordResetRequestSchema;
 
 type ForgotPasswordData = z.infer<typeof forgotPasswordSchema>;
 
@@ -40,18 +40,21 @@ const ForgotPasswordPage = () => {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const result = await requestPasswordReset({ email: data.email });
 
-      // In a real app, you would call your password reset API here
-      // await resetPassword(data.email);
+      if (!result.success) {
+        toast.error(
+          result.error || 'Failed to send reset email. Please try again later.',
+        );
+        return;
+      }
 
-      // Use data.email to show which email will receive the reset
       setIsEmailSent(true);
       toast.success(
-        `Password reset email sent to ${data.email}! Check your inbox.`,
+        'If your email is registered, a reset link is on the way. Please check your inbox.',
       );
-    } catch {
+    } catch (error) {
+      console.error('Forgot password request failed:', error);
       toast.error('Failed to send reset email. Please try again.');
     } finally {
       setIsLoading(false);

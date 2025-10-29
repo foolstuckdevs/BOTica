@@ -7,9 +7,22 @@ import { createRefreshToken } from '@/lib/auth/refresh-tokens';
 import { db } from '@/database/drizzle';
 import { users } from '@/database/schema';
 import { AuthCredentials } from '@/types';
-import { signInSchema } from '@/lib/validations';
+import {
+  passwordResetRequestSchema,
+  passwordResetSchema,
+  signInSchema,
+} from '@/lib/validations';
 import { eq } from 'drizzle-orm';
 import { logActivity } from '@/lib/actions/activity';
+import {
+  createPasswordResetToken,
+  invalidatePasswordResetTokens,
+  markPasswordResetTokenUsed,
+  PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES,
+  verifyPasswordResetToken,
+} from '@/lib/auth/password-reset';
+import { sendPasswordResetEmail } from '@/lib/email/sendPasswordReset';
+import { revokeAllUserRefreshTokens } from '@/lib/auth/refresh-tokens';
 
 export const signInWithCredentials = async (
   params: Pick<AuthCredentials, 'email' | 'password'>,
@@ -128,3 +141,158 @@ export const signInWithCredentials = async (
     return { success: false, error: 'An error occurred during sign in' };
   }
 };
+
+export const requestPasswordReset = async (params: { email: string }) => {
+  try {
+    const { email } = passwordResetRequestSchema.parse(params);
+
+    const userRows = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        fullName: users.fullName,
+        pharmacyId: users.pharmacyId,
+        isActive: users.isActive,
+      })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    const user = userRows[0];
+
+    if (!user || user.isActive === false) {
+      // Always respond with success to avoid account discovery.
+      return { success: true } as const;
+    }
+
+    await invalidatePasswordResetTokens(user.id as string);
+    const { token } = await createPasswordResetToken(user.id as string);
+
+    const resetLink = `${resolveAppBaseUrl()}/reset-password?token=${token}`;
+
+    await sendPasswordResetEmail({
+      to: user.email,
+      fullName: user.fullName,
+      resetLink,
+      expiresInMinutes: PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES,
+    });
+
+    try {
+      await logActivity({
+        action: 'AUTH_PASSWORD_RESET_REQUEST',
+        pharmacyId: user.pharmacyId,
+        userId: user.id as string,
+        details: { email, via: 'email_link' },
+      });
+    } catch (activityError) {
+      console.error('Failed to log password reset request:', activityError);
+    }
+
+    return { success: true } as const;
+  } catch (error) {
+    if (error instanceof Error && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string }> };
+      const firstIssue = zodError.issues?.[0];
+      return {
+        success: false,
+        error: firstIssue?.message || 'Invalid input data',
+      } as const;
+    }
+
+    console.error('Password reset request failed:', error);
+    return {
+      success: false,
+      error: 'Unable to process password reset request',
+    } as const;
+  }
+};
+
+export const resetPassword = async (params: {
+  token: string;
+  password: string;
+  confirmPassword: string;
+}) => {
+  try {
+    const validated = passwordResetSchema.parse(params);
+
+    const tokenRecord = await verifyPasswordResetToken(validated.token);
+    if (!tokenRecord) {
+      return {
+        success: false,
+        error: 'Reset link is invalid or has expired',
+      } as const;
+    }
+
+    const userRows = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        fullName: users.fullName,
+        pharmacyId: users.pharmacyId,
+        isActive: users.isActive,
+      })
+      .from(users)
+      .where(eq(users.id, tokenRecord.userId))
+      .limit(1);
+
+    const user = userRows[0];
+
+    if (!user || user.isActive === false) {
+      return {
+        success: false,
+        error: 'Account is unavailable',
+      } as const;
+    }
+
+    const { hash } = await import('bcryptjs');
+    const hashedPassword = await hash(validated.password, 10);
+
+    await db
+      .update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, user.id));
+
+    await markPasswordResetTokenUsed(tokenRecord.id);
+    await invalidatePasswordResetTokens(user.id as string);
+    await revokeAllUserRefreshTokens(user.id as string);
+
+    try {
+      await logActivity({
+        action: 'AUTH_PASSWORD_RESET',
+        pharmacyId: user.pharmacyId,
+        userId: user.id as string,
+        details: { email: user.email },
+      });
+    } catch (activityError) {
+      console.error('Failed to log password reset:', activityError);
+    }
+
+    return { success: true } as const;
+  } catch (error) {
+    if (error instanceof Error && 'issues' in error) {
+      const zodError = error as { issues: Array<{ message: string }> };
+      const firstIssue = zodError.issues?.[0];
+      return {
+        success: false,
+        error: firstIssue?.message || 'Invalid input data',
+      } as const;
+    }
+
+    console.error('Password reset failed:', error);
+    return {
+      success: false,
+      error: 'Unable to reset password',
+    } as const;
+  }
+};
+
+function resolveAppBaseUrl() {
+  const base =
+    process.env.APP_BASE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_API_ENDPOINT ||
+    process.env.NEXTAUTH_URL ||
+    'http://localhost:3000';
+
+  return base.endsWith('/') ? base.slice(0, -1) : base;
+}

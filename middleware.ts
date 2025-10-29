@@ -7,7 +7,7 @@ export default auth((req) => {
   const userRole = req.auth?.user?.role;
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/sign-in', '/forgot-password'];
+  const publicRoutes = ['/sign-in', '/forgot-password', '/reset-password'];
 
   // Admin-only routes that require Admin role
   const adminOnlyRoutes = [

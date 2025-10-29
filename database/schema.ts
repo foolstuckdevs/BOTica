@@ -271,6 +271,17 @@ export const refreshTokens = pgTable('refresh_tokens', {
   replacedByTokenHash: varchar('replaced_by_token_hash', { length: 128 }),
 });
 
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id')
+    .references(() => users.id)
+    .notNull(),
+  tokenHash: varchar('token_hash', { length: 128 }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
 export const pnfChatLogs = pgTable('pnf_chat_logs', {
   id: serial('id').primaryKey(),
   question: text('question').notNull(),

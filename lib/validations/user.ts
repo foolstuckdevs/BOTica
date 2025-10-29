@@ -34,3 +34,18 @@ export const passwordChangeSchema = z
     message: 'New passwords do not match.',
     path: ['confirmPassword'],
   });
+
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+});
+
+export const passwordResetSchema = z
+  .object({
+    token: z.string().min(1, 'Reset token is required'),
+    password: signUpSchema.shape.password,
+    confirmPassword: z.string().min(1, 'Please confirm your new password'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match.',
+    path: ['confirmPassword'],
+  });
