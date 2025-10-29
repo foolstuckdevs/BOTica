@@ -37,6 +37,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
+import { signIn as nextAuthSignIn } from 'next-auth/react';
 
 interface Props<T extends FieldValues> {
   type: 'SIGN_IN' | 'SIGN_UP';
@@ -58,6 +59,7 @@ const AuthForm = <T extends FieldValues>({
   // const router = useRouter();
   const isSignIn = type === 'SIGN_IN';
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
@@ -110,6 +112,35 @@ const AuthForm = <T extends FieldValues>({
       toast.error('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (!isSignIn) return;
+
+    try {
+      setIsGoogleLoading(true);
+      const result = await nextAuthSignIn('google', {
+        callbackUrl: '/dashboard',
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error('Unable to sign in with Google. Please try again.');
+        setIsGoogleLoading(false);
+        return;
+      }
+
+      if (result?.url) {
+        window.location.href = result.url;
+        return;
+      }
+
+      setIsGoogleLoading(false);
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      toast.error('Something went wrong. Please try again.');
+      setIsGoogleLoading(false);
     }
   };
 
@@ -271,32 +302,45 @@ const AuthForm = <T extends FieldValues>({
           </form>
         </Form>
 
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200 dark:border-gray-700" />
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white/80 dark:bg-gray-850/80 text-gray-500">
-              Or continue with
-            </span>
-          </div>
-        </div>
+        {isSignIn && process.env.NEXT_PUBLIC_ENABLE_GOOGLE_AUTH === 'true' && (
+          <>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white/80 dark:bg-gray-850/80 text-gray-500">
+                  Or continue with
+                </span>
+              </div>
+            </div>
 
-        {/* Social Login Button - Only Google now */}
-        <Button
-          variant="outline"
-          className="w-full h-10 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
-          disabled
-        >
-          <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-          </svg>
-          Continue with Google
-        </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleGoogleSignIn}
+              disabled={isGoogleLoading}
+              className="w-full h-10 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm"
+            >
+              {isGoogleLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting to Google...
+                </>
+              ) : (
+                <>
+                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                    <path
+                      fill="currentColor"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                  </svg>
+                  Continue with Google
+                </>
+              )}
+            </Button>
+          </>
+        )}
 
         {/* Admin Contact Information */}
         <div className="mt-6 text-center text-sm">

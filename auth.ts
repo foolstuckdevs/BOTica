@@ -1,10 +1,14 @@
 export const runtime = 'nodejs';
 import NextAuth, { User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import Google from 'next-auth/providers/google';
 import { db } from './database/drizzle';
 import { users } from './database/schema';
 import { eq } from 'drizzle-orm';
 import { compare } from 'bcryptjs';
+import { cookies } from 'next/headers';
+import { createRefreshToken } from '@/lib/auth/refresh-tokens';
+import { logActivity } from '@/lib/actions/activity';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
@@ -76,11 +80,111 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
       },
     }),
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          Google({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+          }),
+        ]
+      : []),
   ],
   pages: {
     signIn: 'signIn',
   },
   callbacks: {
+    async signIn({ user, account }) {
+      if (!account) {
+        return true;
+      }
+
+      if (account.provider !== 'google') {
+        return true;
+      }
+
+      if (!user.email) {
+        console.warn('Google sign-in attempted without an email address');
+        return '/sign-in?error=GOOGLE_NO_EMAIL';
+      }
+
+      try {
+        const rows = await db
+          .select({
+            id: users.id,
+            fullName: users.fullName,
+            email: users.email,
+            role: users.role,
+            pharmacyId: users.pharmacyId,
+            isActive: users.isActive,
+          })
+          .from(users)
+          .where(eq(users.email, user.email))
+          .limit(1);
+
+        const record = rows[0];
+
+        if (!record) {
+          return '/sign-in?error=ACCOUNT_NOT_PROVISIONED';
+        }
+
+        if (record.isActive === false) {
+          return '/sign-in?error=ACCOUNT_INACTIVE';
+        }
+
+        const enrichedUser = user as User & {
+          pharmacyId?: number;
+          role?: (typeof record)['role'];
+          rememberMe?: boolean;
+        };
+
+        enrichedUser.id = record.id as string;
+        enrichedUser.email = record.email ?? enrichedUser.email;
+        enrichedUser.name = record.fullName ?? enrichedUser.name;
+        enrichedUser.role = record.role;
+        enrichedUser.pharmacyId = record.pharmacyId as number;
+        enrichedUser.rememberMe = false;
+
+        try {
+          const store = await cookies();
+          const { token: raw, expiresAt } = await createRefreshToken({
+            userId: record.id as string,
+            rememberMe: false,
+          });
+
+          store.set({
+            name: 'rt',
+            value: raw,
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV !== 'development',
+            path: '/',
+            expires: expiresAt,
+          });
+        } catch (tokenError) {
+          console.error(
+            'Failed to establish refresh token during Google sign-in:',
+            tokenError,
+          );
+          return '/sign-in?error=SESSION_INIT_FAILED';
+        }
+
+        try {
+          await logActivity({
+            action: 'AUTH_SIGNIN',
+            pharmacyId: record.pharmacyId as number,
+            userId: record.id as string,
+            details: { provider: 'google', email: record.email },
+          });
+        } catch (activityError) {
+          console.error('Failed to log Google sign-in:', activityError);
+        }
+
+        return true;
+      } catch (error) {
+        console.error('Unhandled Google sign-in error:', error);
+        return '/sign-in?error=GOOGLE_AUTH_ERROR';
+      }
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;
