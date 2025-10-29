@@ -24,7 +24,7 @@ import { TableExportMenu } from '@/components/TableExportMenu';
 import DateFilterComponent, {
   type DateFilterRange,
   type FilterPeriod,
-} from '@/components/filters/DateFilterComponent';
+} from '@/components/DateFilterComponent';
 import {
   endOfDay,
   endOfMonth,
@@ -536,7 +536,9 @@ export default function DailyBreakdownTable({ comprehensiveSalesData }: Props) {
                           <Button
                             variant="outline"
                             className="h-8 w-8 p-0"
-                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            onClick={() =>
+                              setCurrentPage((p) => Math.max(1, p - 1))
+                            }
                             disabled={currentPage === 1}
                           >
                             <span className="sr-only">Go to previous page</span>

@@ -25,7 +25,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import DateFilterComponent, {
   type DateFilterRange,
   type FilterPeriod,
-} from '@/components/filters/DateFilterComponent';
+} from '@/components/DateFilterComponent';
 import {
   endOfDay,
   endOfMonth,

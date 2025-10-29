@@ -22,7 +22,7 @@ import { DateRange } from './CustomDatePicker';
 import {
   DateFilterComponent,
   type DateFilterRange,
-} from '@/components/filters/DateFilterComponent';
+} from '@/components/DateFilterComponent';
 import { formatInTimeZone } from 'date-fns-tz';
 import type { ProductPerformanceData } from '@/types';
 import { TableExportMenu } from '@/components/TableExportMenu';
