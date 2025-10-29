@@ -1,7 +1,12 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { inventoryAdjustments, products, suppliers } from '@/database/schema';
+import {
+  inventoryAdjustments,
+  products,
+  suppliers,
+  categories,
+} from '@/database/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { Adjustment } from '@/types';
@@ -12,6 +17,43 @@ import {
 import { logActivity } from '@/lib/actions/activity';
 import { notifications } from '@/database/schema';
 import { gt } from 'drizzle-orm';
+import { pharmacyIdSchema } from '@/lib/validations';
+
+export const getAdjustableProducts = async (pharmacyId: number) => {
+  try {
+    pharmacyIdSchema.parse(pharmacyId);
+
+    const rows = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        brandName: products.brandName,
+        genericName: products.genericName,
+        categoryName: categories.name,
+        lotNumber: products.lotNumber,
+        expiryDate: products.expiryDate,
+        quantity: products.quantity,
+        minStockLevel: products.minStockLevel,
+        unit: products.unit,
+        supplierName: suppliers.name,
+      })
+      .from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
+      .where(
+        and(
+          eq(products.pharmacyId, pharmacyId),
+          sql`${products.deletedAt} IS NULL`,
+        ),
+      )
+      .orderBy(products.name);
+
+    return rows;
+  } catch (error) {
+    console.error('Error fetching adjustable products:', error);
+    return [];
+  }
+};
 
 /**
  * Get all inventory adjustments
@@ -82,7 +124,12 @@ export const createAdjustment = async ({
 
     // Fetch current product WITH pharmacyId filter
     const [product] = await db
-      .select({ quantity: products.quantity })
+      .select({
+        quantity: products.quantity,
+        minStockLevel: products.minStockLevel,
+        name: products.name,
+        brandName: products.brandName,
+      })
       .from(products)
       .where(
         and(
@@ -96,7 +143,8 @@ export const createAdjustment = async ({
       return { success: false, message: 'Product not found' };
     }
 
-    const newQuantity = product.quantity + validatedData.quantityChange;
+    const currentQuantity = product.quantity;
+    const newQuantity = currentQuantity + validatedData.quantityChange;
 
     // Prevent negative stock
     if (newQuantity < 0) {
@@ -121,6 +169,8 @@ export const createAdjustment = async ({
       pharmacyId: validatedData.pharmacyId,
       details: {
         productId: validatedData.productId,
+        name: product.name,
+        brandName: product.brandName ?? null,
         quantityChange: validatedData.quantityChange,
         reason: validatedData.reason,
         notes: validatedData.notes ?? null,
@@ -140,32 +190,15 @@ export const createAdjustment = async ({
       );
 
     // Targeted notification on threshold crossing (24h dedupe)
-    const minLevel =
-      (product as { quantity: number }).quantity !== undefined
-        ? (
-            await db
-              .select({ min: products.minStockLevel })
-              .from(products)
-              .where(
-                and(
-                  eq(products.id, validatedData.productId),
-                  eq(products.pharmacyId, validatedData.pharmacyId),
-                ),
-              )
-          )[0]?.min ?? 10
-        : 10;
+    const minLevel = product.minStockLevel ?? 10;
     const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [pRow] = await db
-      .select({ name: products.name, brandName: products.brandName })
-      .from(products)
-      .where(eq(products.id, validatedData.productId));
-    const label = `${pRow?.name ?? 'Product'}${
-      pRow?.brandName ? ` (${pRow.brandName})` : ''
+    const label = `${product.name ?? 'Product'}${
+      product.brandName ? ` (${product.brandName})` : ''
     }`;
 
     if (validatedData.quantityChange < 0) {
       try {
-        if (product.quantity > 0 && newQuantity <= 0) {
+        if (currentQuantity > 0 && newQuantity <= 0) {
           const recent = await db
             .select({ id: notifications.id })
             .from(notifications)
@@ -187,7 +220,7 @@ export const createAdjustment = async ({
               isRead: false,
             });
           }
-        } else if (product.quantity > minLevel && newQuantity <= minLevel) {
+        } else if (currentQuantity > minLevel && newQuantity <= minLevel) {
           const recent = await db
             .select({ id: notifications.id })
             .from(notifications)

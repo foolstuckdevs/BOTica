@@ -13,7 +13,12 @@ import { DeleteDialog } from './DeleteDialog';
 import ProductViewDialog from './ProductViewDialog';
 import usePermissions from '@/hooks/use-permissions';
 
-const ProductActions = ({ product }: { product: Product }) => {
+type ProductActionsProps = {
+  product: Product;
+  onDeleted?: (productId: number) => void;
+};
+
+const ProductActions = ({ product, onDeleted }: ProductActionsProps) => {
   const router = useRouter();
   const { data: session } = useSession();
   const { canEditMasterData, loaded } = usePermissions();
@@ -54,6 +59,7 @@ const ProductActions = ({ product }: { product: Product }) => {
 
     toast.success('Product deleted');
     setDeleteDialogOpen(false);
+    onDeleted?.(product.id);
     router.refresh();
   };
 

@@ -5,7 +5,12 @@ import { adjustmentReasonSchema } from './common';
 
 export const createAdjustmentSchema = z.object({
   productId: z.number().int().positive(),
-  quantityChange: z.number().int(),
+  quantityChange: z
+    .number()
+    .int()
+    .refine((val) => val !== 0, {
+      message: 'Quantity change must be a non-zero value.',
+    }),
   reason: adjustmentReasonSchema,
   userId: z.string().uuid(),
   pharmacyId: z.number().int().positive(),

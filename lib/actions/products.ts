@@ -376,12 +376,22 @@ export const updateProduct = async (
       )
       .returning();
 
+    const updatedProduct = updatedProductArr[0];
+
     // Log activity
     await logActivity({
       action: 'PRODUCT_UPDATED',
       pharmacyId: validatedData.pharmacyId,
       details: {
         id: validatedData.id,
+        name:
+          (updatedProduct as { name?: string | null })?.name ??
+          validatedData.params.name ??
+          null,
+        brandName:
+          (updatedProduct as { brandName?: string | null })?.brandName ??
+          validatedData.params.brandName ??
+          null,
         changes: Object.keys(validatedData.params ?? {}),
       },
     });

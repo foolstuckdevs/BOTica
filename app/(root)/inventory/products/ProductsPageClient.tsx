@@ -1,9 +1,15 @@
 'use client';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from 'react';
 import { Product, Category, Supplier } from '@/types';
 import { ProductFiltersClient } from '../../../../components/ProductFiltersClient';
 import { DataTable } from '@/components/DataTable';
-import { columns } from './columns';
+import { buildColumns } from './columns';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -158,6 +164,60 @@ export function ProductsPageClient({
 
   const products = serverData?.data ?? [];
 
+  const handleProductDeleted = useCallback(
+    (deletedId: number) => {
+      setServerData((prev) => {
+        if (!prev) return prev;
+        const filtered = prev.data.filter((item) => item.id !== deletedId);
+        if (filtered.length === prev.data.length) {
+          return prev;
+        }
+        const updatedTotal = Math.max(prev.total - 1, 0);
+        const updatedPageCount = Math.max(
+          1,
+          Math.ceil(updatedTotal / prev.pageSize),
+        );
+        return {
+          ...prev,
+          data: filtered,
+          total: updatedTotal,
+          pageCount: updatedPageCount,
+        };
+      });
+
+      const currentLength = serverData?.data.length ?? 0;
+      const removedLastItem = currentLength <= 1;
+      if (removedLastItem && pageIndex > 0) {
+        setPageIndex((prev) => Math.max(prev - 1, 0));
+        return;
+      }
+
+      loadPage(
+        pageIndex,
+        pageSize,
+        filters.search,
+        filters.categoryId,
+        filters.supplierId,
+        filters.status,
+      );
+    },
+    [
+      loadPage,
+      pageIndex,
+      pageSize,
+      filters.search,
+      filters.categoryId,
+      filters.supplierId,
+      filters.status,
+      serverData,
+    ],
+  );
+
+  const tableColumns = useMemo(
+    () => buildColumns(handleProductDeleted),
+    [handleProductDeleted],
+  );
+
   return (
     <div className="px-6 py-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -177,7 +237,7 @@ export function ProductsPageClient({
       <div className="bg-white rounded-lg shadow border">
         {error && <div className="p-4 text-sm text-red-600">{error}</div>}
         <DataTable
-          columns={columns}
+          columns={tableColumns}
           data={products}
           isLoading={loading && !serverData}
           searchConfig={{
