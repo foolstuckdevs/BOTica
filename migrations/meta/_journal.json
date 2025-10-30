@@ -29,6 +29,13 @@
       "when": 1761746486847,
       "tag": "0003_password_reset_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1761758498499,
+      "tag": "0004_refresh_token_metadata",
+      "breakpoints": true
     }
   ]
 }

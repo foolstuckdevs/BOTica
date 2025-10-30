@@ -269,6 +269,11 @@ export const refreshTokens = pgTable('refresh_tokens', {
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at').defaultNow(),
   replacedByTokenHash: varchar('replaced_by_token_hash', { length: 128 }),
+  createdUserAgent: text('created_user_agent'),
+  createdIp: varchar('created_ip', { length: 45 }),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  lastUsedIp: varchar('last_used_ip', { length: 45 }),
+  lastUsedUserAgent: text('last_used_user_agent'),
 });
 
 export const passwordResetTokens = pgTable('password_reset_tokens', {

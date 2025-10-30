@@ -6,8 +6,11 @@ import { db } from './database/drizzle';
 import { users } from './database/schema';
 import { eq } from 'drizzle-orm';
 import { compare } from 'bcryptjs';
-import { cookies } from 'next/headers';
-import { createRefreshToken } from '@/lib/auth/refresh-tokens';
+import { cookies, headers } from 'next/headers';
+import {
+  createRefreshToken,
+  RefreshTokenMetadata,
+} from '@/lib/auth/refresh-tokens';
 import { logActivity } from '@/lib/actions/activity';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -145,10 +148,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         enrichedUser.rememberMe = false;
 
         try {
+          const metadata = await extractClientMetadata();
           const store = await cookies();
           const { token: raw, expiresAt } = await createRefreshToken({
             userId: record.id as string,
             rememberMe: false,
+            metadata,
           });
 
           store.set({
@@ -185,21 +190,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return '/sign-in?error=GOOGLE_AUTH_ERROR';
       }
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      const now = Math.floor(Date.now() / 1000);
+      const getDuration = (remember: boolean) =>
+        remember ? 30 * 24 * 60 * 60 : 12 * 60 * 60;
+
       if (user) {
+        const rememberMe =
+          (user as User & { rememberMe?: boolean })?.rememberMe ?? false;
         token.id = user.id as string;
         token.name = user.name;
         token.role = user.role;
         token.pharmacyId = (user as User & { pharmacyId: number }).pharmacyId;
-        // Set expiration based on remember me preference
-        const rememberMe =
-          (user as { rememberMe?: boolean })?.rememberMe || false;
-        if (rememberMe) {
-          token.exp = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // 30 days
-        } else {
-          token.exp = Math.floor(Date.now() / 1000) + 8 * 60 * 60; // 8 hours
-        }
+        (token as { rememberMe?: boolean }).rememberMe = rememberMe;
+        token.exp = now + getDuration(rememberMe);
+        return token;
       }
+
+      if (trigger === 'update') {
+        const rememberMe =
+          (session as { rememberMe?: boolean })?.rememberMe ??
+          (token as { rememberMe?: boolean }).rememberMe ??
+          false;
+        (token as { rememberMe?: boolean }).rememberMe = rememberMe;
+        token.exp = now + getDuration(rememberMe);
+        return token;
+      }
+
+      if (!('exp' in token) || typeof token.exp !== 'number') {
+        const rememberMe =
+          (token as { rememberMe?: boolean }).rememberMe ?? false;
+        token.exp = now + getDuration(rememberMe);
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -234,6 +257,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role;
         session.user.pharmacyId = token.pharmacyId as number;
       }
+      (session as typeof session & { rememberMe?: boolean }).rememberMe =
+        (token as { rememberMe?: boolean }).rememberMe ?? false;
       return session;
     },
   },
@@ -241,3 +266,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // refresh token issuance handled in custom sign-in server action now
   },
 });
+
+async function extractClientMetadata(): Promise<RefreshTokenMetadata> {
+  const headerList = await headers();
+  const userAgent = headerList.get('user-agent') ?? null;
+  const forwardedFor = headerList.get('x-forwarded-for');
+  const ipAddress = forwardedFor
+    ? forwardedFor.split(',')[0]?.trim() ?? null
+    : headerList.get('x-real-ip');
+
+  return {
+    userAgent,
+    ipAddress: ipAddress ?? null,
+  };
+}

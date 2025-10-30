@@ -2,17 +2,16 @@
 'use server';
 
 import { signIn } from '@/auth';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { createRefreshToken } from '@/lib/auth/refresh-tokens';
 import { db } from '@/database/drizzle';
-import { users } from '@/database/schema';
+import { passwordResetTokens, users } from '@/database/schema';
 import { AuthCredentials } from '@/types';
 import {
   passwordResetRequestSchema,
   passwordResetSchema,
   signInSchema,
 } from '@/lib/validations';
-import { eq } from 'drizzle-orm';
 import { logActivity } from '@/lib/actions/activity';
 import {
   createPasswordResetToken,
@@ -22,7 +21,11 @@ import {
   verifyPasswordResetToken,
 } from '@/lib/auth/password-reset';
 import { sendPasswordResetEmail } from '@/lib/email/sendPasswordReset';
-import { revokeAllUserRefreshTokens } from '@/lib/auth/refresh-tokens';
+import {
+  revokeAllUserRefreshTokens,
+  RefreshTokenMetadata,
+} from '@/lib/auth/refresh-tokens';
+import { and, eq, gt, isNull } from 'drizzle-orm';
 
 export const signInWithCredentials = async (
   params: Pick<AuthCredentials, 'email' | 'password'>,
@@ -84,9 +87,11 @@ export const signInWithCredentials = async (
 
     // Issue refresh token + cookie (HttpOnly)
     try {
+      const metadata = await extractClientMetadata();
       const { token: rtRaw, expiresAt } = await createRefreshToken({
         userId: userRecord[0].id,
         rememberMe,
+        metadata,
       });
       const store = await cookies();
       store.set({
@@ -162,6 +167,31 @@ export const requestPasswordReset = async (params: { email: string }) => {
 
     if (!user || user.isActive === false) {
       // Always respond with success to avoid account discovery.
+      return { success: true } as const;
+    }
+
+    const configuredCooldown = Number(
+      process.env.PASSWORD_RESET_REQUEST_COOLDOWN_MS,
+    );
+    const cooldownMs =
+      Number.isFinite(configuredCooldown) && configuredCooldown > 0
+        ? configuredCooldown
+        : 2 * 60 * 1000;
+    const recentWindow = new Date(Date.now() - cooldownMs);
+
+    const recentRequest = await db
+      .select({ id: passwordResetTokens.id })
+      .from(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.userId, user.id),
+          gt(passwordResetTokens.createdAt, recentWindow),
+          isNull(passwordResetTokens.usedAt),
+        ),
+      )
+      .limit(1);
+
+    if (recentRequest.length > 0) {
       return { success: true } as const;
     }
 
@@ -295,4 +325,18 @@ function resolveAppBaseUrl() {
     'http://localhost:3000';
 
   return base.endsWith('/') ? base.slice(0, -1) : base;
+}
+
+async function extractClientMetadata(): Promise<RefreshTokenMetadata> {
+  const headerList = await headers();
+  const userAgent = headerList.get('user-agent') ?? null;
+  const forwardedFor = headerList.get('x-forwarded-for');
+  const ipAddress = forwardedFor
+    ? forwardedFor.split(',')[0]?.trim() ?? null
+    : headerList.get('x-real-ip');
+
+  return {
+    userAgent,
+    ipAddress: ipAddress ?? null,
+  };
 }
