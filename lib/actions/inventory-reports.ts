@@ -2,7 +2,7 @@
 
 import { auth } from '@/auth';
 import { products, categories, suppliers } from '@/database/schema';
-import { eq, and, gte, lte, count, sql, asc } from 'drizzle-orm';
+import { eq, and, gte, lte, count, sql, asc, or, isNull } from 'drizzle-orm';
 import { formatInTimeZone } from 'date-fns-tz';
 import { addDays } from 'date-fns';
 import {
@@ -142,6 +142,11 @@ export async function getInventoryReportData(pharmacyId: number) {
       and(
         eq(products.pharmacyId, pharmacyId),
         sql`${products.deletedAt} IS NULL`,
+        gte(products.quantity, 1),
+        or(
+          isNull(products.expiryDate),
+          gte(products.expiryDate, today.toISOString()),
+        ),
       ),
     )
     .orderBy(asc(products.name));

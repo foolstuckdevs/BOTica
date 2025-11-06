@@ -12,6 +12,7 @@ import {
   useReactTable,
   VisibilityState,
 } from '@tanstack/react-table';
+import type { TableMeta } from '@tanstack/react-table';
 
 import {
   DropdownMenu,
@@ -50,6 +51,7 @@ interface DataTableProps<TData, TValue> {
     onPageChange: (nextPageIndex: number) => void;
     onPageSizeChange: (pageSize: number) => void;
     isLoading?: boolean;
+    totalItems?: number;
   };
 }
 
@@ -131,6 +133,9 @@ export function DataTable<TData, TValue>({
         });
       }
     },
+    meta: {
+      totalItems: manualPagination?.totalItems,
+    } as TableMeta<TData>,
   });
 
   // Determine which column to apply a column-specific filter to (when not using global filter)

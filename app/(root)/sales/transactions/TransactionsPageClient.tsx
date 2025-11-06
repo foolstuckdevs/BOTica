@@ -128,6 +128,7 @@ export default function TransactionsPageClient({
                     setPageIndex(0);
                   },
                   isLoading: loading,
+                  totalItems: serverPage.total,
                 }
               : undefined
           }

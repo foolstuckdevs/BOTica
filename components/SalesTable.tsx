@@ -120,6 +120,65 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
   };
 
   const bounds = getBounds();
+  const periodDescription = React.useMemo(() => {
+    const parseToDate = (value?: Date | string) => {
+      if (!value) return undefined;
+      if (value instanceof Date) {
+        return value;
+      }
+      return new Date(`${value}T00:00:00+08:00`);
+    };
+
+    const fromDate = selectedDateRange?.from ?? parseToDate(bounds.from);
+    const toDate =
+      selectedDateRange?.to ??
+      selectedDateRange?.from ??
+      parseToDate(bounds.to) ??
+      parseToDate(bounds.from);
+
+    if (!fromDate) {
+      return 'Products sold for the selected period';
+    }
+
+    const resolvedToDate = toDate ?? fromDate;
+
+    const todayStr = formatInTimeZone(new Date(), 'Asia/Manila', 'yyyy-MM-dd');
+    const fromStr = formatInTimeZone(fromDate, 'Asia/Manila', 'yyyy-MM-dd');
+    const toStr = formatInTimeZone(resolvedToDate, 'Asia/Manila', 'yyyy-MM-dd');
+    const singleDay = fromStr === toStr;
+
+    const fromLabel = formatInTimeZone(fromDate, 'Asia/Manila', 'MMM d, yyyy');
+    const toLabel = formatInTimeZone(
+      resolvedToDate,
+      'Asia/Manila',
+      'MMM d, yyyy',
+    );
+
+    if (singleDay) {
+      if (fromStr === todayStr) {
+        return `Products sold today (${fromLabel})`;
+      }
+      return `Products sold for ${fromLabel}`;
+    }
+
+    if (timePeriod === 'month') {
+      const monthLabel = formatInTimeZone(fromDate, 'Asia/Manila', 'MMMM yyyy');
+      return `Products sold for ${monthLabel}`;
+    }
+
+    if (timePeriod === 'year') {
+      const yearLabel = formatInTimeZone(fromDate, 'Asia/Manila', 'yyyy');
+      return `Products sold for ${yearLabel}`;
+    }
+
+    return `Products sold from ${fromLabel} to ${toLabel}`;
+  }, [
+    bounds.from,
+    bounds.to,
+    selectedDateRange?.from,
+    selectedDateRange?.to,
+    timePeriod,
+  ]);
   // Filter by date bounds then aggregate by product name + brand
   const aggregated = React.useMemo(() => {
     const within = comprehensiveProductData.filter(
@@ -341,7 +400,7 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
             <div>
               <CardTitle className="text-lg font-semibold">Sales</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Products sold for the selected period
+                {periodDescription}
               </p>
             </div>
           </div>

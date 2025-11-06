@@ -255,6 +255,7 @@ export function ProductsPageClient({
                     setPageIndex(0);
                   },
                   isLoading: loading,
+                  totalItems: serverData.total,
                 }
               : undefined
           }

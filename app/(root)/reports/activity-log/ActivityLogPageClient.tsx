@@ -75,6 +75,7 @@ export function ActivityLogPageClient() {
           onPageChange: setPageIndex,
           onPageSizeChange: (size) => setPageSize(size),
           isLoading: loading,
+          totalItems: serverPage?.total,
         }}
       />
     </div>
