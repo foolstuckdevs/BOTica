@@ -38,6 +38,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
+  showItemCount?: boolean;
   searchConfig?: {
     enabled: boolean;
     placeholder?: string;
@@ -65,6 +66,7 @@ export function DataTable<TData, TValue>({
     globalFilter: false,
   },
   manualPagination,
+  showItemCount = true,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -135,6 +137,7 @@ export function DataTable<TData, TValue>({
     },
     meta: {
       totalItems: manualPagination?.totalItems,
+      showItemCount,
     } as TableMeta<TData>,
   });
 

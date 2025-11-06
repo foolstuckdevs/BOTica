@@ -67,6 +67,7 @@ export function ActivityLogPageClient() {
         columns={columns}
         data={data}
         isLoading={loading && !serverPage}
+        showItemCount={false}
         searchConfig={{ enabled: false }}
         manualPagination={{
           pageIndex,
