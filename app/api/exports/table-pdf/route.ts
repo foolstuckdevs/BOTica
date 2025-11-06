@@ -128,7 +128,11 @@ export async function POST(req: NextRequest) {
         format: 'A4',
         printBackground: true,
         landscape: !!body.landscape,
-        margin: { top: '20px', right: '16px', bottom: '24px', left: '16px' },
+        displayHeaderFooter: true,
+        headerTemplate: '<div></div>',
+        footerTemplate:
+          '<div style="width:100%; font-size:9px; font-family:Arial, sans-serif; color:#6b7280; padding:0 24px 12px; display:flex; justify-content:flex-end;">Page&nbsp;<span class="pageNumber"></span>&nbsp;of&nbsp;<span class="totalPages"></span></div>',
+        margin: { top: '20px', right: '16px', bottom: '40px', left: '16px' },
       });
 
       const uint8 = pdf instanceof Uint8Array ? pdf : new Uint8Array(pdf);

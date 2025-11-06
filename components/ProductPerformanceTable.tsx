@@ -21,6 +21,7 @@ import {
 import { ProductPerformanceData } from '@/types';
 import { TableExportMenu } from '@/components/TableExportMenu';
 import { buildFilterSubtitle } from '@/lib/filterSubtitle';
+import { formatQuantityWithUnit, formatUnitLabel } from '@/lib/utils';
 import { formatInTimeZone } from 'date-fns-tz';
 import DateFilterComponent, {
   type DateFilterRange,
@@ -134,6 +135,9 @@ export const ProductPerformanceTable = ({
         existing.quantity += item.quantity;
         existing.revenue += item.revenue;
         existing.profit += item.profit;
+        if (!existing.unit && item.unit) {
+          existing.unit = item.unit;
+        }
       } else {
         productMap.set(key, {
           name: item.name,
@@ -142,6 +146,7 @@ export const ProductPerformanceTable = ({
           quantity: item.quantity,
           revenue: item.revenue,
           profit: item.profit,
+          unit: item.unit,
         });
       }
     });
@@ -328,6 +333,7 @@ export const ProductPerformanceTable = ({
     name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
     category: p.category,
     quantity: p.quantity,
+    unit: formatUnitLabel(p.unit, '-'),
     revenue: p.revenue,
     profit: p.profit,
   }));
@@ -350,6 +356,7 @@ export const ProductPerformanceTable = ({
       name: 'TOTAL',
       category: '',
       quantity: totals.quantity,
+      unit: '',
       revenue: totals.revenue,
       profit: totals.profit,
     }),
@@ -365,6 +372,7 @@ export const ProductPerformanceTable = ({
     { header: 'Product', key: 'name' },
     { header: 'Category', key: 'category' },
     { header: 'Quantity', key: 'quantity', numeric: true },
+    { header: 'Unit', key: 'unit' },
     { header: 'Revenue', key: 'revenue', currency: true },
     { header: 'Profit', key: 'profit', currency: true },
   ];
@@ -550,7 +558,7 @@ export const ProductPerformanceTable = ({
                     </td>
                     <td className="py-3 px-4">{product.category}</td>
                     <td className="py-3 px-4 text-right font-medium">
-                      {product.quantity}
+                      {formatQuantityWithUnit(product.quantity, product.unit)}
                     </td>
                     <td className="py-3 px-4 text-right">
                       {product.revenue.toLocaleString('en-PH', {
