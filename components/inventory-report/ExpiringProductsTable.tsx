@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/popover';
 import type { ExpiringProductData } from '@/types';
 import { format } from 'date-fns';
+import { formatQuantityWithUnit, formatUnitLabel } from '@/lib/utils';
 
 interface Props {
   products: ExpiringProductData[];
@@ -274,7 +275,7 @@ export function ExpiringProductsTable({
       daysRemaining: Math.max(0, p.daysRemaining),
       status,
       quantity: p.quantity,
-      unit: p.unit,
+      unit: formatUnitLabel(p.unit, '-'),
       costPrice: p.costPrice,
       sellingPrice: p.sellingPrice,
     };
@@ -565,7 +566,7 @@ export function ExpiringProductsTable({
                         {getDisplayDaysRemaining(product.daysRemaining)}
                       </td>
                       <td className="py-3 px-4">
-                        {product.quantity} {product.unit}
+                        {formatQuantityWithUnit(product.quantity, product.unit)}
                       </td>
                       <td className="py-3 px-4">
                         {formatCurrency(product.value)}

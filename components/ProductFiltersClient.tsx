@@ -21,6 +21,26 @@ export const ProductFiltersClient: React.FC<ProductFiltersClientProps> = ({
   filters,
   setFilters,
 }) => {
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <div className="flex flex-wrap gap-4 items-end">
+        <div className="h-9 w-64 rounded-md bg-muted animate-pulse" />
+        {Array.from({ length: 3 }).map((_, idx) => (
+          <div
+            key={idx}
+            className="h-9 w-36 rounded-md bg-muted animate-pulse"
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <ProductFilters
       categories={categories}

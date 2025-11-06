@@ -1,4 +1,3 @@
-import { randomBytes, createHash } from 'crypto';
 import { addDays, addHours } from 'date-fns';
 import { db } from '@/database/drizzle';
 import { refreshTokens } from '@/database/schema';
@@ -26,8 +25,34 @@ export interface RefreshTokenRecord {
   expiresAt: Date;
 }
 
-function hash(raw: string) {
-  return createHash('sha256').update(raw).digest('hex');
+function getCrypto() {
+  const cryptoImpl = globalThis.crypto;
+  if (!cryptoImpl || !cryptoImpl.getRandomValues || !cryptoImpl.subtle) {
+    throw new Error(
+      'Cryptographic primitives are unavailable in this runtime.',
+    );
+  }
+  return cryptoImpl;
+}
+
+function randomHex(byteLength: number) {
+  const cryptoImpl = getCrypto();
+  const bytes = new Uint8Array(byteLength);
+  cryptoImpl.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function hash(raw: string) {
+  const cryptoImpl = getCrypto();
+  const encoder = new TextEncoder();
+  const data = encoder.encode(raw);
+  const digest = await cryptoImpl.subtle.digest('SHA-256', data);
+  const hashBytes = new Uint8Array(digest);
+  return Array.from(hashBytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 function computeExpiry(rememberMe: boolean) {
@@ -39,8 +64,8 @@ function computeExpiry(rememberMe: boolean) {
 export async function createRefreshToken(
   opts: GenerateRefreshTokenOptions,
 ): Promise<RefreshTokenRecord> {
-  const raw = randomBytes(REFRESH_TOKEN_LENGTH_BYTES).toString('hex');
-  const tokenHash = hash(raw);
+  const raw = randomHex(REFRESH_TOKEN_LENGTH_BYTES);
+  const tokenHash = await hash(raw);
   const expiresAt = computeExpiry(opts.rememberMe);
   const metadata = opts.metadata ?? {};
 
@@ -63,7 +88,7 @@ export async function verifyRefreshToken(
   userId: string,
   metadata?: RefreshTokenMetadata,
 ) {
-  const tokenHash = hash(raw);
+  const tokenHash = await hash(raw);
   const rows = await db
     .select()
     .from(refreshTokens)
@@ -94,9 +119,9 @@ export async function rotateRefreshToken(
   userId: string,
   opts: { rememberMe: boolean; metadata?: RefreshTokenMetadata },
 ) {
-  const oldHash = hash(oldRaw);
-  const newRaw = randomBytes(REFRESH_TOKEN_LENGTH_BYTES).toString('hex');
-  const newHash = hash(newRaw);
+  const oldHash = await hash(oldRaw);
+  const newRaw = randomHex(REFRESH_TOKEN_LENGTH_BYTES);
+  const newHash = await hash(newRaw);
   const expiresAt = computeExpiry(opts.rememberMe);
 
   await db.transaction(async (tx) => {
@@ -142,7 +167,7 @@ export async function revokeAllUserRefreshTokens(userId: string) {
 }
 
 export async function revokeRefreshToken(raw: string, userId?: string) {
-  const tokenHash = hash(raw);
+  const tokenHash = await hash(raw);
   const whereClause = userId
     ? and(
         eq(refreshTokens.tokenHash, tokenHash),

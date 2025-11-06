@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { TableExportMenu } from '@/components/TableExportMenu';
 import { buildFilterSubtitle } from '@/lib/filterSubtitle';
+import { formatQuantityWithUnit, formatUnitLabel } from '@/lib/utils';
 import {
   Popover,
   PopoverContent,
@@ -180,7 +181,7 @@ export function LowStockTable({
     reorderPoint: p.reorderPoint,
     supplierName: p.supplierName,
     status: p.status === 'out_of_stock' ? 'Out of Stock' : 'Low',
-    unit: p.unit,
+    unit: formatUnitLabel(p.unit, '-'),
   }));
   const exportColumns = [
     { header: 'Product', key: 'name' },
@@ -403,7 +404,7 @@ export function LowStockTable({
                       <td className="py-3 px-4">{product.categoryName}</td>
                       <td className="py-3 px-4">{product.lotNumber}</td>
                       <td className="py-3 px-4">
-                        {product.quantity} {product.unit}
+                        {formatQuantityWithUnit(product.quantity, product.unit)}
                       </td>
                       <td className="py-3 px-4">{product.reorderPoint}</td>
                       <td className="py-3 px-4">{product.supplierName}</td>

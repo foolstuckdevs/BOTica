@@ -12,6 +12,7 @@ import {
   useReactTable,
   VisibilityState,
 } from '@tanstack/react-table';
+import type { TableMeta } from '@tanstack/react-table';
 
 import {
   DropdownMenu,
@@ -37,6 +38,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
+  showItemCount?: boolean;
   searchConfig?: {
     enabled: boolean;
     placeholder?: string;
@@ -50,6 +52,7 @@ interface DataTableProps<TData, TValue> {
     onPageChange: (nextPageIndex: number) => void;
     onPageSizeChange: (pageSize: number) => void;
     isLoading?: boolean;
+    totalItems?: number;
   };
 }
 
@@ -63,6 +66,7 @@ export function DataTable<TData, TValue>({
     globalFilter: false,
   },
   manualPagination,
+  showItemCount = true,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -131,6 +135,10 @@ export function DataTable<TData, TValue>({
         });
       }
     },
+    meta: {
+      totalItems: manualPagination?.totalItems,
+      showItemCount,
+    } as TableMeta<TData>,
   });
 
   // Determine which column to apply a column-specific filter to (when not using global filter)

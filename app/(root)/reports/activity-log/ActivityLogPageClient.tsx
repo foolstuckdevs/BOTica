@@ -67,6 +67,7 @@ export function ActivityLogPageClient() {
         columns={columns}
         data={data}
         isLoading={loading && !serverPage}
+        showItemCount={false}
         searchConfig={{ enabled: false }}
         manualPagination={{
           pageIndex,
@@ -75,6 +76,7 @@ export function ActivityLogPageClient() {
           onPageChange: setPageIndex,
           onPageSizeChange: (size) => setPageSize(size),
           isLoading: loading,
+          totalItems: serverPage?.total,
         }}
       />
     </div>

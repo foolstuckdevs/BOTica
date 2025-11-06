@@ -24,6 +24,32 @@ export function DataTablePagination<TData>({
   // If pagination state is not yet initialized, do not render controls.
   if (!pagination) return null;
 
+  const meta = table.options.meta as
+    | { totalItems?: unknown; showItemCount?: boolean }
+    | undefined;
+  const resolvedTotal = (() => {
+    const value = meta?.totalItems;
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'bigint') {
+      return Number(value);
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const parsed = Number(value);
+      if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+    return undefined;
+  })();
+
+  const showItemCount = meta?.showItemCount !== false;
+  const itemCount = resolvedTotal ?? table.getFilteredRowModel().rows.length;
+  const itemLabel = `${itemCount.toLocaleString('en-PH')} ${
+    itemCount === 1 ? 'item' : 'items'
+  }`;
+
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex items-center space-x-2">
@@ -60,6 +86,11 @@ export function DataTablePagination<TData>({
             <span className="sr-only">Go to previous page</span>
             <ChevronLeft />
           </Button>
+          {showItemCount ? (
+            <div className="min-w-[80px] text-center text-xs text-muted-foreground">
+              {itemLabel}
+            </div>
+          ) : null}
           <Button
             variant="outline"
             className="h-8 w-8 p-0"

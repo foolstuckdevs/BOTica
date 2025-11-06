@@ -311,6 +311,39 @@ export default function DailyBreakdownTable({ comprehensiveSalesData }: Props) {
     { header: 'Items Sold', key: 'items', numeric: true },
   ];
 
+  const dailyDescription = React.useMemo(() => {
+    if (!activeRange.from) {
+      return 'Daily revenue, cost, and profit metrics for the selected period';
+    }
+
+    const fromLabel = format(activeRange.from, 'MMM d, yyyy');
+    const toLabel = format(
+      activeRange.to ? activeRange.to : activeRange.from,
+      'MMM d, yyyy',
+    );
+
+    switch (filterPeriod) {
+      case 'today':
+        return `Daily revenue, cost, and profit metrics for ${fromLabel}`;
+      case 'week':
+        return `Daily revenue, cost, and profit metrics from ${fromLabel} to ${toLabel}`;
+      case 'month':
+        return `Daily revenue, cost, and profit metrics for ${format(
+          activeRange.from,
+          'MMMM yyyy',
+        )}`;
+      case 'year':
+        return `Daily revenue, cost, and profit metrics for ${format(
+          activeRange.from,
+          'yyyy',
+        )}`;
+      case 'custom':
+        return `Daily revenue, cost, and profit metrics from ${fromLabel} to ${toLabel}`;
+      default:
+        return 'Daily revenue, cost, and profit metrics for the selected period';
+    }
+  }, [activeRange.from, activeRange.to, filterPeriod]);
+
   return (
     <Card>
       <CardHeader className="py-3">
@@ -322,7 +355,7 @@ export default function DailyBreakdownTable({ comprehensiveSalesData }: Props) {
                 Daily Breakdown
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Daily revenue, cost, and profit metrics
+                {dailyDescription}
               </p>
             </div>
           </div>

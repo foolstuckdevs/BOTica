@@ -26,6 +26,7 @@ import {
 import { formatInTimeZone } from 'date-fns-tz';
 import type { ProductPerformanceData } from '@/types';
 import { TableExportMenu } from '@/components/TableExportMenu';
+import { formatQuantityWithUnit, formatUnitLabel } from '@/lib/utils';
 
 type Props = {
   comprehensiveProductData: Array<ProductPerformanceData & { date: string }>;
@@ -34,7 +35,6 @@ type Props = {
 type SortColumn =
   | 'name'
   | 'category'
-  | 'unit'
   | 'quantity'
   | 'avgPrice'
   | 'revenue'
@@ -120,6 +120,65 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
   };
 
   const bounds = getBounds();
+  const periodDescription = React.useMemo(() => {
+    const parseToDate = (value?: Date | string) => {
+      if (!value) return undefined;
+      if (value instanceof Date) {
+        return value;
+      }
+      return new Date(`${value}T00:00:00+08:00`);
+    };
+
+    const fromDate = selectedDateRange?.from ?? parseToDate(bounds.from);
+    const toDate =
+      selectedDateRange?.to ??
+      selectedDateRange?.from ??
+      parseToDate(bounds.to) ??
+      parseToDate(bounds.from);
+
+    if (!fromDate) {
+      return 'Products sold for the selected period';
+    }
+
+    const resolvedToDate = toDate ?? fromDate;
+
+    const todayStr = formatInTimeZone(new Date(), 'Asia/Manila', 'yyyy-MM-dd');
+    const fromStr = formatInTimeZone(fromDate, 'Asia/Manila', 'yyyy-MM-dd');
+    const toStr = formatInTimeZone(resolvedToDate, 'Asia/Manila', 'yyyy-MM-dd');
+    const singleDay = fromStr === toStr;
+
+    const fromLabel = formatInTimeZone(fromDate, 'Asia/Manila', 'MMM d, yyyy');
+    const toLabel = formatInTimeZone(
+      resolvedToDate,
+      'Asia/Manila',
+      'MMM d, yyyy',
+    );
+
+    if (singleDay) {
+      if (fromStr === todayStr) {
+        return `Products sold today (${fromLabel})`;
+      }
+      return `Products sold for ${fromLabel}`;
+    }
+
+    if (timePeriod === 'month') {
+      const monthLabel = formatInTimeZone(fromDate, 'Asia/Manila', 'MMMM yyyy');
+      return `Products sold for ${monthLabel}`;
+    }
+
+    if (timePeriod === 'year') {
+      const yearLabel = formatInTimeZone(fromDate, 'Asia/Manila', 'yyyy');
+      return `Products sold for ${yearLabel}`;
+    }
+
+    return `Products sold from ${fromLabel} to ${toLabel}`;
+  }, [
+    bounds.from,
+    bounds.to,
+    selectedDateRange?.from,
+    selectedDateRange?.to,
+    timePeriod,
+  ]);
   // Filter by date bounds then aggregate by product name + brand
   const aggregated = React.useMemo(() => {
     const within = comprehensiveProductData.filter(
@@ -161,10 +220,6 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
           case 'category':
             aVal = a.category.toLowerCase();
             bVal = b.category.toLowerCase();
-            break;
-          case 'unit':
-            aVal = (a.unit ?? '').toLowerCase();
-            bVal = (b.unit ?? '').toLowerCase();
             break;
           case 'quantity':
             aVal = a.quantity;
@@ -277,7 +332,7 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
     return {
       name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
       category: p.category,
-      unit: p.unit ?? '-',
+      unit: formatUnitLabel(p.unit, '-'),
       quantity: p.quantity,
       avgPrice,
       revenue: p.revenue,
@@ -341,7 +396,7 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
             <div>
               <CardTitle className="text-lg font-semibold">Sales</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Products sold for the selected period
+                {periodDescription}
               </p>
             </div>
           </div>
@@ -388,15 +443,6 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
                   >
                     Category
                     {renderSortIcon('category')}
-                  </button>
-                </th>
-                <th className="py-3 px-4 text-left font-medium">
-                  <button
-                    className="flex items-center hover:text-primary transition-colors"
-                    onClick={() => handleSort('unit')}
-                  >
-                    Unit
-                    {renderSortIcon('unit')}
                   </button>
                 </th>
                 <th className="py-3 px-4 text-right font-medium">
@@ -450,7 +496,7 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
               {aggregated.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={7}
                     className="py-6 text-center text-muted-foreground"
                   >
                     No products found for the selected filters.
@@ -476,9 +522,8 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
                         </div>
                       </td>
                       <td className="py-3 px-4">{p.category}</td>
-                      <td className="py-3 px-4">{p.unit ?? '-'}</td>
                       <td className="py-3 px-4 text-right font-medium">
-                        {p.quantity}
+                        {formatQuantityWithUnit(p.quantity, p.unit)}
                       </td>
                       <td className="py-3 px-4 text-right">
                         {avgPrice.toLocaleString('en-PH', {
@@ -512,7 +557,7 @@ export default function SalesTable({ comprehensiveProductData }: Props) {
             {aggregated.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={8} className="py-2 px-2">
+                  <td colSpan={7} className="py-2 px-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <p className="text-sm font-medium">Rows per page</p>

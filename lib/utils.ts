@@ -2,8 +2,64 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { supabase } from '@/database/supabase';
 
+const UNIT_LABEL_MAP: Record<string, string> = {
+  PIECE: 'PC',
+  BOX: 'BOX',
+};
+
+const UNIT_WORD_MAP: Record<string, { singular: string; plural: string }> = {
+  PIECE: { singular: 'pc', plural: 'pcs' },
+  PC: { singular: 'pc', plural: 'pcs' },
+  BOX: { singular: 'box', plural: 'boxes' },
+};
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+export function formatUnitLabel(
+  unit?: string | null,
+  fallback: string = '-',
+): string {
+  if (!unit) return fallback;
+  const normalized = unit.toUpperCase();
+  const label = UNIT_LABEL_MAP[normalized];
+  return label ?? unit;
+}
+
+type QuantityLabelOptions = {
+  fallbackSingular?: string;
+  fallbackPlural?: string;
+};
+
+export function formatQuantityWithUnit(
+  quantity: number | string,
+  unit?: string | null,
+  options: QuantityLabelOptions = {},
+): string {
+  const numericValue =
+    typeof quantity === 'string' ? Number(quantity) : Number(quantity);
+  const safeQuantity = Number.isFinite(numericValue) ? numericValue : 0;
+  const normalizedUnit = unit ? unit.toUpperCase() : '';
+  const normalizedLabel = formatUnitLabel(normalizedUnit, '').toUpperCase();
+  const fallbackSingular = options.fallbackSingular ?? 'unit';
+  const fallbackPlural = options.fallbackPlural ?? 'units';
+  const defaultForms = {
+    singular: normalizedUnit ? normalizedUnit.toLowerCase() : fallbackSingular,
+    plural: normalizedUnit
+      ? `${normalizedUnit.toLowerCase()}s`
+      : fallbackPlural,
+  };
+  const labels =
+    UNIT_WORD_MAP[normalizedUnit] ??
+    UNIT_WORD_MAP[normalizedLabel] ??
+    defaultForms;
+  const isPlural = Math.abs(safeQuantity) > 1;
+  const label = isPlural ? labels.plural : labels.singular;
+  const quantityText = Number.isFinite(numericValue)
+    ? `${safeQuantity}`
+    : `${quantity}`;
+  return `${quantityText} ${label}`.trim();
 }
 
 export async function uploadImageToSupabase(

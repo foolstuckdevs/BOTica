@@ -21,6 +21,7 @@ import {
 import { ProductPerformanceData } from '@/types';
 import { TableExportMenu } from '@/components/TableExportMenu';
 import { buildFilterSubtitle } from '@/lib/filterSubtitle';
+import { formatQuantityWithUnit, formatUnitLabel } from '@/lib/utils';
 import { formatInTimeZone } from 'date-fns-tz';
 import DateFilterComponent, {
   type DateFilterRange,
@@ -32,7 +33,6 @@ import {
   endOfWeek,
   endOfYear,
   format,
-  isSameDay,
   startOfDay,
   startOfMonth,
   startOfWeek,
@@ -70,12 +70,6 @@ function computeRangeForPeriod(
   }
 }
 
-function rangesMatch(a: DateFilterRange, b: DateFilterRange) {
-  const fromMatch =
-    (!a.from && !b.from) || (a.from && b.from && isSameDay(a.from, b.from));
-  const toMatch = (!a.to && !b.to) || (a.to && b.to && isSameDay(a.to, b.to));
-  return fromMatch && toMatch;
-}
 // Export temporarily disabled for this report
 
 interface ProductPerformanceTableProps {
@@ -141,6 +135,9 @@ export const ProductPerformanceTable = ({
         existing.quantity += item.quantity;
         existing.revenue += item.revenue;
         existing.profit += item.profit;
+        if (!existing.unit && item.unit) {
+          existing.unit = item.unit;
+        }
       } else {
         productMap.set(key, {
           name: item.name,
@@ -149,6 +146,7 @@ export const ProductPerformanceTable = ({
           quantity: item.quantity,
           revenue: item.revenue,
           profit: item.profit,
+          unit: item.unit,
         });
       }
     });
@@ -294,23 +292,6 @@ export const ProductPerformanceTable = ({
     ['Category', category === 'all' ? 'All' : category],
   ]);
 
-  const defaultTodayRange = React.useMemo(
-    () => computeRangeForPeriod('today'),
-    [],
-  );
-
-  const hasActiveFilters =
-    filterPeriod !== 'today' ||
-    category !== 'all' ||
-    !rangesMatch(selectedRange, defaultTodayRange);
-
-  const handleResetFilters = () => {
-    const todayRange = computeRangeForPeriod('today');
-    setFilterPeriod('today');
-    setSelectedRange(todayRange);
-    setCategory('all');
-  };
-
   // Handle column sorting
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -352,6 +333,7 @@ export const ProductPerformanceTable = ({
     name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
     category: p.category,
     quantity: p.quantity,
+    unit: formatUnitLabel(p.unit, '-'),
     revenue: p.revenue,
     profit: p.profit,
   }));
@@ -374,6 +356,7 @@ export const ProductPerformanceTable = ({
       name: 'TOTAL',
       category: '',
       quantity: totals.quantity,
+      unit: '',
       revenue: totals.revenue,
       profit: totals.profit,
     }),
@@ -389,9 +372,62 @@ export const ProductPerformanceTable = ({
     { header: 'Product', key: 'name' },
     { header: 'Category', key: 'category' },
     { header: 'Quantity', key: 'quantity', numeric: true },
+    { header: 'Unit', key: 'unit' },
     { header: 'Revenue', key: 'revenue', currency: true },
     { header: 'Profit', key: 'profit', currency: true },
   ];
+
+  const productPeriodSummary = React.useMemo(() => {
+    if (!activeRange.from) {
+      switch (filterPeriod) {
+        case 'today':
+          return 'today';
+        case 'week':
+          return 'the last 7 days';
+        case 'month':
+          return 'the last 30 days';
+        case 'year':
+          return 'the last 12 months';
+        case 'custom':
+          return 'the selected custom range';
+        default:
+          return 'the selected period';
+      }
+    }
+
+    const fromLabel = format(activeRange.from, 'MMM d, yyyy');
+    const toLabel = format(
+      activeRange.to ? activeRange.to : activeRange.from,
+      'MMM d, yyyy',
+    );
+
+    switch (filterPeriod) {
+      case 'today':
+        return `today (${fromLabel})`;
+      case 'week':
+        return `${fromLabel} – ${toLabel}`;
+      case 'month':
+        return format(activeRange.from, 'MMMM yyyy');
+      case 'year':
+        return format(activeRange.from, 'yyyy');
+      case 'custom':
+        return `${fromLabel} – ${toLabel}`;
+      default:
+        return `${fromLabel} – ${toLabel}`;
+    }
+  }, [activeRange.from, activeRange.to, filterPeriod]);
+
+  const categorySummary = React.useMemo(() => {
+    if (category === 'all') {
+      return 'across all categories';
+    }
+    return `in the ${category} category`;
+  }, [category]);
+
+  const performanceDescription = React.useMemo(() => {
+    const periodText = productPeriodSummary ?? 'the selected period';
+    return `Top-selling products and profitability metrics for ${periodText} ${categorySummary}.`;
+  }, [productPeriodSummary, categorySummary]);
 
   return (
     <Card>
@@ -405,7 +441,7 @@ export const ProductPerformanceTable = ({
                 Product Performance
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Top-selling products and profitability metrics
+                {performanceDescription}
               </p>
             </div>
           </div>
@@ -438,16 +474,6 @@ export const ProductPerformanceTable = ({
                 ))}
               </SelectContent>
             </Select>
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleResetFilters}
-                className="h-8 px-2.5 text-sm text-muted-foreground hover:text-foreground"
-              >
-                Reset
-              </Button>
-            )}
           </div>
         </div>
       </CardHeader>
@@ -532,7 +558,7 @@ export const ProductPerformanceTable = ({
                     </td>
                     <td className="py-3 px-4">{product.category}</td>
                     <td className="py-3 px-4 text-right font-medium">
-                      {product.quantity}
+                      {formatQuantityWithUnit(product.quantity, product.unit)}
                     </td>
                     <td className="py-3 px-4 text-right">
                       {product.revenue.toLocaleString('en-PH', {

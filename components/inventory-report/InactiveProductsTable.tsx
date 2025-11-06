@@ -30,6 +30,7 @@ import {
   ArrowDown,
 } from 'lucide-react';
 import type { InventoryProductRow } from '@/types';
+import { formatQuantityWithUnit, formatUnitLabel } from '@/lib/utils';
 
 interface Props {
   products: InventoryProductRow[];
@@ -196,7 +197,6 @@ export function InactiveProductsTable({
     { header: 'Lot #', key: 'lotNumber' },
     { header: 'Expiry', key: 'expiryDate' },
     { header: 'Qty', key: 'quantity' },
-    { header: 'Unit', key: 'unit' },
     { header: 'Cost Price', key: 'costPrice' },
     { header: 'Selling Price', key: 'sellingPrice' },
     { header: 'Deleted At', key: 'deletedAt' },
@@ -208,7 +208,7 @@ export function InactiveProductsTable({
     lotNumber: p.lotNumber,
     expiryDate: p.expiryDate,
     quantity: p.quantity,
-    unit: p.unit,
+    unit: formatUnitLabel(p.unit, '-'),
     costPrice: p.costPrice,
     sellingPrice: p.sellingPrice,
     deletedAt: p.deletedAt,
@@ -376,7 +376,6 @@ export function InactiveProductsTable({
                       {getSortIcon('quantity')}
                     </button>
                   </th>
-                  <th className="py-3 px-4 text-left font-medium">Unit</th>
                   <th className="py-3 px-4 text-left font-medium">
                     <button
                       className="group flex items-center hover:text-foreground transition-colors"
@@ -421,8 +420,9 @@ export function InactiveProductsTable({
                         ? new Date(p.expiryDate).toISOString().slice(0, 10)
                         : ''}
                     </td>
-                    <td className="py-3 px-4">{p.quantity}</td>
-                    <td className="py-3 px-4">{p.unit || '-'}</td>
+                    <td className="py-3 px-4">
+                      {formatQuantityWithUnit(p.quantity, p.unit)}
+                    </td>
                     <td className="py-3 px-4">
                       {p.costPrice.toLocaleString('en-PH', {
                         style: 'currency',
