@@ -2,7 +2,7 @@
 
 import { db } from '@/database/drizzle';
 import { products, saleItems, sales } from '@/database/schema';
-import { eq, and, gte, lte, sum, desc, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, sum, desc, sql, count } from 'drizzle-orm';
 import {
   getSalesComparisonSchema,
   getProductStockSummariesSchema,
@@ -351,17 +351,32 @@ export const getChartData = async (
     // Get daily aggregated data - convert timestamps to Manila timezone dates
     const salesDateInManila = sql<string>`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`;
 
-    const result = await db
+    const salesTotals = await db
       .select({
         date: salesDateInManila,
         totalSales: sum(sales.totalAmount),
+        transactionCount: count(sales.id),
+      })
+      .from(sales)
+      .where(
+        and(
+          eq(sales.pharmacyId, pharmacyId),
+          gte(sales.createdAt, startDate),
+          lte(sales.createdAt, endDate),
+        ),
+      )
+      .groupBy(salesDateInManila)
+      .orderBy(salesDateInManila);
+
+    const costTotals = await db
+      .select({
+        date: salesDateInManila,
         totalCost: sum(
           sql`CAST(${products.costPrice} AS NUMERIC) * ${saleItems.quantity}`,
         ),
-        transactionCount: sql<number>`COUNT(DISTINCT ${sales.id})`,
       })
-      .from(sales)
-      .innerJoin(saleItems, eq(sales.id, saleItems.saleId))
+      .from(saleItems)
+      .innerJoin(sales, eq(saleItems.saleId, sales.id))
       .innerJoin(products, eq(saleItems.productId, products.id))
       .where(
         and(
@@ -373,6 +388,11 @@ export const getChartData = async (
       .groupBy(salesDateInManila)
       .orderBy(salesDateInManila);
 
+    const salesTotalsMap = new Map(
+      salesTotals.map((item) => [item.date, item]),
+    );
+    const costTotalsMap = new Map(costTotals.map((item) => [item.date, item]));
+
     // Create array of all dates in range using Manila timezone
     const chartData: ChartDataPoint[] = [];
     const currentDate = new Date(startDateStr + 'T00:00:00+08:00');
@@ -382,11 +402,12 @@ export const getChartData = async (
       const dateStr = formatInTimeZone(currentDate, timeZone, 'yyyy-MM-dd');
 
       // Find data for this date
-      const dayData = result.find((r) => r.date === dateStr);
+      const salesData = salesTotalsMap.get(dateStr);
+      const costData = costTotalsMap.get(dateStr);
 
-      const salesAmount = Number(dayData?.totalSales) || 0;
-      const costAmount = Number(dayData?.totalCost) || 0;
-      const transactionCount = Number(dayData?.transactionCount) || 0;
+      const salesAmount = Number(salesData?.totalSales) || 0;
+      const costAmount = Number(costData?.totalCost) || 0;
+      const transactionCount = Number(salesData?.transactionCount) || 0;
 
       chartData.push({
         date: dateStr,

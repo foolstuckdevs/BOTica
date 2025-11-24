@@ -24,6 +24,7 @@ import useIsMobile from '@/hooks/use-mobile';
 import { ChartDataPoint } from '@/types';
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
 import { formatInTimeZone } from 'date-fns-tz';
+import { addDays } from 'date-fns';
 
 interface SalesChartProps {
   chartData: ChartDataPoint[];
@@ -37,6 +38,17 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
     DateRange | undefined
   >();
   const [filteredData, setFilteredData] = React.useState<ChartDataPoint[]>([]);
+
+  const toManilaDate = React.useCallback((dateStr: string) => {
+    return new Date(`${dateStr}T00:00:00+08:00`);
+  }, []);
+
+  const formatDateLabel = React.useCallback(
+    (dateStr: string, pattern: string = 'MMM d, yyyy') => {
+      return formatInTimeZone(toManilaDate(dateStr), 'Asia/Manila', pattern);
+    },
+    [toManilaDate],
+  );
 
   React.useEffect(() => {
     if (isMobile) setTimeRange('7d');
@@ -59,9 +71,30 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
         'yyyy-MM-dd',
       );
 
-      filtered = chartData.filter((item) => {
-        return item.date >= fromDate && item.date <= toDate;
-      });
+      const dataMap = new Map(chartData.map((item) => [item.date, item]));
+      const start = toManilaDate(fromDate);
+      const end = toManilaDate(toDate);
+      const range: ChartDataPoint[] = [];
+
+      for (
+        let cursor = new Date(start);
+        cursor <= end;
+        cursor = addDays(cursor, 1)
+      ) {
+        const key = formatInTimeZone(cursor, 'Asia/Manila', 'yyyy-MM-dd');
+        const existing = dataMap.get(key);
+        range.push(
+          existing ?? {
+            date: key,
+            sales: 0,
+            purchases: 0,
+            grossProfit: 0,
+            transactionCount: 0,
+          },
+        );
+      }
+
+      filtered = range;
     } else {
       // Fall back to quick time range filters - use Philippines timezone
       const days = timeRange === '7d' ? 7 : 30;
@@ -82,13 +115,35 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
       cutoffDate.setDate(cutoffDate.getDate() - days);
       const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
 
-      filtered = chartData.filter((item) => {
-        return item.date >= cutoffDateStr;
-      });
+      const dataMap = new Map(chartData.map((item) => [item.date, item]));
+      const start = toManilaDate(cutoffDateStr);
+      const end = toManilaDate(philippinesTime);
+      const range: ChartDataPoint[] = [];
+
+      for (
+        let cursor = new Date(start);
+        cursor <= end;
+        cursor = addDays(cursor, 1)
+      ) {
+        const key = formatInTimeZone(cursor, 'Asia/Manila', 'yyyy-MM-dd');
+        const existing = dataMap.get(key);
+        range.push(
+          existing ?? {
+            date: key,
+            sales: 0,
+            purchases: 0,
+            grossProfit: 0,
+            transactionCount: 0,
+          },
+        );
+      }
+
+      filtered = range;
     }
 
+    filtered.sort((a, b) => a.date.localeCompare(b.date));
     setFilteredData(filtered);
-  }, [chartData, timeRange, customDateRange]);
+  }, [chartData, timeRange, customDateRange, toManilaDate]);
 
   const handleQuickFilter = (range: string) => {
     setTimeRange(range);
@@ -104,15 +159,11 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
 
   const getActiveFilterDescription = () => {
     if (customDateRange?.from && customDateRange?.to) {
-      const fromDate = formatInTimeZone(
-        customDateRange.from,
-        'Asia/Manila',
-        'MMM d, yyyy',
+      const fromDate = formatDateLabel(
+        formatInTimeZone(customDateRange.from, 'Asia/Manila', 'yyyy-MM-dd'),
       );
-      const toDate = formatInTimeZone(
-        customDateRange.to,
-        'Asia/Manila',
-        'MMM d, yyyy',
+      const toDate = formatDateLabel(
+        formatInTimeZone(customDateRange.to, 'Asia/Manila', 'yyyy-MM-dd'),
       );
       return `${fromDate} - ${toDate}`;
     }
@@ -155,10 +206,7 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
     }).format(amount);
 
   const formatXAxis = (date: string) =>
-    new Date(date).toLocaleDateString('en-PH', {
-      month: 'short',
-      day: 'numeric',
-    });
+    formatDateLabel(date, 'MMM d');
 
   return (
     <Card className="w-full">
@@ -323,7 +371,7 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
                       name === 'sales' ? 'Sales' : 'Purchases',
                     ]}
                     labelFormatter={(label) =>
-                      `Date: ${formatXAxis(label as string)}`
+                      `Date: ${formatDateLabel(label as string, 'MMM d, yyyy')}`
                     }
                   />
                   <Area
