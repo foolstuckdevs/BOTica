@@ -9,7 +9,6 @@ const getPageTitle = (pathname: string) => {
     categories: 'Categories',
     suppliers: 'Suppliers',
     adjustments: 'Adjustments',
-    'purchase-order': 'Purchase Orders',
     sales: 'Sales',
     pos: 'POS Terminal',
     transactions: 'Transactions',

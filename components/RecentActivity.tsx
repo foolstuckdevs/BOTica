@@ -26,7 +26,6 @@ export default async function RecentActivity({ pharmacyId, limit = 8 }: Props) {
     'AUTH_',
     'SUPPLIER_',
     'ADJUSTMENT_',
-    'PO_',
     'SALE_',
   ]);
 
@@ -107,7 +106,6 @@ function humanizeAction(action?: string) {
     .replace(/^CATEGORY_/, 'category ')
     .replace(/^SUPPLIER_/, 'supplier ')
     .replace(/^ADJUSTMENT_/, 'adjustment ')
-    .replace(/^PO_/, 'purchase order ')
     .replace(/^SALE_/, 'sale ');
   if (base === 'AUTH_SIGNIN') return 'signed in';
   if (base === 'AUTH_SIGNOUT') return 'signed out';
@@ -119,26 +117,6 @@ function getDisplayAction(
   details?: Record<string, unknown> | null,
 ): React.ReactNode {
   if (!action) return 'did something';
-  if (action === 'PO_STATUS_CHANGED') {
-    const status =
-      details && typeof details['status'] === 'string'
-        ? (details['status'] as string)
-        : null;
-    return (
-      <>
-        purchase order status changed
-        {status ? (
-          <>
-            {' '}
-            to{' '}
-            <span className="font-semibold text-foreground">
-              {status.toLowerCase()}
-            </span>
-          </>
-        ) : null}
-      </>
-    );
-  }
   return humanizeAction(action);
 }
 

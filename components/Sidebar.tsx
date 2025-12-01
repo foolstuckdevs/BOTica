@@ -188,7 +188,6 @@ const Sidebar = () => {
       if (isAdmin) {
         router.prefetch('/inventory/suppliers');
         router.prefetch('/inventory/adjustments');
-        router.prefetch('/inventory/purchase-order');
       }
     };
     if (process.env.NODE_ENV === 'production') {
@@ -336,16 +335,6 @@ const Sidebar = () => {
                           Adjustments
                         </Link>
                       </DropdownMenuItem>
-
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/inventory/purchase-order"
-                          className="flex items-center gap-2"
-                        >
-                          <ClipboardList className="w-4 h-4" />
-                          Purchase Orders
-                        </Link>
-                      </DropdownMenuItem>
                     </>
                   )}
                 </DropdownMenuContent>
@@ -423,18 +412,6 @@ const Sidebar = () => {
                     >
                       <RefreshCw className="w-4 h-4" />
                       Adjustments
-                    </Link>
-
-                    <Link
-                      href="/inventory/purchase-order"
-                      className={`${submenuLinkClasses} ${
-                        isActive('/inventory/purchase-order')
-                          ? submenuActiveClasses
-                          : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
-                      }`}
-                    >
-                      <ClipboardList className="w-4 h-4" />
-                      Purchase Orders
                     </Link>
                   </>
                 )}

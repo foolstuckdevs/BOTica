@@ -25,6 +25,3 @@ export * from './category';
 
 // Inventory/Adjustment schemas
 export * from './inventory';
-
-// Purchase Order schemas
-export * from './purchase-order';

@@ -40,16 +40,6 @@ export const unitSchemaOptional = unitSchema.optional();
 
 export const paymentMethodSchema = z.enum(['CASH', 'GCASH']);
 
-export const purchaseOrderStatusSchema = z.enum([
-  'DRAFT',
-  'EXPORTED',
-  'SUBMITTED',
-  'CONFIRMED',
-  'PARTIALLY_RECEIVED',
-  'RECEIVED',
-  'CANCELLED',
-]);
-
 export const adjustmentReasonSchema = z.enum([
   'DAMAGED',
   'EXPIRED',

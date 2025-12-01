@@ -190,61 +190,6 @@ export interface Adjustment {
   notes?: string;
 }
 
-// PURCHASE ORDER TYPES
-
-export type PurchaseOrderStatus =
-  | 'DRAFT'
-  | 'EXPORTED'
-  | 'SUBMITTED'
-  | 'CONFIRMED'
-  | 'PARTIALLY_RECEIVED'
-  | 'RECEIVED'
-  | 'CANCELLED';
-
-export interface PurchaseOrderParams {
-  supplierId: number;
-  orderDate: string;
-  notes?: string;
-  pharmacyId?: number;
-  items: {
-    productId: number;
-    quantity: number;
-    unitCost?: string;
-  }[];
-}
-
-export interface PurchaseOrder {
-  id: number;
-  orderNumber: string;
-  supplierId: number;
-  userId: string;
-  orderDate: string;
-  status: PurchaseOrderStatus;
-  notes?: string | null;
-  pharmacyId: number;
-  createdAt: string;
-  updatedAt?: string;
-  totalCost: string; // Changed from number to string (decimal from DB)
-  // Computed fields (not stored in DB)
-  supplierName?: string; // From JOIN with suppliers table
-  totalItems?: number; // COUNT of items
-  totalQuantity?: number; // SUM of quantities
-  userName?: string; // From JOIN with users table
-}
-
-export interface PurchaseOrderItem {
-  id: number;
-  purchaseOrderId: number;
-  productId: number;
-  quantity: number;
-  receivedQuantity?: number;
-  unitCost?: string | null; // NULL until confirmed by supplier
-  // Computed fields (not stored in DB)
-  totalCost?: number; // Calculated: unitCost * quantity
-  productName?: string; // From JOIN with products table
-  productUnit?: string; // From JOIN with products table
-}
-
 // SALES & TRANSACTION
 
 export type PaymentMethod = 'CASH' | 'GCASH';

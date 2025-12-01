@@ -15,7 +15,6 @@ export default auth((req) => {
     '/reports',
     '/inventory/suppliers',
     '/inventory/adjustments',
-    '/inventory/purchase-order',
   ];
 
   // Check if current path is a public route

@@ -9,7 +9,6 @@ import {
   suppliers,
   saleItems,
   inventoryAdjustments,
-  purchaseOrderItems,
 } from '@/database/schema';
 import { ProductParams } from '@/types';
 import { revalidatePath } from 'next/cache';
@@ -133,17 +132,12 @@ export const getProductById = async (
 
     if (result.length === 0) return null;
 
-    // Determine if product is referenced by transactions/adjustments/receipts (EXISTS-based)
+    // Determine if product is referenced by transactions/adjustments (EXISTS-based)
     const [{ hasReferences }] = await db
       .select({
         hasReferences: sql<boolean>`(
           EXISTS (SELECT 1 FROM ${saleItems} WHERE ${saleItems.productId} = ${id})
           OR EXISTS (SELECT 1 FROM ${inventoryAdjustments} WHERE ${inventoryAdjustments.productId} = ${id})
-          OR EXISTS (
-            SELECT 1 FROM ${purchaseOrderItems}
-            WHERE ${purchaseOrderItems.productId} = ${id}
-              AND COALESCE(${purchaseOrderItems.receivedQuantity}, 0) > 0
-          )
         )`,
       })
       .from(products)
@@ -265,11 +259,6 @@ export const updateProduct = async (
         hasReferences: sql<boolean>`(
           EXISTS (SELECT 1 FROM ${saleItems} WHERE ${saleItems.productId} = ${validatedData.id})
           OR EXISTS (SELECT 1 FROM ${inventoryAdjustments} WHERE ${inventoryAdjustments.productId} = ${validatedData.id})
-          OR EXISTS (
-            SELECT 1 FROM ${purchaseOrderItems}
-            WHERE ${purchaseOrderItems.productId} = ${validatedData.id}
-              AND COALESCE(${purchaseOrderItems.receivedQuantity}, 0) > 0
-          )
         )`,
         hasSales: sql<boolean>`EXISTS (SELECT 1 FROM ${saleItems} WHERE ${saleItems.productId} = ${validatedData.id})`,
       })
@@ -292,7 +281,7 @@ export const updateProduct = async (
       return {
         success: false,
         message:
-          'Quantity cannot be edited directly. Use Inventory Adjustments or Purchase Order receiving to change stock.',
+          'Quantity cannot be edited directly. Use Inventory Adjustments to change stock.',
       };
     }
 
@@ -441,11 +430,6 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         hasReferences: sql<boolean>`(
           EXISTS (SELECT 1 FROM ${saleItems} WHERE ${saleItems.productId} = ${id})
           OR EXISTS (SELECT 1 FROM ${inventoryAdjustments} WHERE ${inventoryAdjustments.productId} = ${id})
-          OR EXISTS (
-            SELECT 1 FROM ${purchaseOrderItems}
-            WHERE ${purchaseOrderItems.productId} = ${id}
-              AND COALESCE(${purchaseOrderItems.receivedQuantity}, 0) > 0
-          )
         )`,
       })
       .from(products)

@@ -52,16 +52,6 @@ export const ADJUSTMENT_REASON_ENUM = pgEnum('adjustment_reason', [
   'STOCK_CORRECTION',
 ]);
 
-export const PURCHASE_ORDER_STATUS_ENUM = pgEnum('purchase_order_status', [
-  'DRAFT',
-  'EXPORTED',
-  'SUBMITTED',
-  'CONFIRMED',
-  'PARTIALLY_RECEIVED',
-  'RECEIVED',
-  'CANCELLED',
-]);
-
 // Pharmacies
 export const pharmacies = pgTable('pharmacies', {
   id: serial('id').primaryKey(),
@@ -223,39 +213,6 @@ export const inventoryAdjustments = pgTable('inventory_adjustments', {
     .references(() => pharmacies.id),
 
   createdAt: timestamp('created_at').defaultNow(),
-});
-
-export const purchaseOrders = pgTable('purchase_orders', {
-  id: serial('id').primaryKey(),
-  orderNumber: varchar('order_number', { length: 20 }).notNull().unique(),
-  supplierId: integer('supplier_id')
-    .references(() => suppliers.id)
-    .notNull(),
-  userId: uuid('user_id')
-    .references(() => users.id)
-    .notNull(),
-  orderDate: date('order_date').notNull(),
-  status: PURCHASE_ORDER_STATUS_ENUM('status').notNull().default('DRAFT'),
-  notes: text('notes'),
-  totalCost: decimal('total_cost', { precision: 10, scale: 2 }).default('0.00'), // Only set after confirmation
-  pharmacyId: integer('pharmacy_id')
-    .notNull()
-    .references(() => pharmacies.id),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
-
-export const purchaseOrderItems = pgTable('purchase_order_items', {
-  id: serial('id').primaryKey(),
-  purchaseOrderId: integer('purchase_order_id')
-    .references(() => purchaseOrders.id)
-    .notNull(),
-  productId: integer('product_id')
-    .references(() => products.id)
-    .notNull(),
-  quantity: integer('quantity').notNull(),
-  receivedQuantity: integer('received_quantity').default(0).notNull(),
-  unitCost: decimal('unit_cost', { precision: 10, scale: 2 }), // NULL until confirmed, then set by supplier
 });
 
 // Refresh Tokens (for session renewal / revocation)

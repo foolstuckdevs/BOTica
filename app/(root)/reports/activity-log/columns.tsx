@@ -78,7 +78,6 @@ function humanizeSubject(action?: string) {
   if (action.startsWith('CATEGORY_')) return 'category';
   if (action.startsWith('SUPPLIER_')) return 'supplier';
   if (action.startsWith('ADJUSTMENT_')) return 'adjustment';
-  if (action.startsWith('PO_')) return 'purchase order';
   if (action.startsWith('SALE_')) return 'sale';
   if (action.startsWith('AUTH_')) return 'user';
   return 'activity';
@@ -91,11 +90,6 @@ function humanizeVerb(action?: string) {
   if (/(DELETED|ARCHIVED)$/.test(action)) return 'deleted';
   if (/AUTH_SIGNIN$/.test(action)) return 'signed in';
   if (/AUTH_SIGNOUT$/.test(action)) return 'signed out';
-  if (/PO_STATUS_CHANGED$/.test(action)) return 'status changed';
-  if (/PO_CONFIRMED$/.test(action)) return 'confirmed';
-  if (/PO_RECEIVED$/.test(action)) return 'received';
-  if (/PO_PARTIALLY_RECEIVED$/.test(action)) return 'partially received';
-  if (/PO_RECEIPT_UPDATED$/.test(action)) return 'receipt updated';
   if (/SALE_COMPLETED$/.test(action)) return 'completed';
   return 'done';
 }
