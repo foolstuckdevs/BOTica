@@ -8,6 +8,7 @@ import {
   PNF_CHAT_SECTION_LABELS,
   pnfChatResponseSchema,
 } from '@/lib/rag/types';
+import { z } from 'zod';
 
 const FALLBACK_MESSAGE =
   'I could not locate that information in the Philippine National Formulary.';
@@ -114,7 +115,7 @@ function resolveActiveDrug(
 type IntentConfig = {
   key: string;
   patterns: RegExp[];
-  sections: Array<keyof PNFChatSections>;
+  sections: SectionKey[];
   priority: number;
 };
 
@@ -128,7 +129,12 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\bhow\s+(?:many|much)\s+(?:mg|milligrams|tablet|tablets)\b/i,
       /\bmaintenance\s+dose\b/i,
     ],
-    sections: ['overview', 'dosage', 'doseAdjustment', 'administration'],
+    sections: [
+      'overview',
+      'dosage',
+      'doseAdjustment',
+      'administration',
+    ] as SectionKey[],
   },
   {
     key: 'doseAdjustment',
@@ -137,7 +143,7 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\b(renal|hepatic|liver|kidney)\s+(?:dose|dosing|adjustment)\b/i,
       /\b(?:adjust|modify|reduce)\s+(?:the\s+)?dose\b/i,
     ],
-    sections: ['overview', 'doseAdjustment', 'dosage'],
+    sections: ['overview', 'doseAdjustment', 'dosage'] as SectionKey[],
   },
   {
     key: 'indications',
@@ -146,7 +152,7 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\b(indication|indications|use|uses|used for|treat|treating|therapy for)\b/i,
       /\bwhat\s+is\s+it\s+for\b/i,
     ],
-    sections: ['overview', 'indications'],
+    sections: ['overview', 'indications'] as SectionKey[],
   },
   {
     key: 'contraindications',
@@ -157,7 +163,7 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\bwhen\s+not\s+(?:to\s+)?(?:use|give|take)\b/i,
       /\bcontradictions?\b/i,
     ],
-    sections: ['overview', 'contraindications'],
+    sections: ['overview', 'contraindications'] as SectionKey[],
   },
   {
     key: 'adverseReactions',
@@ -166,7 +172,7 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\b(side\s+effect|side\s+effects|adverse\s+(?:reaction|reactions|effect|effects))\b/i,
       /\b(?:reaction|reactions)\s+to\s+this\s+drug\b/i,
     ],
-    sections: ['overview', 'adverseReactions'],
+    sections: ['overview', 'adverseReactions'] as SectionKey[],
   },
   {
     key: 'precautions',
@@ -175,7 +181,7 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\b(precaution|precautions|warning|warnings|caution|cautions)\b/i,
       /\buse\s+with\s+caution\b/i,
     ],
-    sections: ['overview', 'precautions'],
+    sections: ['overview', 'precautions'] as SectionKey[],
   },
   {
     key: 'interactions',
@@ -185,7 +191,7 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\binteract(?:ion)?s?\s+with\b/i,
       /\bcompatible\s+with\b/i,
     ],
-    sections: ['overview', 'interactions'],
+    sections: ['overview', 'interactions'] as SectionKey[],
   },
   {
     key: 'formulations',
@@ -193,7 +199,7 @@ const INTENT_CONFIGS: IntentConfig[] = [
     patterns: [
       /\b(formulation|formulations|available\s+form|presentation|strengths?|dosage\s+forms?)\b/i,
     ],
-    sections: ['overview', 'formulations'],
+    sections: ['overview', 'formulations'] as SectionKey[],
   },
   {
     key: 'administration',
@@ -203,7 +209,7 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\bhow\s+(?:is|to)\s+(?:give|take|administer)\b/i,
       /\broute\s+of\s+administration\b/i,
     ],
-    sections: ['overview', 'administration'],
+    sections: ['overview', 'administration'] as SectionKey[],
   },
   {
     key: 'monitoring',
@@ -213,7 +219,7 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\bwhat\s+to\s+monitor\b/i,
       /\bparameters?\s+to\s+check\b/i,
     ],
-    sections: ['overview', 'monitoring'],
+    sections: ['overview', 'monitoring'] as SectionKey[],
   },
   {
     key: 'pregnancy',
@@ -223,7 +229,7 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\blactation\b/i,
       /\bbreast\s*feeding\b/i,
     ],
-    sections: ['overview', 'pregnancy'],
+    sections: ['overview', 'pregnancy'] as SectionKey[],
   },
   {
     key: 'classification',
@@ -233,23 +239,23 @@ const INTENT_CONFIGS: IntentConfig[] = [
       /\b(?:rx|otc)\b/i,
       /\bover\s+the\s+counter\b/i,
     ],
-    sections: ['overview', 'classification'],
+    sections: ['overview', 'classification'] as SectionKey[],
   },
   {
     key: 'notes',
     priority: 1,
     patterns: [/\bnotes?\b/i, /\badditional\s+information\b/i],
-    sections: ['overview', 'notes'],
+    sections: ['overview', 'notes'] as SectionKey[],
   },
 ];
 
-function detectIntent(question: string): Array<keyof PNFChatSections> | null {
+async function detectIntent(question: string): Promise<SectionKey[] | null> {
   const normalized = question.trim();
   if (!normalized) {
     return null;
   }
 
-  const matches = new Set<keyof PNFChatSections>();
+  const matches = new Set<SectionKey>();
 
   INTENT_CONFIGS.forEach((config) => {
     const intentMatched = config.patterns.some((pattern) =>
@@ -261,12 +267,14 @@ function detectIntent(question: string): Array<keyof PNFChatSections> | null {
   });
 
   if (matches.size === 0) {
-    const isBroadQuery =
-      /^(tell\s+me\s+about|info\s+on|information\s+about|what\s+is|what's)?\s*[a-z0-9\s\-\+]+$/i.test(
-        normalized,
-      );
+    const llmSections = await classifyIntentWithLLM(normalized);
+    if (llmSections?.length) {
+      llmSections.forEach((section) => matches.add(section));
+    }
+  }
 
-    return isBroadQuery ? null : null;
+  if (matches.size === 0) {
+    return null;
   }
 
   const ordered = SECTION_ORDER.filter((section) => matches.has(section));
@@ -274,27 +282,10 @@ function detectIntent(question: string): Array<keyof PNFChatSections> | null {
     ordered.unshift('overview');
   }
 
-  return ordered as Array<keyof PNFChatSections>;
+  return ordered.slice();
 }
 
-const CHAT_TO_METADATA_SECTION: Partial<Record<keyof PNFChatSections, string>> =
-  {
-    interactions: 'drugInteractions',
-  };
-
-function resolveMetadataSectionKey(
-  section: keyof PNFChatSections,
-): string | undefined {
-  const mapped = CHAT_TO_METADATA_SECTION[section];
-  if (mapped === null) {
-    return undefined;
-  }
-  return mapped ?? section;
-}
-
-const EMPTY_SECTION_VALUE = 'Not covered in provided context.';
-
-const SECTION_ORDER: Array<keyof PNFChatSections> = [
+const SECTION_ORDER = [
   'overview',
   'formulations',
   'indications',
@@ -310,7 +301,23 @@ const SECTION_ORDER: Array<keyof PNFChatSections> = [
   'pregnancy',
   'atcCode',
   'classification',
-];
+] as const;
+
+type SectionKey = (typeof SECTION_ORDER)[number];
+
+const CHAT_TO_METADATA_SECTION: Partial<Record<SectionKey, string>> = {
+  interactions: 'drugInteractions',
+};
+
+function resolveMetadataSectionKey(section: SectionKey): string | undefined {
+  const mapped = CHAT_TO_METADATA_SECTION[section];
+  if (mapped === null) {
+    return undefined;
+  }
+  return mapped ?? section;
+}
+
+const EMPTY_SECTION_VALUE = 'Not covered in provided context.';
 
 const FALLBACK_SECTIONS: PNFChatSections = {
   overview: FALLBACK_MESSAGE,
@@ -329,6 +336,84 @@ const FALLBACK_SECTIONS: PNFChatSections = {
   atcCode: EMPTY_SECTION_VALUE,
   classification: 'Not requested',
 };
+
+const SECTION_INTENT_DESCRIPTIONS: Record<SectionKey, string> = {
+  overview: 'General summary, highlights, and regulatory classification.',
+  formulations: 'Dosage forms, strengths, and product presentations.',
+  indications: 'Approved therapeutic uses and indications.',
+  contraindications: 'Situations where the drug should not be used.',
+  dosage: 'Standard dosing schedules for adults or pediatrics.',
+  doseAdjustment: 'Dose modifications for renal, hepatic, or special cases.',
+  precautions: 'Warnings and precautions to consider during therapy.',
+  adverseReactions: 'Side effects and adverse reactions.',
+  interactions: 'Drug-drug or drug-food interaction guidance.',
+  administration: 'Instructions on how to administer the medication.',
+  monitoring: 'Parameters to monitor while the patient is on the drug.',
+  notes: 'Miscellaneous notes, pearls, or additional considerations.',
+  pregnancy: 'Pregnancy and lactation-related guidance.',
+  atcCode: 'The ATC classification code for the drug.',
+  classification: 'Regulatory classification such as Rx or OTC.',
+};
+
+const SECTION_ENUM_VALUES = [...SECTION_ORDER] as [SectionKey, ...SectionKey[]];
+
+const INTENT_CLASSIFIER_SCHEMA = z.object({
+  sections: z.array(z.enum(SECTION_ENUM_VALUES)).max(6).optional(),
+});
+
+type IntentClassifierResult = z.infer<typeof INTENT_CLASSIFIER_SCHEMA>;
+
+function createIntentClassifierRunnable() {
+  const llm = new ChatOpenAI({
+    apiKey: process.env.AI_API_KEY,
+    model: process.env.AI_INTENT_MODEL ?? 'gpt-4o-mini',
+    temperature: 0,
+  });
+
+  return llm.withStructuredOutput(INTENT_CLASSIFIER_SCHEMA);
+}
+
+let intentClassifierRunnable: ReturnType<
+  typeof createIntentClassifierRunnable
+> | null = null;
+
+function getIntentClassifierRunnable() {
+  if (!intentClassifierRunnable) {
+    intentClassifierRunnable = createIntentClassifierRunnable();
+  }
+  return intentClassifierRunnable;
+}
+
+const SECTION_LIST_PROMPT = SECTION_ORDER.map((section) => {
+  const label = PNF_CHAT_SECTION_LABELS[section];
+  const detail = SECTION_INTENT_DESCRIPTIONS[section];
+  return `- "${section}" (${label}): ${detail}`;
+}).join('\n');
+
+async function classifyIntentWithLLM(
+  question: string,
+): Promise<SectionKey[] | null> {
+  if (!process.env.AI_API_KEY) {
+    return null;
+  }
+
+  try {
+    const classifier = getIntentClassifierRunnable();
+
+    const prompt = `You are a pharmacy assistant that tags a question with the most relevant Philippine National Formulary sections.\nAvailable section keys:\n${SECTION_LIST_PROMPT}\n\nRules:\n- Return at most 4 sections, ordered from most to least relevant.\n- Use the provided keys exactly.\n- Include "overview" when the user is broadly asking about a drug.\n- Return an empty list if the request is unrelated to medicines.\n\nQuestion: "${question.trim()}"`;
+
+    const response: IntentClassifierResult = await classifier.invoke(prompt);
+    const sections = response.sections ?? [];
+    const unique = Array.from(new Set(sections)).slice(0, 4);
+    if (unique.length === 0) {
+      return null;
+    }
+    return unique as SectionKey[];
+  } catch (error) {
+    console.error('[pnf-chat] intent classification failed:', error);
+    return null;
+  }
+}
 
 function normalizeClassification(value: unknown): ClassificationTag {
   return value === 'Rx' || value === 'OTC' ? value : 'Unknown';
@@ -440,7 +525,7 @@ function findSectionContentInDocuments(
 function formatAnswerFromSections(
   sections?: PNFChatSections,
   fallback?: string,
-  requestedSections?: Array<keyof PNFChatSections>,
+  requestedSections?: SectionKey[],
 ) {
   if (!sections) {
     return fallback ?? '';
@@ -526,7 +611,7 @@ export async function runPNFChatChain({
   const resolvedChain = chain ?? createPNFChatChain();
 
   // Detect user intent to determine which sections to return
-  const requestedSections = detectIntent(question);
+  const requestedSections = await detectIntent(question);
 
   const activeDrug = resolveActiveDrug(
     question,
@@ -696,7 +781,7 @@ export async function runPNFChatChain({
     filteredSections.classification = 'Not requested';
   }
 
-  const sectionsEligibleForDocFallback: Array<keyof PNFChatSections> = [
+  const sectionsEligibleForDocFallback: SectionKey[] = [
     'adverseReactions',
     'contraindications',
     'precautions',
