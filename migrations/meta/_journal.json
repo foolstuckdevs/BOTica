@@ -36,6 +36,34 @@
       "when": 1761758498499,
       "tag": "0004_refresh_token_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1764576196121,
+      "tag": "0005_normal_hellcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1764591356783,
+      "tag": "0006_light_nightcrawler",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1764680751080,
+      "tag": "0007_abandoned_goliath",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1764685404465,
+      "tag": "0008_gifted_colossus",
+      "breakpoints": true
     }
   ]
 }

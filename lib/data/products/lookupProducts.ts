@@ -29,6 +29,8 @@ export async function lookupProducts(params: ProductLookupParams) {
       expiryDate: products.expiryDate,
       unit: products.unit,
       minStockLevel: products.minStockLevel,
+      costPrice: products.costPrice,
+      sellingPrice: products.sellingPrice,
     })
     .from(products)
     .leftJoin(suppliers, eq(products.supplierId, suppliers.id))

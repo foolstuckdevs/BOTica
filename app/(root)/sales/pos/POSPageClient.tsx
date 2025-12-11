@@ -80,7 +80,6 @@ export default function POSPage({
         );
       } else {
         return [
-          ...prevCart,
           {
             id: product.id,
             name: product.name,
@@ -90,6 +89,7 @@ export default function POSPage({
             quantity: 1,
             unitPrice: parseFloat(product.sellingPrice),
           },
+          ...prevCart,
         ];
       }
     });

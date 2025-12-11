@@ -96,6 +96,37 @@ export async function uploadImageToSupabase(
   }
 }
 
+export async function uploadReceiptToSupabase(
+  file: File,
+): Promise<{ url: string; error: string | null }> {
+  try {
+    const bucketName = 'stock-in-receipts';
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    const fileName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(2)}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from(bucketName)
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (error) {
+      return { url: '', error: error.message };
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(bucketName).getPublicUrl(fileName);
+
+    return { url: publicUrl, error: null };
+  } catch {
+    return { url: '', error: 'Failed to upload receipt' };
+  }
+}
+
 export async function deleteImageFromSupabase(
   imageUrl: string,
   bucketName: string = 'product-images',

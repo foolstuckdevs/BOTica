@@ -80,6 +80,7 @@ function humanizeSubject(action?: string) {
   if (action.startsWith('ADJUSTMENT_')) return 'adjustment';
   if (action.startsWith('SALE_')) return 'sale';
   if (action.startsWith('AUTH_')) return 'user';
+  if (action.startsWith('STOCKIN_')) return 'stock in';
   return 'activity';
 }
 
@@ -91,6 +92,7 @@ function humanizeVerb(action?: string) {
   if (/AUTH_SIGNIN$/.test(action)) return 'signed in';
   if (/AUTH_SIGNOUT$/.test(action)) return 'signed out';
   if (/SALE_COMPLETED$/.test(action)) return 'completed';
+  if (/^STOCKIN_/.test(action)) return 'received'; // All stock-in actions show as "received"
   return 'done';
 }
 
@@ -192,6 +194,33 @@ function renderDetails(
         ) : null}
         {paymentMethod ? (
           <span className="ml-2 text-muted-foreground">({paymentMethod})</span>
+        ) : null}
+      </div>
+    );
+  }
+
+  // Stock-in specifics
+  if (action?.startsWith('STOCKIN_')) {
+    const items =
+      typeof details['items'] === 'number'
+        ? (details['items'] as number)
+        : null;
+    const totalRaw = details['total'] as string | number | undefined;
+    const total =
+      typeof totalRaw === 'number'
+        ? totalRaw
+        : typeof totalRaw === 'string'
+        ? parseFloat(totalRaw)
+        : undefined;
+    return (
+      <div className="text-sm">
+        {items !== null ? (
+          <span className="text-muted-foreground">
+            {items} item{items !== 1 ? 's' : ''}
+          </span>
+        ) : null}
+        {typeof total === 'number' ? (
+          <span className="ml-2 font-medium">Total: ₱{total.toFixed(2)}</span>
         ) : null}
       </div>
     );

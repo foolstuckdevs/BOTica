@@ -21,6 +21,7 @@ import {
   Users,
   Layers,
   PanelLeft,
+  PackagePlus,
 } from 'lucide-react';
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
@@ -186,6 +187,7 @@ const Sidebar = () => {
       router.prefetch('/inventory/products');
       router.prefetch('/inventory/categories');
       if (isAdmin) {
+        router.prefetch('/inventory/stock-in');
         router.prefetch('/inventory/suppliers');
         router.prefetch('/inventory/adjustments');
       }
@@ -328,6 +330,16 @@ const Sidebar = () => {
 
                       <DropdownMenuItem asChild>
                         <Link
+                          href="/inventory/stock-in"
+                          className="flex items-center gap-2"
+                        >
+                          <PackagePlus className="w-4 h-4" />
+                          Stock In
+                        </Link>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem asChild>
+                        <Link
                           href="/inventory/adjustments"
                           className="flex items-center gap-2"
                         >
@@ -400,6 +412,18 @@ const Sidebar = () => {
                     >
                       <User className="w-4 h-4" />
                       Suppliers
+                    </Link>
+
+                    <Link
+                      href="/inventory/stock-in"
+                      className={`${submenuLinkClasses} ${
+                        isActive('/inventory/stock-in')
+                          ? submenuActiveClasses
+                          : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
+                      }`}
+                    >
+                      <PackagePlus className="w-4 h-4" />
+                      Stock In
                     </Link>
 
                     <Link

@@ -215,6 +215,39 @@ export const inventoryAdjustments = pgTable('inventory_adjustments', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+export const stockIns = pgTable('stock_ins', {
+  id: serial('id').primaryKey(),
+  supplierId: integer('supplier_id').references(() => suppliers.id),
+  pharmacyId: integer('pharmacy_id')
+    .notNull()
+    .references(() => pharmacies.id),
+  createdBy: uuid('created_by')
+    .references(() => users.id)
+    .notNull(),
+  deliveryDate: date('delivery_date').notNull(),
+  attachmentUrl: text('attachment_url'),
+  subtotal: decimal('subtotal', { precision: 12, scale: 2 }).default('0.00'),
+  discount: decimal('discount', { precision: 12, scale: 2 }).default('0.00'),
+  total: decimal('total', { precision: 12, scale: 2 }).default('0.00'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const stockInItems = pgTable('stock_in_items', {
+  id: serial('id').primaryKey(),
+  stockInId: integer('stock_in_id')
+    .references(() => stockIns.id)
+    .notNull(),
+  productId: integer('product_id')
+    .references(() => products.id)
+    .notNull(),
+  quantity: integer('quantity').notNull(),
+  unitCost: decimal('unit_cost', { precision: 10, scale: 2 }).notNull(),
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  lotNumber: varchar('lot_number', { length: 120 }),
+  expiryDate: date('expiry_date'),
+});
+
 // Refresh Tokens (for session renewal / revocation)
 export const refreshTokens = pgTable('refresh_tokens', {
   id: serial('id').primaryKey(),

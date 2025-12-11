@@ -25,3 +25,6 @@ export * from './category';
 
 // Inventory/Adjustment schemas
 export * from './inventory';
+
+// Stock-in schemas
+export * from './stock-in';

@@ -78,7 +78,7 @@ export default async function RecentActivity({ pharmacyId, limit = 8 }: Props) {
                         {it.userFullName ?? 'Someone'}
                       </span>{' '}
                       <span className="text-muted-foreground">
-                        {getDisplayAction(it.action, it.details)}
+                        {getDisplayAction(it.action)}
                       </span>
                       {renderDetails(it.details)}
                     </p>
@@ -112,10 +112,7 @@ function humanizeAction(action?: string) {
   return base.replace(/_/g, ' ').toLowerCase();
 }
 
-function getDisplayAction(
-  action?: string,
-  details?: Record<string, unknown> | null,
-): React.ReactNode {
+function getDisplayAction(action?: string): React.ReactNode {
   if (!action) return 'did something';
   return humanizeAction(action);
 }

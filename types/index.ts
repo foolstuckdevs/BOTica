@@ -190,6 +190,50 @@ export interface Adjustment {
   notes?: string;
 }
 
+// STOCK-IN TYPES
+
+export interface StockInParams {
+  supplierId?: number;
+  deliveryDate: string;
+  attachmentUrl: string;
+  discount?: string;
+  subtotal?: string;
+  total?: string;
+  items: StockInItemInput[];
+}
+
+export interface StockInItemInput {
+  productId: number;
+  quantity: number;
+  unitCost: string;
+  amount?: string;
+  lotNumber?: string;
+  expiryDate?: string;
+}
+
+export interface StockInItem extends StockInItemInput {
+  id: number;
+  stockInId: number;
+  amount: string;
+  productName?: string;
+}
+
+export interface StockIn {
+  id: number;
+  supplierId?: number | null;
+  supplierName?: string | null;
+  pharmacyId: number;
+  createdBy: string;
+  deliveryDate: string;
+  attachmentUrl?: string | null;
+  subtotal: string;
+  discount: string;
+  total: string;
+  createdAt: string;
+  updatedAt?: string;
+  items?: StockInItem[];
+}
+
 // SALES & TRANSACTION
 
 export type PaymentMethod = 'CASH' | 'GCASH';

@@ -14,7 +14,6 @@ import {
   getAdjustmentsSchema,
   createAdjustmentSchema,
 } from '@/lib/validations';
-import { logActivity } from '@/lib/actions/activity';
 import { notifications } from '@/database/schema';
 import { gt } from 'drizzle-orm';
 import { pharmacyIdSchema } from '@/lib/validations';
@@ -162,19 +161,6 @@ export const createAdjustment = async ({
       reason: validatedData.reason,
       pharmacyId: validatedData.pharmacyId,
       notes: validatedData.notes,
-    });
-    // Log adjustment activity
-    await logActivity({
-      action: 'ADJUSTMENT_CREATED',
-      pharmacyId: validatedData.pharmacyId,
-      details: {
-        productId: validatedData.productId,
-        name: product.name,
-        brandName: product.brandName ?? null,
-        quantityChange: validatedData.quantityChange,
-        reason: validatedData.reason,
-        notes: validatedData.notes ?? null,
-      },
     });
 
     // Update product quantity

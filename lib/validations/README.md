@@ -13,7 +13,8 @@ This directory contains organized Zod validation schemas for the pharmacy POS sy
 ├── sales.ts           # Sales, transactions, and reports schemas
 ├── supplier.ts        # Supplier management schemas
 ├── category.ts        # Category management schemas
-└── inventory.ts       # Inventory adjustments schemas
+├── inventory.ts       # Inventory adjustments schemas
+└── stock-in.ts       # Stock intake schemas
 ```
 
 ## Usage
