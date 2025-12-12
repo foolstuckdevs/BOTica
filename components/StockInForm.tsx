@@ -508,8 +508,11 @@ const StockInForm = ({
                           <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                               mode="single"
+                              captionLayout="dropdown"
                               selected={field.value}
                               onSelect={(date) => date && field.onChange(date)}
+                              fromYear={2020}
+                              toYear={new Date().getFullYear() + 1}
                             />
                           </PopoverContent>
                         </Popover>
@@ -1057,10 +1060,13 @@ const StockInForm = ({
                                     >
                                       <Calendar
                                         mode="single"
+                                        captionLayout="dropdown"
                                         selected={itemField.value}
                                         onSelect={(date) =>
                                           itemField.onChange(date ?? undefined)
                                         }
+                                        fromYear={new Date().getFullYear()}
+                                        toYear={new Date().getFullYear() + 10}
                                       />
                                     </PopoverContent>
                                   </Popover>
