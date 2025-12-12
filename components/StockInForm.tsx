@@ -117,6 +117,10 @@ const StockInForm = ({
   >({});
   const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
   const [quickAddInitialName, setQuickAddInitialName] = useState('');
+  const [openExpiryPopover, setOpenExpiryPopover] = useState<number | null>(
+    null,
+  );
+  const [openDeliveryDatePopover, setOpenDeliveryDatePopover] = useState(false);
 
   const form = useForm<StockInFormValues>({
     resolver: zodResolver(stockInFormSchema),
@@ -488,10 +492,14 @@ const StockInForm = ({
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Delivery Date</FormLabel>
-                        <Popover>
+                        <Popover
+                          open={openDeliveryDatePopover}
+                          onOpenChange={setOpenDeliveryDatePopover}
+                        >
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
+                                type="button"
                                 variant="outline"
                                 className={cn(
                                   'justify-start text-left font-normal h-10',
@@ -509,10 +517,18 @@ const StockInForm = ({
                             <Calendar
                               mode="single"
                               captionLayout="dropdown"
+                              defaultMonth={field.value || new Date()}
                               selected={field.value}
-                              onSelect={(date) => date && field.onChange(date)}
-                              fromYear={2020}
-                              toYear={new Date().getFullYear() + 1}
+                              onSelect={(date) => {
+                                if (date) {
+                                  field.onChange(date);
+                                }
+                                setOpenDeliveryDatePopover(false);
+                              }}
+                              startMonth={new Date(2020, 0)}
+                              endMonth={
+                                new Date(new Date().getFullYear() + 1, 11)
+                              }
                             />
                           </PopoverContent>
                         </Popover>
@@ -1033,10 +1049,16 @@ const StockInForm = ({
                                   <FormLabel className="text-xs font-medium text-gray-600">
                                     Expiry Date
                                   </FormLabel>
-                                  <Popover>
+                                  <Popover
+                                    open={openExpiryPopover === index}
+                                    onOpenChange={(open) =>
+                                      setOpenExpiryPopover(open ? index : null)
+                                    }
+                                  >
                                     <PopoverTrigger asChild>
                                       <FormControl>
                                         <Button
+                                          type="button"
                                           variant="outline"
                                           className={cn(
                                             'justify-start text-left font-normal w-full h-9 text-sm',
@@ -1061,12 +1083,44 @@ const StockInForm = ({
                                       <Calendar
                                         mode="single"
                                         captionLayout="dropdown"
-                                        selected={itemField.value}
-                                        onSelect={(date) =>
-                                          itemField.onChange(date ?? undefined)
+                                        defaultMonth={
+                                          itemField.value || new Date()
                                         }
-                                        fromYear={new Date().getFullYear()}
-                                        toYear={new Date().getFullYear() + 10}
+                                        selected={itemField.value}
+                                        onSelect={(date) => {
+                                          if (date) {
+                                            itemField.onChange(date);
+                                            setOpenExpiryPopover(null);
+                                          }
+                                        }}
+                                        onMonthChange={(month) => {
+                                          const current =
+                                            itemField.value || new Date();
+                                          const daysInTargetMonth = new Date(
+                                            month.getFullYear(),
+                                            month.getMonth() + 1,
+                                            0,
+                                          ).getDate();
+                                          const day = Math.min(
+                                            current.getDate(),
+                                            daysInTargetMonth,
+                                          );
+                                          const updated = new Date(
+                                            month.getFullYear(),
+                                            month.getMonth(),
+                                            day,
+                                          );
+                                          itemField.onChange(updated);
+                                        }}
+                                        startMonth={
+                                          new Date(new Date().getFullYear(), 0)
+                                        }
+                                        endMonth={
+                                          new Date(
+                                            new Date().getFullYear() + 10,
+                                            11,
+                                          )
+                                        }
                                       />
                                     </PopoverContent>
                                   </Popover>
