@@ -376,7 +376,7 @@ const StockInForm = ({
 
   const appendProduct = useCallback(
     (product: ProductLookupResult) => {
-      fieldArray.append({
+      fieldArray.prepend({
         productId: product.id,
         quantity: 1,
         unitCost: product.costPrice ?? '0.00',
