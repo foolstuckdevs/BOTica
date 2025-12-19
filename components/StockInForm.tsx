@@ -94,6 +94,70 @@ interface StockInFormProps {
   categories: Category[];
 }
 
+type SerializedStockInFormValues = Omit<
+  StockInFormValues,
+  'deliveryDate' | 'items'
+> & {
+  deliveryDate: string | null;
+  items: Array<
+    Omit<StockInFormValues['items'][number], 'expiryDate'> & {
+      expiryDate: string | null;
+    }
+  >;
+};
+
+interface StockInDraftPayload {
+  formValues: SerializedStockInFormValues;
+  selectedProducts: Record<number, ProductLookupResult>;
+  pendingAttachmentName?: string | null;
+  savedAt: string;
+}
+
+const createDefaultStockInValues = (): StockInFormValues => ({
+  supplierId: undefined,
+  deliveryDate: new Date(),
+  attachmentUrl: '',
+  discount: '0.00',
+  subtotal: undefined,
+  total: undefined,
+  items: [],
+});
+
+const serializeFormValues = (
+  values: StockInFormValues,
+): SerializedStockInFormValues => {
+  const { deliveryDate, items, ...rest } = values;
+  return {
+    ...rest,
+    deliveryDate: deliveryDate ? deliveryDate.toISOString() : null,
+    items: items.map((item) => {
+      const { expiryDate, ...itemRest } = item;
+      return {
+        ...itemRest,
+        expiryDate: expiryDate ? expiryDate.toISOString() : null,
+      };
+    }),
+  };
+};
+
+const deserializeFormValues = (
+  values: SerializedStockInFormValues,
+): StockInFormValues => ({
+  supplierId: values.supplierId ?? undefined,
+  deliveryDate: values.deliveryDate
+    ? new Date(values.deliveryDate)
+    : new Date(),
+  attachmentUrl: values.attachmentUrl ?? '',
+  discount: values.discount ?? '0.00',
+  subtotal: values.subtotal ?? undefined,
+  total: values.total ?? undefined,
+  items:
+    values.items?.map((item) => ({
+      ...item,
+      expiryDate: item.expiryDate ? new Date(item.expiryDate) : undefined,
+    })) ?? [],
+});
+
 const StockInForm = ({
   pharmacyId,
   userId,
@@ -121,16 +185,17 @@ const StockInForm = ({
     null,
   );
   const [openDeliveryDatePopover, setOpenDeliveryDatePopover] = useState(false);
+  const [pendingAttachmentName, setPendingAttachmentName] = useState('');
+
+  const draftStorageKey = useMemo(
+    () => `stock-in-draft:${pharmacyId}:${userId}`,
+    [pharmacyId, userId],
+  );
+  const isRestoringDraft = useRef(false);
 
   const form = useForm<StockInFormValues>({
     resolver: zodResolver(stockInFormSchema),
-    defaultValues: {
-      supplierId: undefined,
-      deliveryDate: new Date(),
-      attachmentUrl: '',
-      discount: '0.00',
-      items: [],
-    },
+    defaultValues: createDefaultStockInValues(),
   });
 
   const staticProductLookup = useMemo(() => {
@@ -141,9 +206,106 @@ const StockInForm = ({
     return map;
   }, [products]);
 
-  const { control, handleSubmit, watch, setValue, getValues, formState } = form;
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    getValues,
+    formState,
+    reset,
+  } = form;
   const { isSubmitting } = formState;
   const fieldArray = useFieldArray({ control, name: 'items' });
+
+  const clearDraft = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.removeItem(draftStorageKey);
+    } catch (error) {
+      console.error('Failed to clear stock-in draft:', error);
+    }
+  }, [draftStorageKey]);
+
+  const persistDraft = useCallback(
+    (currentValues: StockInFormValues) => {
+      if (typeof window === 'undefined' || isRestoringDraft.current) {
+        return;
+      }
+
+      const hasMeaningfulData =
+        currentValues.items.length > 0 ||
+        !!currentValues.supplierId ||
+        !!currentValues.attachmentUrl ||
+        (currentValues.discount && currentValues.discount !== '0.00') ||
+        !!pendingAttachmentName ||
+        Object.keys(selectedProducts).length > 0;
+
+      try {
+        if (!hasMeaningfulData) {
+          sessionStorage.removeItem(draftStorageKey);
+          return;
+        }
+
+        const payload: StockInDraftPayload = {
+          formValues: serializeFormValues(currentValues),
+          selectedProducts,
+          pendingAttachmentName: pendingAttachmentName || null,
+          savedAt: new Date().toISOString(),
+        };
+
+        sessionStorage.setItem(draftStorageKey, JSON.stringify(payload));
+      } catch (error) {
+        console.error('Failed to persist stock-in draft:', error);
+      }
+    },
+    [draftStorageKey, pendingAttachmentName, selectedProducts],
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = sessionStorage.getItem(draftStorageKey);
+    if (!raw) return;
+
+    try {
+      const parsed: StockInDraftPayload = JSON.parse(raw);
+      const hydrated = deserializeFormValues(parsed.formValues);
+
+      if (parsed.pendingAttachmentName) {
+        hydrated.attachmentUrl = '';
+      }
+
+      isRestoringDraft.current = true;
+      reset(hydrated);
+      setSelectedProducts(parsed.selectedProducts || {});
+
+      if (parsed.pendingAttachmentName) {
+        setPendingAttachmentName(parsed.pendingAttachmentName);
+        toast.info(
+          'Draft restored. Please reattach the pending receipt before saving.',
+        );
+      } else {
+        toast.info('Restored unsaved Stock-In draft.');
+      }
+    } catch (error) {
+      console.error('Failed to restore stock-in draft:', error);
+      sessionStorage.removeItem(draftStorageKey);
+    } finally {
+      isRestoringDraft.current = false;
+    }
+  }, [draftStorageKey, reset]);
+
+  useEffect(() => {
+    const subscription = watch((currentValues) => {
+      persistDraft(currentValues as StockInFormValues);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch, persistDraft]);
+
+  useEffect(() => {
+    persistDraft(getValues() as StockInFormValues);
+  }, [selectedProducts, pendingAttachmentName, persistDraft, getValues]);
 
   const items = watch('items');
   const discount = Number.parseFloat(watch('discount') || '0');
@@ -293,6 +455,16 @@ const StockInForm = ({
     setSearchQuery('');
   };
 
+  const handleCancel = useCallback(() => {
+    clearDraft();
+    reset(createDefaultStockInValues());
+    setSelectedProducts({});
+    setSelectedFile(null);
+    setFilePreviewUrl(null);
+    setPendingAttachmentName('');
+    router.push('/inventory/stock-in');
+  }, [clearDraft, reset, router]);
+
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => {
       const amount = item.quantity * Number.parseFloat(item.unitCost || '0');
@@ -312,6 +484,12 @@ const StockInForm = ({
     try {
       // Upload file first if selected
       let attachmentUrl = values.attachmentUrl;
+      const pendingUpload = attachmentUrl?.startsWith('pending:');
+
+      if (!selectedFile && (pendingUpload || !attachmentUrl)) {
+        toast.error('Please select or reattach a receipt image/PDF.');
+        return;
+      }
 
       if (selectedFile) {
         try {
@@ -377,6 +555,12 @@ const StockInForm = ({
       }
 
       toast.success('Stock in recorded successfully.');
+      clearDraft();
+      reset(createDefaultStockInValues());
+      setSelectedProducts({});
+      setSelectedFile(null);
+      setFilePreviewUrl(null);
+      setPendingAttachmentName('');
       router.push('/inventory/stock-in');
     } catch (error) {
       console.error('Stock in error:', error);
@@ -577,6 +761,7 @@ const StockInForm = ({
 
                               // Store file for later upload
                               setSelectedFile(file);
+                              setPendingAttachmentName(file.name);
 
                               // Create preview URL for images
                               if (file.type.startsWith('image/')) {
@@ -658,16 +843,24 @@ const StockInForm = ({
                       onClick={() => {
                         setSelectedFile(null);
                         setFilePreviewUrl(null);
+                        setPendingAttachmentName('');
                         // Reset the file input
                         if (fileInputRef.current) {
                           fileInputRef.current.value = '';
                         }
                         // Clear the form field
-                        form.setValue('attachmentUrl', '');
+                        setValue('attachmentUrl', '');
                       }}
                     >
                       Remove
                     </Button>
+                  </div>
+                )}
+
+                {!selectedFile && pendingAttachmentName && (
+                  <div className="mt-4 flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                    Receipt &quot;{pendingAttachmentName}&quot; needs to be
+                    reattached before saving.
                   </div>
                 )}
               </div>
@@ -1249,7 +1442,7 @@ const StockInForm = ({
                     type="button"
                     variant="outline"
                     className="w-full"
-                    onClick={() => router.push('/inventory/stock-in')}
+                    onClick={handleCancel}
                     disabled={isSubmitting}
                   >
                     Cancel
