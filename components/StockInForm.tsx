@@ -45,6 +45,7 @@ import { createStockIn } from '@/lib/actions/stock-in';
 import type { Supplier } from '@/types';
 import { Separator } from '@/components/ui/separator';
 import { QuickAddProductDialog } from '@/components/QuickAddProductDialog';
+import { supabase } from '@/database/supabase';
 
 interface LightweightProduct {
   id: number;
@@ -455,6 +456,48 @@ const StockInForm = ({
     setSearchQuery('');
   };
 
+  const uploadReceiptDirect = useCallback(async () => {
+    if (!selectedFile) return '';
+
+    // Validate again defensively
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'application/pdf',
+    ];
+    if (!allowedTypes.includes(selectedFile.type)) {
+      toast.error(
+        'Invalid file type. Only JPEG, PNG, WebP, and PDF are allowed.',
+      );
+      return '';
+    }
+
+    const ext = selectedFile.name.split('.').pop()?.toLowerCase() || 'file';
+    const fileName = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from('stock-in-receipts')
+      .upload(fileName, selectedFile, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: selectedFile.type,
+      });
+
+    if (error) {
+      toast.error(error.message || 'Failed to upload receipt');
+      return '';
+    }
+
+    const { data } = supabase.storage
+      .from('stock-in-receipts')
+      .getPublicUrl(fileName);
+    return data.publicUrl || '';
+  }, [selectedFile]);
+
   const handleCancel = useCallback(() => {
     clearDraft();
     reset(createDefaultStockInValues());
@@ -492,29 +535,11 @@ const StockInForm = ({
       }
 
       if (selectedFile) {
-        try {
-          const formData = new FormData();
-          formData.append('file', selectedFile);
-          formData.append('type', 'receipt');
-
-          const uploadResponse = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-
-          const uploadData = await uploadResponse.json();
-
-          if (!uploadResponse.ok) {
-            toast.error(uploadData.error || 'Failed to upload receipt');
-            return;
-          }
-
-          attachmentUrl = uploadData.url;
-        } catch (error) {
-          console.error('Upload error:', error);
-          toast.error('Failed to upload receipt');
+        const uploadedUrl = await uploadReceiptDirect();
+        if (!uploadedUrl) {
           return;
         }
+        attachmentUrl = uploadedUrl;
       }
 
       if (!attachmentUrl) {
