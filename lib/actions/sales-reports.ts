@@ -3,6 +3,7 @@
 import { db } from '@/database/drizzle';
 import { sales, saleItems, products, categories } from '@/database/schema';
 import { eq, and, gte, lte, sum, count, sql, desc } from 'drizzle-orm';
+import { startOfDay } from 'date-fns';
 import { SalesOverviewData, ProductPerformanceData } from '@/types';
 
 // OPTIMIZED: Consolidated sales report data fetcher - replaces multiple separate calls
@@ -25,6 +26,18 @@ export const getSalesReportData = async (pharmacyId: number) => {
     const monthStart = new Date(today);
     monthStart.setDate(monthStart.getDate() - 30);
 
+    // Expand dataset to include the earliest recorded sale (fixes filters missing older data)
+    const earliestSaleRow = await db
+      .select({ earliestSale: sql<string>`MIN(${sales.createdAt})` })
+      .from(sales)
+      .where(eq(sales.pharmacyId, pharmacyId))
+      .limit(1);
+
+    const earliestSale = earliestSaleRow[0]?.earliestSale
+      ? startOfDay(new Date(earliestSaleRow[0].earliestSale))
+      : null;
+    const dataStart = earliestSale ?? monthStart;
+
     // Single consolidated query for all sales overview data (30 days)
     const salesOverviewQuery = db
       .select({
@@ -36,7 +49,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
       .where(
         and(
           eq(sales.pharmacyId, pharmacyId),
-          gte(sales.createdAt, monthStart),
+          gte(sales.createdAt, dataStart),
           lte(sales.createdAt, tomorrow),
         ),
       )
@@ -62,7 +75,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
       .where(
         and(
           eq(sales.pharmacyId, pharmacyId),
-          gte(sales.createdAt, monthStart),
+          gte(sales.createdAt, dataStart),
           lte(sales.createdAt, tomorrow),
         ),
       )
@@ -93,7 +106,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
       .where(
         and(
           eq(sales.pharmacyId, pharmacyId),
-          gte(sales.createdAt, monthStart),
+          gte(sales.createdAt, dataStart),
           lte(sales.createdAt, tomorrow),
         ),
       )
