@@ -104,58 +104,86 @@ const StockInViewPage = () => {
         <CardHeader>
           <CardTitle className="text-lg">Delivery Information</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Supplier</p>
-              <p className="font-medium">{stockIn.supplierName || '—'}</p>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">
+                  Supplier
+                </p>
+                <p className="font-medium text-gray-900 mt-1">
+                  {stockIn.supplierName || '—'}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">
+                  Delivery Date
+                </p>
+                <p className="font-medium text-gray-900 mt-1">
+                  {formatDatePH(stockIn.deliveryDate)}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-gray-500">
+                    Receipt Attachment
+                  </p>
+                  <p className="text-sm text-gray-700 mt-1">
+                    {stockIn.attachmentUrl ? 'Available' : 'Not uploaded'}
+                  </p>
+                </div>
+                {stockIn.attachmentUrl && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      window.open(stockIn.attachmentUrl!, '_blank')
+                    }
+                    className="gap-2"
+                  >
+                    {isPdf ? (
+                      <FileText className="h-4 w-4" />
+                    ) : (
+                      <ImageIcon className="h-4 w-4" />
+                    )}
+                    {isPdf ? 'View PDF' : 'View Image'}
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Delivery Date</p>
-              <p className="font-medium">
-                {formatDatePH(stockIn.deliveryDate)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Subtotal</p>
-              <p className="font-medium">
-                {formatCurrency(Number(stockIn.subtotal))}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Discount</p>
-              <p className="font-medium">
-                {formatCurrency(Number(stockIn.discount))}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Total</p>
-              <p className="font-semibold text-lg">
-                {formatCurrency(Number(stockIn.total))}
-              </p>
+
+            <div className="space-y-4">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">
+                  Discount
+                </p>
+                <p className="font-medium text-gray-900 mt-1">
+                  {formatCurrency(Number(stockIn.discount))}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">
+                  Subtotal
+                </p>
+                <p className="font-medium text-gray-900 mt-1">
+                  {formatCurrency(Number(stockIn.subtotal))}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">
+                  Total
+                </p>
+                <p className="font-semibold text-xl text-gray-900 mt-1">
+                  {formatCurrency(Number(stockIn.total))}
+                </p>
+              </div>
             </div>
           </div>
-
-          {/* Attachment */}
-          {stockIn.attachmentUrl && (
-            <div className="pt-4 border-t">
-              <p className="text-sm text-gray-500 mb-2">Receipt Attachment</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(stockIn.attachmentUrl!, '_blank')}
-                className="gap-2"
-              >
-                {isPdf ? (
-                  <FileText className="h-4 w-4" />
-                ) : (
-                  <ImageIcon className="h-4 w-4" />
-                )}
-                {isPdf ? 'View PDF' : 'View Image'}
-                <ExternalLink className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
 
