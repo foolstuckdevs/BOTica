@@ -146,6 +146,11 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value);
 
+const formatDateForApi = (date: Date) => format(date, 'yyyy-MM-dd');
+
+const normalizeToMonthStart = (date: Date) =>
+  new Date(date.getFullYear(), date.getMonth(), 1);
+
 const serializeFormValues = (
   values: StockInFormValues,
 ): SerializedStockInFormValues => {
@@ -573,7 +578,7 @@ const StockInForm = ({
 
       const payload = {
         supplierId: values.supplierId,
-        deliveryDate: values.deliveryDate.toISOString().slice(0, 10),
+        deliveryDate: formatDateForApi(values.deliveryDate),
         attachmentUrl,
         discount: values.discount,
         subtotal: totals.subtotal.toFixed(2),
@@ -587,7 +592,7 @@ const StockInForm = ({
           ).toFixed(2),
           lotNumber: item.lotNumber || undefined,
           expiryDate: item.expiryDate
-            ? item.expiryDate.toISOString().slice(0, 10)
+            ? formatDateForApi(item.expiryDate)
             : undefined,
         })),
       };
@@ -1335,27 +1340,15 @@ const StockInForm = ({
                                         selected={itemField.value}
                                         onSelect={(date) => {
                                           if (date) {
-                                            itemField.onChange(date);
+                                            itemField.onChange(
+                                              normalizeToMonthStart(date),
+                                            );
                                             setOpenExpiryPopover(null);
                                           }
                                         }}
                                         onMonthChange={(month) => {
-                                          const current =
-                                            itemField.value || new Date();
-                                          const daysInTargetMonth = new Date(
-                                            month.getFullYear(),
-                                            month.getMonth() + 1,
-                                            0,
-                                          ).getDate();
-                                          const day = Math.min(
-                                            current.getDate(),
-                                            daysInTargetMonth,
-                                          );
-                                          const updated = new Date(
-                                            month.getFullYear(),
-                                            month.getMonth(),
-                                            day,
-                                          );
+                                          const updated =
+                                            normalizeToMonthStart(month);
                                           itemField.onChange(updated);
                                         }}
                                         startMonth={
