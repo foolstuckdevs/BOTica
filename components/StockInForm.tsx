@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/popover';
 import {
   Calendar as CalendarIcon,
+  Loader2,
   Plus,
   Trash2,
   ChevronLeft,
@@ -123,6 +124,27 @@ const createDefaultStockInValues = (): StockInFormValues => ({
   total: undefined,
   items: [],
 });
+
+const sanitizeMoneyInput = (value: string) => {
+  const cleaned = value.replace(/[^0-9.]/g, '');
+  if (!cleaned) return '';
+
+  const [intPart, ...rest] = cleaned.split('.');
+  const decimalsRaw = rest.join('');
+  const decimals = decimalsRaw.slice(0, 2);
+  const hasDecimal = rest.length > 0 || cleaned.endsWith('.');
+  const normalizedInt = intPart.replace(/^0+(?=\d)/, '') || '0';
+
+  if (decimals) return `${normalizedInt}.${decimals}`;
+  if (hasDecimal) return `${normalizedInt}.`;
+  return normalizedInt;
+};
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 
 const serializeFormValues = (
   values: StockInFormValues,
@@ -408,13 +430,15 @@ const StockInForm = ({
       );
 
       if (existingIndex !== -1) {
-        const currentQuantity = items[existingIndex]?.quantity ?? 0;
-        const nextQuantity = currentQuantity + 1;
-        setValue(`items.${existingIndex}.quantity`, nextQuantity, {
-          shouldDirty: true,
-          shouldValidate: true,
-        });
-        toast.info(`${product.name} quantity increased to ${nextQuantity}.`);
+        toast.info(
+          `${product.name} is already in this Stock-In form. Adjust the quantity in the list.`,
+        );
+        setSearchQuery('');
+        setSearchResults([]);
+        setSearchError(null);
+        setShowResults(false);
+        searchInputRef.current?.blur();
+        return;
       } else {
         appendProduct(product);
         toast.success(`${product.name} added to the list.`);
@@ -426,7 +450,7 @@ const StockInForm = ({
       setShowResults(false);
       searchInputRef.current?.blur();
     },
-    [appendProduct, items, setValue],
+    [appendProduct, items],
   );
 
   const removeItem = useCallback(
@@ -1229,7 +1253,11 @@ const StockInForm = ({
                                       placeholder="0.00"
                                       value={itemField.value}
                                       onChange={(event) =>
-                                        itemField.onChange(event.target.value)
+                                        itemField.onChange(
+                                          sanitizeMoneyInput(
+                                            event.target.value,
+                                          ),
+                                        )
                                       }
                                       className="h-9"
                                     />
@@ -1431,21 +1459,21 @@ const StockInForm = ({
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Subtotal</span>
                       <span className="font-medium text-gray-900">
-                        ₱{totals.subtotal.toFixed(2)}
+                        ₱{formatCurrency(totals.subtotal)}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Discount</span>
                       <span className="text-gray-700">
                         -₱
-                        {Number.isNaN(discount) ? '0.00' : discount.toFixed(2)}
+                        {formatCurrency(Number.isNaN(discount) ? 0 : discount)}
                       </span>
                     </div>
                     <Separator />
                     <div className="flex justify-between">
                       <span className="font-semibold text-gray-900">Total</span>
                       <span className="text-lg font-bold text-gray-900">
-                        ₱{totals.total.toFixed(2)}
+                        ₱{formatCurrency(totals.total)}
                       </span>
                     </div>
                   </div>
@@ -1461,7 +1489,14 @@ const StockInForm = ({
                     className="w-full"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'Saving...' : 'Save Stock-In'}
+                    {isSubmitting ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Saving...</span>
+                      </div>
+                    ) : (
+                      'Save Stock-In'
+                    )}
                   </Button>
                   <Button
                     type="button"
@@ -1477,6 +1512,10 @@ const StockInForm = ({
                 <p className="text-xs text-gray-500 text-center">
                   Product not found? Search and click &quot;Create&quot; to add
                   it.
+                </p>
+                <p className="text-xs text-amber-700 text-center bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  Uploading receipts can take a few seconds. Please stay on this
+                  page until you see the success message.
                 </p>
               </div>
             </div>
