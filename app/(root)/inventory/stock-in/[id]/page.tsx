@@ -77,6 +77,12 @@ const StockInViewPage = () => {
 
   const isPdf = stockIn.attachmentUrl?.toLowerCase().endsWith('.pdf');
 
+  const sortedItems = [...(stockIn.items || [])].sort((a, b) => {
+    const aName = (a.productName || `Product #${a.productId}`).toLowerCase();
+    const bName = (b.productName || `Product #${b.productId}`).toLowerCase();
+    return aName.localeCompare(bName);
+  });
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
       {/* Back Button */}
@@ -193,7 +199,7 @@ const StockInViewPage = () => {
           <CardTitle className="text-lg">Items Received</CardTitle>
         </CardHeader>
         <CardContent>
-          {stockIn.items && stockIn.items.length > 0 ? (
+          {sortedItems.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -219,7 +225,7 @@ const StockInViewPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {stockIn.items.map((item) => (
+                  {sortedItems.map((item) => (
                     <tr key={item.id} className="border-b last:border-0">
                       <td className="py-2 px-2">
                         {item.productName || `Product #${item.productId}`}

@@ -21,7 +21,7 @@ export const productSchema = z.object({
     .optional(),
   quantity: z
     .number()
-    .min(1, 'Quantity must be at least 1')
+    .min(0, 'Quantity must be at least 0')
     .max(9999, 'Quantity cannot exceed 9999'),
   costPrice: z
     .string()
@@ -60,7 +60,7 @@ export const productFormSchema = z.object({
     .optional(),
   quantity: z
     .number()
-    .min(1, 'Quantity must be at least 1')
+    .min(0, 'Quantity must be at least 0')
     .max(9999, 'Quantity cannot exceed 9999'),
   costPrice: z
     .string()

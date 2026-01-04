@@ -512,3 +512,55 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
     };
   }
 };
+
+export const restoreProduct = async (id: number, pharmacyId: number) => {
+  try {
+    if (!(await canEditMasterData())) {
+      return { success: false, message: 'Unauthorized' };
+    }
+
+    productIdSchema.parse(id);
+    pharmacyIdSchema.parse(pharmacyId);
+
+    const existing = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        deletedAt: products.deletedAt,
+      })
+      .from(products)
+      .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)))
+      .limit(1);
+
+    if (existing.length === 0) {
+      return { success: false, message: 'Product not found' };
+    }
+
+    const isDeleted =
+      (existing[0] as { deletedAt: unknown }).deletedAt !== null;
+
+    if (!isDeleted) {
+      return { success: false, message: 'Product is already active' };
+    }
+
+    await db
+      .update(products)
+      .set({ deletedAt: null })
+      .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
+
+    revalidatePath('/products');
+    revalidatePath('/inventory/products');
+    revalidatePath('/reports/inventory');
+
+    await logActivity({
+      action: 'PRODUCT_RESTORED',
+      pharmacyId,
+      details: { id, name: (existing[0] as { name?: string })?.name },
+    });
+
+    return { success: true, message: 'Product restored' };
+  } catch (error) {
+    console.error('Error restoring product:', error);
+    return { success: false, message: 'Failed to restore product' };
+  }
+};

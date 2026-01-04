@@ -10,6 +10,8 @@ import {
   TrendingDown,
   PackageX,
 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
 import type {
   ExpiringProductData,
   InventoryOverviewData,
@@ -22,6 +24,8 @@ import { LowStockTable } from '@/components/inventory-report/LowStockTable';
 import { InactiveProductsTable } from './inventory-report/InactiveProductsTable';
 import { AvailableProductsTable } from './inventory-report/AvailableProductsTable';
 import { SkeletonTable } from '@/components/ui/skeleton';
+import { restoreProduct } from '@/lib/actions/products';
+import { useRouter } from 'next/navigation';
 
 type TabKey = 'overview' | 'expiring' | 'low-stock' | 'active' | 'inactive';
 
@@ -44,6 +48,15 @@ export default function InventoryReportClient({
   initialLowStockStatus,
   initialExpiringStatus,
 }: Props) {
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  const [activeProducts, setActiveProducts] = useState(
+    inventoryData.activeProducts,
+  );
+  const [inactiveProducts, setInactiveProducts] = useState(
+    inventoryData.inactiveProducts,
+  );
   // Lazy tab loading
   const [expiringLoaded, setExpiringLoaded] = useState(false);
   const [lowStockLoaded, setLowStockLoaded] = useState(false);
@@ -86,6 +99,31 @@ export default function InventoryReportClient({
   >(initialLowStockStatus ?? 'all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  const handleRestoreProduct = useCallback(
+    async (product: InventoryProductRow) => {
+      const pharmacyId = session?.user?.pharmacyId;
+      if (!pharmacyId) {
+        toast.error('Missing pharmacy context');
+        return;
+      }
+
+      const res = await restoreProduct(product.id, pharmacyId);
+      if (!res?.success) {
+        toast.error(res?.message || 'Failed to restore product');
+        return;
+      }
+
+      toast.success('Product restored');
+      setInactiveProducts((prev) => prev.filter((p) => p.id !== product.id));
+      setActiveProducts((prev) => {
+        const next = [...prev, { ...product, deletedAt: null }];
+        return next.sort((a, b) => a.name.localeCompare(b.name));
+      });
+      router.refresh();
+    },
+    [session?.user?.pharmacyId, router],
+  );
 
   // If initial tab is not overview, mark it loaded
   React.useEffect(() => {
@@ -270,7 +308,7 @@ export default function InventoryReportClient({
             <TabsContent value="active" className="m-0">
               {activeLoaded ? (
                 <AvailableProductsTable
-                  products={inventoryData.activeProducts}
+                  products={activeProducts}
                   searchTerm={searchTerm}
                   onSearchChange={setSearchTerm}
                   categoryFilter={categoryFilter}
@@ -284,11 +322,12 @@ export default function InventoryReportClient({
             <TabsContent value="inactive" className="m-0">
               {inactiveLoaded ? (
                 <InactiveProductsTable
-                  products={inventoryData.inactiveProducts}
+                  products={inactiveProducts}
                   searchTerm={searchTerm}
                   onSearchChange={setSearchTerm}
                   categoryFilter={categoryFilter}
                   onCategoryFilterChange={setCategoryFilter}
+                  onRestore={handleRestoreProduct}
                 />
               ) : (
                 <SkeletonTable rows={8} columns={5} />

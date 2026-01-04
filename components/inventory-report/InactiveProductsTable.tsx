@@ -28,6 +28,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  RotateCcw,
 } from 'lucide-react';
 import type { InventoryProductRow } from '@/types';
 import { formatQuantityWithUnit, formatUnitLabel } from '@/lib/utils';
@@ -38,6 +39,7 @@ interface Props {
   onSearchChange: (v: string) => void;
   categoryFilter?: string;
   onCategoryFilterChange?: (v: string) => void;
+  onRestore?: (product: InventoryProductRow) => Promise<void> | void;
 }
 
 export function InactiveProductsTable({
@@ -46,6 +48,7 @@ export function InactiveProductsTable({
   onSearchChange,
   categoryFilter = 'all',
   onCategoryFilterChange,
+  onRestore,
 }: Props) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(20);
@@ -200,6 +203,7 @@ export function InactiveProductsTable({
     { header: 'Cost Price', key: 'costPrice' },
     { header: 'Selling Price', key: 'sellingPrice' },
     { header: 'Deleted At', key: 'deletedAt' },
+    { header: 'Actions', key: 'actions' },
   ];
   const exportRows = filtered.map((p) => ({
     name: p.name + (p.brandName ? ` (${p.brandName})` : ''),
@@ -403,6 +407,7 @@ export function InactiveProductsTable({
                       {getSortIcon('deletedAt')}
                     </button>
                   </th>
+                  <th className="py-3 px-4 text-left font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -439,6 +444,18 @@ export function InactiveProductsTable({
                       {p.deletedAt
                         ? new Date(p.deletedAt).toISOString().slice(0, 10)
                         : '-'}
+                    </td>
+                    <td className="py-3 px-4">
+                      {onRestore && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => onRestore(p)}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-1" /> Restore
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
