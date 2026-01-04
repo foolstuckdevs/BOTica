@@ -5,7 +5,6 @@ import Google from 'next-auth/providers/google';
 import { db } from './database/drizzle';
 import { users } from './database/schema';
 import { eq } from 'drizzle-orm';
-import { compare } from 'bcryptjs';
 import { cookies, headers } from 'next/headers';
 import {
   createRefreshToken,
@@ -58,6 +57,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return null;
           }
 
+          const { compare } = await import('bcryptjs');
           const isPasswordValid = await compare(
             credentials.password.toString(),
             user[0].passwordHash,

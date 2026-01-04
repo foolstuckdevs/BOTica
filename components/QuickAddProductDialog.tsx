@@ -30,7 +30,6 @@ import { createProduct } from '@/lib/actions/products';
 import type { DosageFormType } from '@/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Separator } from '@/components/ui/separator';
 
 const DOSAGE_FORM_OPTIONS: { value: DosageFormType; label: string }[] = [
   { value: 'TABLET', label: 'Tablet' },
@@ -244,7 +243,7 @@ export function QuickAddProductDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-xl p-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-4 text-left">
+        <DialogHeader className="px-5 pt-5 pb-2 text-left">
           <DialogTitle className="text-base font-semibold">
             Quick Add Product
           </DialogTitle>
@@ -378,8 +377,6 @@ export function QuickAddProductDialog({
               </div>
             </div>
           </div>
-
-          <Separator className="my-1" />
 
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -525,7 +522,7 @@ export function QuickAddProductDialog({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 rounded px-2 py-1.5">
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 rounded px-2 ">
               <span className="text-slate-400">*</span>
               <span>
                 Quantity is set in Stock-In after creating the product.
@@ -534,7 +531,7 @@ export function QuickAddProductDialog({
           </div>
         </div>
 
-        <DialogFooter className="px-5 py-3 gap-2 border-t bg-slate-50">
+        <DialogFooter className="px-5 py-2 gap-2 border-t bg-slate-50">
           <Button
             type="button"
             variant="ghost"

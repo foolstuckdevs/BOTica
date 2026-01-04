@@ -110,7 +110,7 @@ const ProductForm = ({
       dosageForm:
         (product.dosageForm as DosageFormType | undefined) ?? undefined,
       expiryDate: product.expiryDate ? new Date(product.expiryDate) : undefined,
-      quantity: product.quantity || 1,
+      quantity: product.quantity ?? 0,
       costPrice: product.costPrice || '',
       sellingPrice: product.sellingPrice || '',
       minStockLevel: product.minStockLevel || 10,
@@ -731,14 +731,14 @@ const ProductForm = ({
                           <div className="w-full">
                             <Input
                               type="number"
-                              min={1}
+                              min={0}
                               max={9999} // ⬅️ limit to 9999
                               placeholder="Enter quantity"
                               {...field}
                               className="w-full"
                               onChange={(e) =>
                                 field.onChange(
-                                  Math.min(9999, parseInt(e.target.value) || 1),
+                                  Math.min(9999, parseInt(e.target.value) || 0),
                                 )
                               }
                               readOnly={type === 'update'}

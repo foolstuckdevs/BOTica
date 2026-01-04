@@ -191,6 +191,8 @@ const deserializeFormValues = (
     })) ?? [],
 });
 
+const DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+
 const StockInForm = ({
   pharmacyId,
   userId,
@@ -209,23 +211,23 @@ const StockInForm = ({
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [selectedProducts, setSelectedProducts] = useState<
-    Record<number, ProductLookupResult>
-  >({});
   const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
   const [quickAddInitialName, setQuickAddInitialName] = useState('');
   const [openExpiryPopover, setOpenExpiryPopover] = useState<number | null>(
     null,
   );
   const [openDeliveryDatePopover, setOpenDeliveryDatePopover] = useState(false);
-  const [pendingAttachmentName, setPendingAttachmentName] = useState('');
 
   const draftStorageKey = useMemo(
     () => `stock-in-draft:${pharmacyId}:${userId}`,
     [pharmacyId, userId],
   );
-  const DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
   const isRestoringDraft = useRef(false);
+
+  const [selectedProducts, setSelectedProducts] = useState<
+    Record<number, ProductLookupResult>
+  >({});
+  const [pendingAttachmentName, setPendingAttachmentName] = useState('');
 
   const form = useForm<StockInFormValues>({
     resolver: zodResolver(stockInFormSchema),
@@ -288,6 +290,11 @@ const StockInForm = ({
           savedAt: new Date().toISOString(),
         };
 
+        console.log(
+          '[persistDraft] save supplierId',
+          payload.formValues.supplierId,
+        );
+
         localStorage.setItem(draftStorageKey, JSON.stringify(payload));
       } catch (error) {
         console.error('Failed to persist stock-in draft:', error);
@@ -296,6 +303,15 @@ const StockInForm = ({
     [draftStorageKey, pendingAttachmentName, selectedProducts],
   );
 
+  useEffect(() => {
+    const subscription = watch((currentValues) => {
+      persistDraft(currentValues as StockInFormValues);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch, persistDraft]);
+
+  // Restore draft after mount to avoid SSR hydration mismatches
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const raw = localStorage.getItem(draftStorageKey);
@@ -310,17 +326,18 @@ const StockInForm = ({
           return;
         }
       }
-      const hydrated = deserializeFormValues(parsed.formValues);
 
+      const hydrated = deserializeFormValues(parsed.formValues);
       if (parsed.pendingAttachmentName) {
         hydrated.attachmentUrl = '';
       }
 
       isRestoringDraft.current = true;
-      reset(hydrated);
-      if (hydrated.supplierId) {
-        setValue('supplierId', hydrated.supplierId);
-      }
+      const nextValues: StockInFormValues = {
+        ...hydrated,
+        supplierId: hydrated.supplierId ?? undefined,
+      };
+      reset(nextValues);
       setSelectedProducts(parsed.selectedProducts || {});
 
       if (parsed.pendingAttachmentName) {
@@ -331,21 +348,21 @@ const StockInForm = ({
       } else {
         toast.info('Restored unsaved Stock-In draft.');
       }
+
+      setTimeout(() => {
+        setValue('supplierId', nextValues.supplierId, {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: false,
+        });
+        isRestoringDraft.current = false;
+      }, 0);
     } catch (error) {
       console.error('Failed to restore stock-in draft:', error);
       localStorage.removeItem(draftStorageKey);
-    } finally {
       isRestoringDraft.current = false;
     }
-  }, [DRAFT_MAX_AGE_MS, draftStorageKey, reset, setValue]);
-
-  useEffect(() => {
-    const subscription = watch((currentValues) => {
-      persistDraft(currentValues as StockInFormValues);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [watch, persistDraft]);
+  }, [draftStorageKey, reset, setValue, getValues]);
 
   useEffect(() => {
     persistDraft(getValues() as StockInFormValues);
@@ -721,7 +738,7 @@ const StockInForm = ({
                               value ? Number.parseInt(value) : undefined,
                             )
                           }
-                          value={field.value ? String(field.value) : undefined}
+                          value={field.value ? String(field.value) : ''}
                         >
                           <FormControl>
                             <SelectTrigger className="h-10 w-full">
