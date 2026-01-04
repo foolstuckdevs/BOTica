@@ -85,6 +85,7 @@ export function QuickAddProductDialog({
     unit: 'PIECE' as 'PIECE' | 'BOX',
     dosageForm: '' as DosageFormType | '',
     minStockLevel: '10',
+    lotNumber: '',
   });
 
   // Reset form when dialog opens with new initial name
@@ -98,6 +99,7 @@ export function QuickAddProductDialog({
         unit: 'PIECE',
         dosageForm: '',
         minStockLevel: '10',
+        lotNumber: '',
       });
     }
     onOpenChange(isOpen);
@@ -119,6 +121,7 @@ export function QuickAddProductDialog({
         categoryId: formData.categoryId
           ? parseInt(formData.categoryId)
           : undefined,
+        lotNumber: formData.lotNumber.trim() || undefined,
         unit: formData.unit,
         dosageForm: formData.dosageForm || undefined,
         minStockLevel: parseInt(formData.minStockLevel) || 10,
@@ -129,6 +132,18 @@ export function QuickAddProductDialog({
 
       if (result.success && result.data) {
         toast.success(`Product "${formData.name}" created`);
+
+        // Prepare for the next add by clearing the form fields
+        setFormData({
+          name: '',
+          brandName: '',
+          genericName: '',
+          categoryId: '',
+          unit: 'PIECE',
+          dosageForm: '',
+          minStockLevel: '10',
+          lotNumber: '',
+        });
 
         onProductCreated({
           id: result.data.id,
@@ -273,6 +288,22 @@ export function QuickAddProductDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Lot Number */}
+          <div className="space-y-1.5">
+            <Label htmlFor="quickadd-lot" className="text-sm font-medium">
+              Lot Number
+            </Label>
+            <Input
+              id="quickadd-lot"
+              value={formData.lotNumber}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, lotNumber: e.target.value }))
+              }
+              placeholder="Optional"
+              className="h-9"
+            />
           </div>
 
           {/* Unit & Min Stock Level */}
