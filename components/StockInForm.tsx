@@ -98,8 +98,9 @@ interface StockInFormProps {
 
 type SerializedStockInFormValues = Omit<
   StockInFormValues,
-  'deliveryDate' | 'items'
+  'deliveryDate' | 'items' | 'supplierId'
 > & {
+  supplierId: number | null;
   deliveryDate: string | null;
   items: Array<
     Omit<StockInFormValues['items'][number], 'expiryDate'> & {
@@ -154,9 +155,10 @@ const normalizeToMonthStart = (date: Date) =>
 const serializeFormValues = (
   values: StockInFormValues,
 ): SerializedStockInFormValues => {
-  const { deliveryDate, items, ...rest } = values;
+  const { deliveryDate, items, supplierId, ...rest } = values;
   return {
     ...rest,
+    supplierId: supplierId ? Number(supplierId) : null,
     deliveryDate: deliveryDate ? deliveryDate.toISOString() : null,
     items: items.map((item) => {
       const { expiryDate, ...itemRest } = item;
@@ -171,7 +173,10 @@ const serializeFormValues = (
 const deserializeFormValues = (
   values: SerializedStockInFormValues,
 ): StockInFormValues => ({
-  supplierId: values.supplierId ?? undefined,
+  supplierId:
+    values.supplierId === null || values.supplierId === undefined
+      ? undefined
+      : Number(values.supplierId),
   deliveryDate: values.deliveryDate
     ? new Date(values.deliveryDate)
     : new Date(),
@@ -219,6 +224,7 @@ const StockInForm = ({
     () => `stock-in-draft:${pharmacyId}:${userId}`,
     [pharmacyId, userId],
   );
+  const DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
   const isRestoringDraft = useRef(false);
 
   const form = useForm<StockInFormValues>({
@@ -249,7 +255,7 @@ const StockInForm = ({
   const clearDraft = useCallback(() => {
     if (typeof window === 'undefined') return;
     try {
-      sessionStorage.removeItem(draftStorageKey);
+      localStorage.removeItem(draftStorageKey);
     } catch (error) {
       console.error('Failed to clear stock-in draft:', error);
     }
@@ -271,7 +277,7 @@ const StockInForm = ({
 
       try {
         if (!hasMeaningfulData) {
-          sessionStorage.removeItem(draftStorageKey);
+          localStorage.removeItem(draftStorageKey);
           return;
         }
 
@@ -282,7 +288,7 @@ const StockInForm = ({
           savedAt: new Date().toISOString(),
         };
 
-        sessionStorage.setItem(draftStorageKey, JSON.stringify(payload));
+        localStorage.setItem(draftStorageKey, JSON.stringify(payload));
       } catch (error) {
         console.error('Failed to persist stock-in draft:', error);
       }
@@ -292,11 +298,18 @@ const StockInForm = ({
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const raw = sessionStorage.getItem(draftStorageKey);
+    const raw = localStorage.getItem(draftStorageKey);
     if (!raw) return;
 
     try {
       const parsed: StockInDraftPayload = JSON.parse(raw);
+      if (parsed.savedAt) {
+        const age = Date.now() - Date.parse(parsed.savedAt);
+        if (Number.isFinite(age) && age > DRAFT_MAX_AGE_MS) {
+          localStorage.removeItem(draftStorageKey);
+          return;
+        }
+      }
       const hydrated = deserializeFormValues(parsed.formValues);
 
       if (parsed.pendingAttachmentName) {
@@ -305,6 +318,9 @@ const StockInForm = ({
 
       isRestoringDraft.current = true;
       reset(hydrated);
+      if (hydrated.supplierId) {
+        setValue('supplierId', hydrated.supplierId);
+      }
       setSelectedProducts(parsed.selectedProducts || {});
 
       if (parsed.pendingAttachmentName) {
@@ -317,11 +333,11 @@ const StockInForm = ({
       }
     } catch (error) {
       console.error('Failed to restore stock-in draft:', error);
-      sessionStorage.removeItem(draftStorageKey);
+      localStorage.removeItem(draftStorageKey);
     } finally {
       isRestoringDraft.current = false;
     }
-  }, [draftStorageKey, reset]);
+  }, [DRAFT_MAX_AGE_MS, draftStorageKey, reset, setValue]);
 
   useEffect(() => {
     const subscription = watch((currentValues) => {
@@ -404,11 +420,15 @@ const StockInForm = ({
 
   const appendProduct = useCallback(
     (product: ProductLookupResult) => {
+      const unitCost = product.costPrice ?? '0.00';
+      const quantity = product.quantity ?? 1;
+      const amount = (quantity * Number.parseFloat(unitCost || '0')).toFixed(2);
+
       fieldArray.prepend({
         productId: product.id,
-        quantity: 1,
-        unitCost: product.costPrice ?? '0.00',
-        amount: '0.00',
+        quantity,
+        unitCost,
+        amount,
         lotNumber: product.lotNumber ?? '',
         expiryDate: product.expiryDate
           ? new Date(product.expiryDate)
@@ -1503,8 +1523,7 @@ const StockInForm = ({
                 </div>
 
                 <p className="text-xs text-gray-500 text-center">
-                  Product not found? Search and click &quot;Create&quot; to add
-                  it.
+                  Product not found? Click &quot;New product&quot; to add it.
                 </p>
                 <p className="text-xs text-amber-700 text-center bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                   Uploading receipts can take a few seconds. Please stay on this
@@ -1522,6 +1541,7 @@ const StockInForm = ({
         onOpenChange={setShowQuickAddDialog}
         categories={categories}
         pharmacyId={pharmacyId}
+        supplierId={watch('supplierId')}
         initialName={quickAddInitialName}
         onProductCreated={handleQuickAddProductCreated}
       />
