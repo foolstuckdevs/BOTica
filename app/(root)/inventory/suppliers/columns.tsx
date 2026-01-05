@@ -13,16 +13,6 @@ const ActionsHeader = () => {
 
 export const columns: ColumnDef<Supplier>[] = [
   {
-    accessorKey: 'id',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ID" />
-    ),
-    cell: ({ getValue }) => (
-      <span className="text-muted-foreground">{getValue<number>()}</span>
-    ),
-    enableSorting: true,
-  },
-  {
     accessorKey: 'name',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Supplier" />

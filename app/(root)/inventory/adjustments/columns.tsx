@@ -8,17 +8,6 @@ import { formatDateTimePH } from '@/lib/date-format';
 
 export const columns: ColumnDef<Adjustment>[] = [
   {
-    accessorKey: 'id',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ID" />
-    ),
-    cell: ({ getValue }) => (
-      <span className="text-muted-foreground">{getValue<number>()}</span>
-    ),
-    enableSorting: true,
-    size: 60,
-  },
-  {
     accessorKey: 'name',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Product" />

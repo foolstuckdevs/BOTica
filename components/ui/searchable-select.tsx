@@ -10,7 +10,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface SearchableSelectOption {
   value: string;
@@ -54,7 +53,7 @@ export function SearchableSelect({
   const selectedOption = options.find((opt) => opt.value === value);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -71,7 +70,12 @@ export function SearchableSelect({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className={cn('w-full p-0', className)} align="start">
+      <PopoverContent
+        className={cn('w-full p-0 overflow-hidden', className)}
+        align="start"
+        avoidCollisions={true}
+        collisionPadding={8}
+      >
         <div className="flex items-center border-b px-3 py-2">
           <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
           <Input
@@ -81,13 +85,13 @@ export function SearchableSelect({
             className="h-8 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
           />
         </div>
-        <ScrollArea className="max-h-60">
+        <div className="max-h-[200px] overflow-y-auto p-1">
           {filteredOptions.length === 0 ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
               {emptyMessage}
             </div>
           ) : (
-            <div className="p-1">
+            <>
               {filteredOptions.map((option) => (
                 <button
                   key={option.value}
@@ -114,9 +118,9 @@ export function SearchableSelect({
                   {option.label}
                 </button>
               ))}
-            </div>
+            </>
           )}
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
