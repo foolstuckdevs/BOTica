@@ -25,7 +25,6 @@ import { InactiveProductsTable } from './inventory-report/InactiveProductsTable'
 import { AvailableProductsTable } from './inventory-report/AvailableProductsTable';
 import { SkeletonTable } from '@/components/ui/skeleton';
 import { restoreProduct } from '@/lib/actions/products';
-import { useRouter } from 'next/navigation';
 
 type TabKey = 'overview' | 'expiring' | 'low-stock' | 'active' | 'inactive';
 
@@ -49,7 +48,6 @@ export default function InventoryReportClient({
   initialExpiringStatus,
 }: Props) {
   const { data: session } = useSession();
-  const router = useRouter();
 
   const [activeProducts, setActiveProducts] = useState(
     inventoryData.activeProducts,
@@ -120,9 +118,10 @@ export default function InventoryReportClient({
         const next = [...prev, { ...product, deletedAt: null }];
         return next.sort((a, b) => a.name.localeCompare(b.name));
       });
-      router.refresh();
+      // Note: No router.refresh() needed - local state update is sufficient
+      // The server state is already updated via restoreProduct action
     },
-    [session?.user?.pharmacyId, router],
+    [session?.user?.pharmacyId],
   );
 
   // If initial tab is not overview, mark it loaded
@@ -313,13 +312,7 @@ export default function InventoryReportClient({
 
             <TabsContent value="active" className="m-0">
               {activeLoaded ? (
-                <AvailableProductsTable
-                  products={activeProducts}
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  categoryFilter={categoryFilter}
-                  onCategoryFilterChange={setCategoryFilter}
-                />
+                <AvailableProductsTable products={activeProducts} />
               ) : (
                 <SkeletonTable rows={10} columns={6} />
               )}
@@ -329,10 +322,6 @@ export default function InventoryReportClient({
               {inactiveLoaded ? (
                 <InactiveProductsTable
                   products={inactiveProducts}
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  categoryFilter={categoryFilter}
-                  onCategoryFilterChange={setCategoryFilter}
                   onRestore={handleRestoreProduct}
                 />
               ) : (

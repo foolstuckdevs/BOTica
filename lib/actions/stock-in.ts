@@ -270,8 +270,8 @@ export const createStockIn = async (
     }, 0);
 
     const discount = parseAmount(validated.discount);
-    const providedTotal = parseAmount(validated.total);
-    const total = providedTotal || Math.max(computedSubtotal - discount, 0);
+    // Always compute total from subtotal - discount to ensure consistency
+    const total = Math.max(computedSubtotal - discount, 0);
 
     const [newStockIn] = await tx
       .insert(stockIns)
@@ -334,7 +334,6 @@ export const createStockIn = async (
       details: {
         id: newStockIn.id,
         items: validated.items.length,
-        total: toAmountString(total),
       },
       userId: validated.createdBy,
     });

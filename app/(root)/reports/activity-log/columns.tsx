@@ -206,23 +206,15 @@ function renderDetails(
       typeof details['items'] === 'number'
         ? (details['items'] as number)
         : null;
-    const totalRaw = details['total'] as string | number | undefined;
-    const total =
-      typeof totalRaw === 'number'
-        ? totalRaw
-        : typeof totalRaw === 'string'
-        ? parseFloat(totalRaw)
-        : undefined;
     return (
       <div className="text-sm">
         {items !== null ? (
           <span className="text-muted-foreground">
             {items} item{items !== 1 ? 's' : ''}
           </span>
-        ) : null}
-        {typeof total === 'number' ? (
-          <span className="ml-2 font-medium">Total: ₱{total.toFixed(2)}</span>
-        ) : null}
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        )}
       </div>
     );
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -34,22 +34,27 @@ import { formatQuantityWithUnit, formatUnitLabel } from '@/lib/utils';
 
 interface Props {
   products: InventoryProductRow[];
-  searchTerm: string;
-  onSearchChange: (v: string) => void;
-  categoryFilter?: string;
-  onCategoryFilterChange?: (v: string) => void;
 }
 
-export function AvailableProductsTable({
-  products,
-  searchTerm,
-  onSearchChange,
-  categoryFilter = 'all',
-  onCategoryFilterChange,
-}: Props) {
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage, setItemsPerPage] = React.useState(20);
-  const [sortField, setSortField] = React.useState<
+// Debounce hook for search input
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+function AvailableProductsTableInner({ products }: Props) {
+  // Local state - isolated from other tabs
+  const [searchInput, setSearchInput] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [sortField, setSortField] = useState<
     | 'product'
     | 'brand'
     | 'category'
@@ -60,28 +65,34 @@ export function AvailableProductsTable({
     | 'sellingPrice'
     | null
   >(null);
-  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(
-    'asc',
-  );
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  const handleSort = (
-    field:
-      | 'product'
-      | 'brand'
-      | 'category'
-      | 'lotNumber'
-      | 'expiry'
-      | 'quantity'
-      | 'costPrice'
-      | 'sellingPrice',
-  ) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
+  // Debounce search to reduce re-renders while typing
+  const searchTerm = useDebouncedValue(searchInput, 300);
+
+  const handleSort = useCallback(
+    (
+      field:
+        | 'product'
+        | 'brand'
+        | 'category'
+        | 'lotNumber'
+        | 'expiry'
+        | 'quantity'
+        | 'costPrice'
+        | 'sellingPrice',
+    ) => {
+      setSortField((prev) => {
+        if (prev === field) {
+          setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+          return prev;
+        }
+        setSortDirection('asc');
+        return field;
+      });
+    },
+    [],
+  );
 
   const getSortIcon = (
     field:
@@ -104,17 +115,19 @@ export function AvailableProductsTable({
     );
   };
 
-  React.useEffect(() => {
+  // Reset to page 1 when filters change
+  useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, categoryFilter, itemsPerPage]);
 
-  const clearAllFilters = () => {
-    if (onCategoryFilterChange) onCategoryFilterChange('all');
-    onSearchChange('');
-  };
-  const hasActiveFilters = categoryFilter !== 'all' || searchTerm !== '';
+  const clearAllFilters = useCallback(() => {
+    setCategoryFilter('all');
+    setSearchInput('');
+  }, []);
 
-  const filtered = React.useMemo(() => {
+  const hasActiveFilters = categoryFilter !== 'all' || searchInput !== '';
+
+  const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase();
     return products
       .filter(
@@ -130,7 +143,7 @@ export function AvailableProductsTable({
   }, [products, searchTerm, categoryFilter]);
 
   // Apply sorting
-  const sorted = React.useMemo(() => {
+  const sorted = useMemo(() => {
     if (!sortField) return filtered;
 
     return [...filtered].sort((a, b) => {
@@ -242,8 +255,8 @@ export function AvailableProductsTable({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   placeholder="Search products..."
-                  value={searchTerm}
-                  onChange={(e) => onSearchChange(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="h-8 w-[240px] text-sm py-2 pl-10 pr-3"
                 />
               </div>
@@ -273,7 +286,7 @@ export function AvailableProductsTable({
                       </label>
                       <Select
                         value={categoryFilter}
-                        onValueChange={onCategoryFilterChange}
+                        onValueChange={setCategoryFilter}
                       >
                         <SelectTrigger className="h-8 w-full text-xs px-2 py-1 mt-1">
                           <SelectValue placeholder="Filter by category" />
@@ -506,3 +519,14 @@ export function AvailableProductsTable({
     </div>
   );
 }
+
+// Memoize the component to prevent re-renders when parent state changes
+// Only re-renders when products array reference changes
+export const AvailableProductsTable = React.memo(
+  AvailableProductsTableInner,
+  (prevProps, nextProps) => {
+    // Only re-render if products array has changed
+    // This is a shallow comparison - if products reference is the same, skip re-render
+    return prevProps.products === nextProps.products;
+  }
+);
