@@ -416,6 +416,7 @@ export function QuickAddProductDialog({
                 <Popover
                   open={openExpiryPopover}
                   onOpenChange={setOpenExpiryPopover}
+                  modal={true}
                 >
                   <PopoverTrigger asChild>
                     <Button
@@ -432,21 +433,33 @@ export function QuickAddProductDialog({
                         : 'Select'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent
+                    className="w-auto p-0"
+                    align="start"
+                    sideOffset={4}
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                    style={{ zIndex: 9999 }}
+                  >
                     <Calendar
                       mode="single"
                       captionLayout="dropdown"
+                      defaultMonth={
+                        formData.expiryDate
+                          ? new Date(formData.expiryDate)
+                          : new Date()
+                      }
                       selected={
                         formData.expiryDate
                           ? new Date(formData.expiryDate)
                           : undefined
                       }
                       onSelect={(date) => {
-                        if (!date) return;
-                        setFormData((prev) => ({
-                          ...prev,
-                          expiryDate: format(date, 'yyyy-MM-dd'),
-                        }));
+                        if (date) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            expiryDate: format(date, 'yyyy-MM-dd'),
+                          }));
+                        }
                         setOpenExpiryPopover(false);
                       }}
                       startMonth={new Date(new Date().getFullYear(), 0)}
