@@ -28,6 +28,7 @@ const Page = async () => {
   }
 
   const pharmacyId = session.user.pharmacyId;
+  const isAdmin = session.user.role === 'Admin';
 
   const productStatsPromise = getProductStockSummaries(pharmacyId);
   const salesComparisonPromise = getSalesComparison(pharmacyId);
@@ -82,13 +83,15 @@ const Page = async () => {
         </Suspense>
       </div>
 
-      <Suspense
-        fallback={
-          <div className="h-72 rounded-lg border bg-muted/40 dark:bg-muted/20 animate-pulse" />
-        }
-      >
-        <ActivitySection pharmacyId={pharmacyId} />
-      </Suspense>
+      {isAdmin && (
+        <Suspense
+          fallback={
+            <div className="h-72 rounded-lg border bg-muted/40 dark:bg-muted/20 animate-pulse" />
+          }
+        >
+          <ActivitySection pharmacyId={pharmacyId} />
+        </Suspense>
+      )}
     </div>
   );
 };

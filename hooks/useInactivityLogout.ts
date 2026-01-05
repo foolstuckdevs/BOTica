@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { signOut } from 'next-auth/react';
 
 interface Options {
-  pharmacistTimeoutMs?: number; // default 15 min
+  assistantTimeoutMs?: number; // default 15 min
   adminTimeoutMs?: number; // default 60 min
   warningMs?: number; // warn 60s before
   role?: string;
@@ -13,7 +13,7 @@ interface Options {
 
 // Tracks user activity (mousemove, keydown, click, scroll, touch) and logs out after inactivity.
 export function useInactivityLogout({
-  pharmacistTimeoutMs = 15 * 60 * 1000,
+  assistantTimeoutMs = 15 * 60 * 1000,
   adminTimeoutMs = 60 * 60 * 1000,
   warningMs = 60 * 1000,
   role,
@@ -25,7 +25,7 @@ export function useInactivityLogout({
   const warnedRef = useRef(false);
 
   useEffect(() => {
-    const timeoutMs = role === 'Admin' ? adminTimeoutMs : pharmacistTimeoutMs;
+    const timeoutMs = role === 'Admin' ? adminTimeoutMs : assistantTimeoutMs;
     if (!timeoutMs) return;
 
     function clearTimers() {
@@ -62,5 +62,5 @@ export function useInactivityLogout({
       clearTimers();
       events.forEach((ev) => window.removeEventListener(ev, activityHandler));
     };
-  }, [role, pharmacistTimeoutMs, adminTimeoutMs, warningMs, onWarn, onTimeout]);
+  }, [role, assistantTimeoutMs, adminTimeoutMs, warningMs, onWarn, onTimeout]);
 }

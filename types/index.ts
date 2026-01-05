@@ -18,7 +18,7 @@ export interface User {
   id: string;
   fullName: string;
   email: string;
-  role: 'Admin' | 'Pharmacist';
+  role: 'Admin' | 'Pharmacy Assistant';
   pharmacyId: number;
   createdAt: Date | null;
 }
@@ -27,7 +27,7 @@ export interface StaffMember {
   id: string;
   fullName: string;
   email: string;
-  role: 'Admin' | 'Pharmacist';
+  role: 'Admin' | 'Pharmacy Assistant';
   isActive: boolean;
   createdAt: Date | null;
 }

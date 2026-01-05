@@ -59,12 +59,12 @@ export function UserForm() {
       const result = await createStaffMember(data, session.user.pharmacyId);
 
       if (result.success) {
-        toast.success('Pharmacist created successfully');
+        toast.success('Pharmacy Assistant created successfully');
         form.reset();
         setOpen(false);
         router.refresh();
       } else {
-        toast.error(result.error || 'Failed to create pharmacist');
+        toast.error(result.error || 'Failed to create pharmacy assistant');
       }
     } catch (error) {
       console.error('Error creating staff member:', error);
@@ -79,12 +79,12 @@ export function UserForm() {
       <DialogTrigger asChild>
         <Button>
           <UserPlus className="mr-2 h-4 w-4" />
-          Add New Pharmacist
+          Add Pharmacy Assistant
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Pharmacist</DialogTitle>
+          <DialogTitle>Add New Pharmacy Assistant</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -166,7 +166,7 @@ export function UserForm() {
 
             <div className="bg-gray-50 p-3 rounded-md">
               <p className="text-sm text-gray-600">
-                <strong>Role:</strong> Pharmacist
+                <strong>Role:</strong> Pharmacy Assistant
               </p>
               <p className="text-sm text-gray-600">
                 <strong>Pharmacy:</strong> Your Pharmacy
@@ -184,7 +184,7 @@ export function UserForm() {
               </Button>
               <Button type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Pharmacist
+                Create Pharmacy Assistant
               </Button>
             </div>
           </form>

@@ -1234,10 +1234,7 @@ const StockInForm = ({
                                       } → ${currentLot || 'none'}`
                                     : `Different expiry date: ${
                                         originalExpiry
-                                          ? format(
-                                              originalExpiry,
-                                              'MMM yyyy',
-                                            )
+                                          ? format(originalExpiry, 'MMM yyyy')
                                           : 'none'
                                       } → ${
                                         currentExpiry

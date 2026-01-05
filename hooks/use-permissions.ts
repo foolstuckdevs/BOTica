@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 
-export type Role = 'Admin' | 'Pharmacist' | undefined;
+export type Role = 'Admin' | 'Pharmacy Assistant' | undefined;
 
 // Simple client-side permissions derived from the NextAuth session.
 // Note: Server remains the source of truth; this only gates UI affordances.

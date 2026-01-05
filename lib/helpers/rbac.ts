@@ -2,7 +2,7 @@
 
 import { auth } from '@/auth';
 
-export type Role = 'Admin' | 'Pharmacist';
+export type Role = 'Admin' | 'Pharmacy Assistant';
 
 // Returns the user's role from the server session
 export const getUserRole = async (): Promise<Role | undefined> => {

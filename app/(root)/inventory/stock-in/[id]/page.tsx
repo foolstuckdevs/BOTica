@@ -234,7 +234,9 @@ const StockInViewPage = () => {
                         {item.lotNumber || '—'}
                       </td>
                       <td className="py-2 px-2 text-gray-600">
-                        {item.expiryDate ? formatExpiryDatePH(item.expiryDate) : '—'}
+                        {item.expiryDate
+                          ? formatExpiryDatePH(item.expiryDate)
+                          : '—'}
                       </td>
                       <td className="py-2 px-2 text-right">{item.quantity}</td>
                       <td className="py-2 px-2 text-right">

@@ -15,7 +15,7 @@ import {
 import { sql } from 'drizzle-orm';
 
 // Enums
-export const ROLE_ENUM = pgEnum('role', ['Admin', 'Pharmacist']);
+export const ROLE_ENUM = pgEnum('role', ['Admin', 'Pharmacy Assistant']);
 export const PAYMENT_METHOD_ENUM = pgEnum('payment_method', ['CASH', 'GCASH']);
 export const DOSAGE_FORM_ENUM = pgEnum('dosage_form', [
   'TABLET',
@@ -67,7 +67,7 @@ export const users = pgTable('users', {
   fullName: varchar('full_name', { length: 100 }).notNull(),
   email: varchar('email', { length: 100 }).notNull().unique(),
   password: varchar('password', { length: 100 }).notNull(),
-  role: ROLE_ENUM('role').notNull().default('Pharmacist'),
+  role: ROLE_ENUM('role').notNull().default('Pharmacy Assistant'),
   isActive: boolean('is_active').default(true),
   pharmacyId: integer('pharmacy_id')
     .notNull()

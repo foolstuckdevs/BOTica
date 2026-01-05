@@ -20,7 +20,7 @@ export default function InactivityWatcher({ role }: Props) {
 
   useInactivityLogout({
     role,
-    pharmacistTimeoutMs: 60 * 60 * 1000, // 60 minutes
+    assistantTimeoutMs: 60 * 60 * 1000, // 60 minutes
     adminTimeoutMs: 60 * 60 * 1000, // 60 minutes
     warningMs: 60 * 1000, // warn 1 minute before
     onWarn: handleWarn,

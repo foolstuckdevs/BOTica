@@ -6,14 +6,14 @@ declare module 'next-auth' {
     rememberMe?: boolean;
     user: DefaultSession['user'] & {
       id?: string;
-      role?: 'Admin' | 'Pharmacist';
+      role?: 'Admin' | 'Pharmacy Assistant';
       pharmacyId?: number;
     };
   }
 
   interface User {
     rememberMe?: boolean;
-    role?: 'Admin' | 'Pharmacist';
+    role?: 'Admin' | 'Pharmacy Assistant';
     pharmacyId?: number;
   }
 }
@@ -21,7 +21,7 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT extends DefaultJWT {
     rememberMe?: boolean;
-    role?: 'Admin' | 'Pharmacist';
+    role?: 'Admin' | 'Pharmacy Assistant';
     pharmacyId?: number;
   }
 }

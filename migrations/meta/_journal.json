@@ -64,6 +64,13 @@
       "when": 1764685404465,
       "tag": "0008_gifted_colossus",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1767624888745,
+      "tag": "0009_elite_skaar",
+      "breakpoints": true
     }
   ]
 }

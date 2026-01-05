@@ -13,7 +13,7 @@ import {
 } from '@/lib/validations';
 import { canEditMasterData } from '@/lib/helpers/rbac';
 
-// Get staff members (pharmacists only, exclude current admin)
+// Get staff members (pharmacy assistants only, exclude current admin)
 export const getStaffMembers = async (
   currentUserId: string,
   pharmacyId: number,
@@ -37,7 +37,7 @@ export const getStaffMembers = async (
       .where(
         and(
           eq(users.pharmacyId, validatedParams.pharmacyId),
-          eq(users.role, 'Pharmacist'),
+          eq(users.role, 'Pharmacy Assistant'),
           ne(users.id, validatedParams.currentUserId),
         ),
       )
@@ -95,7 +95,7 @@ export const createStaffMember = async (
       fullName: validatedData.fullName,
       email: validatedData.email,
       password: hashedPassword,
-      role: 'Pharmacist',
+      role: 'Pharmacy Assistant',
       pharmacyId: validatedPharmacyId,
     });
 

@@ -46,9 +46,7 @@ export function StaffActions({ user }: { user: StaffMember }) {
               ? 'text-orange-600 hover:text-orange-700'
               : 'text-green-600 hover:text-green-700'
           }`}
-          title={
-            user.isActive ? 'Deactivate pharmacist' : 'Activate pharmacist'
-          }
+          title={user.isActive ? 'Deactivate assistant' : 'Activate assistant'}
         >
           {user.isActive ? (
             <UserX className="h-4 w-4" />

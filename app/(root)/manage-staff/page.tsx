@@ -21,7 +21,7 @@ const Page = async () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Staff Management</h1>
-          <p className="text-gray-600">Manage your pharmacy pharmacists</p>
+          <p className="text-gray-600">Manage your pharmacy assistants</p>
         </div>
         <UserForm />
       </div>

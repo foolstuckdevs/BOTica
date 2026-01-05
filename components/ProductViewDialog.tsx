@@ -106,7 +106,9 @@ const ProductViewDialog = ({
               <InfoBlock
                 label="Expiry Date"
                 value={
-                  product.expiryDate ? formatExpiryDatePH(product.expiryDate) : 'N/A'
+                  product.expiryDate
+                    ? formatExpiryDatePH(product.expiryDate)
+                    : 'N/A'
                 }
               />
               <InfoBlock label="Quantity" value={product.quantity} />
