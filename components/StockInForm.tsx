@@ -1072,7 +1072,7 @@ const StockInForm = ({
                                           : 'text-green-600',
                                       )}
                                     >
-                                      Exp: {format(expiryDate, 'MMM d, yyyy')}
+                                      Exp: {format(expiryDate, 'MMM yyyy')}
                                     </span>
                                   )}
                                   <span className="text-gray-400 ml-auto">
@@ -1236,12 +1236,12 @@ const StockInForm = ({
                                         originalExpiry
                                           ? format(
                                               originalExpiry,
-                                              'MMM d, yyyy',
+                                              'MMM yyyy',
                                             )
                                           : 'none'
                                       } → ${
                                         currentExpiry
-                                          ? format(currentExpiry, 'MMM d, yyyy')
+                                          ? format(currentExpiry, 'MMM yyyy')
                                           : 'none'
                                       }`}
                                 </p>
@@ -1354,7 +1354,7 @@ const StockInForm = ({
                                           {itemField.value
                                             ? format(
                                                 itemField.value,
-                                                'MMM d, yyyy',
+                                                'MMM yyyy',
                                               )
                                             : 'Select'}
                                         </Button>

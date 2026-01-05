@@ -11,7 +11,7 @@ import {
   Image as ImageIcon,
   ExternalLink,
 } from 'lucide-react';
-import { formatDatePH } from '@/lib/date-format';
+import { formatDatePH, formatExpiryDatePH } from '@/lib/date-format';
 import { formatCurrency } from '@/lib/helpers/formatCurrency';
 import type { StockIn } from '@/types';
 import { useSession } from 'next-auth/react';
@@ -234,7 +234,7 @@ const StockInViewPage = () => {
                         {item.lotNumber || '—'}
                       </td>
                       <td className="py-2 px-2 text-gray-600">
-                        {item.expiryDate ? formatDatePH(item.expiryDate) : '—'}
+                        {item.expiryDate ? formatExpiryDatePH(item.expiryDate) : '—'}
                       </td>
                       <td className="py-2 px-2 text-right">{item.quantity}</td>
                       <td className="py-2 px-2 text-right">

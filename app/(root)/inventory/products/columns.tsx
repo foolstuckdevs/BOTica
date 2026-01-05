@@ -140,7 +140,7 @@ export const buildColumns = (
     cell: ({ row }) => {
       const rawExpiry = row.getValue('expiryDate');
       const expiry = rawExpiry ? new Date(rawExpiry as string) : null;
-      const formatted = expiry ? format(expiry, 'MMM dd, yyyy') : 'N/A';
+      const formatted = expiry ? format(expiry, 'MMM yyyy') : 'N/A';
 
       const today = new Date();
       const isExpired = expiry && expiry < today;

@@ -109,7 +109,7 @@ const AdjustmentActions = ({ adjustment }: { adjustment: Adjustment }) => {
                   label="Expiry Date"
                   value={
                     adjustment.expiryDate
-                      ? format(new Date(adjustment.expiryDate), 'MMM dd, yyyy')
+                      ? format(new Date(adjustment.expiryDate), 'MMM yyyy')
                       : null
                   }
                 />

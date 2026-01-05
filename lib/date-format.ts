@@ -19,6 +19,21 @@ export const formatDatePH = (
   }).format(dt);
 };
 
+/**
+ * Format expiry date showing only month and year (e.g., "May 2026")
+ */
+export const formatExpiryDatePH = (
+  d: Date | string | number | null | undefined,
+): string => {
+  const dt = toDate(d);
+  if (!dt) return 'N/A';
+  return new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: 'short',
+  }).format(dt);
+};
+
 export const formatDateTimePH = (
   d: Date | string | number | null | undefined,
 ): string => {

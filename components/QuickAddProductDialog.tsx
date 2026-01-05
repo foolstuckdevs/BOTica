@@ -427,7 +427,7 @@ export function QuickAddProductDialog({
                     >
                       <CalendarIcon className="mr-2 h-3.5 w-3.5" />
                       {formData.expiryDate
-                        ? format(new Date(formData.expiryDate), 'MMM d, yyyy')
+                        ? format(new Date(formData.expiryDate), 'MMM yyyy')
                         : 'Select'}
                     </Button>
                   </PopoverTrigger>

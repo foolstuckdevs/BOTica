@@ -511,7 +511,7 @@ const ProductForm = ({
                                 >
                                   <CalendarIcon className="mr-2 h-4 w-4" />
                                   {selectedDate
-                                    ? format(selectedDate, 'MMM d, yyyy')
+                                    ? format(selectedDate, 'MMM yyyy')
                                     : 'Select date'}
                                 </Button>
                               </PopoverTrigger>

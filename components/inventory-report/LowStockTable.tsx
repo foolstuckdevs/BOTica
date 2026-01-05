@@ -269,7 +269,7 @@ export function LowStockTable({
                             <SelectItem value="out_of_stock">
                               Out of Stock
                             </SelectItem>
-                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="low">Low Stock</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

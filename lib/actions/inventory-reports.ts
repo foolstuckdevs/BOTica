@@ -33,7 +33,7 @@ export async function getInventoryReportData(pharmacyId: number) {
       totalValue: sql<string>`COALESCE(SUM(${products.quantity} * ${products.costPrice}), 0)`,
       totalUnitsInStock: sql<string>`COALESCE(SUM(${products.quantity}), 0)`,
       lowStockCount: count(
-        sql`CASE WHEN ${products.quantity} <= ${products.minStockLevel} THEN 1 END`,
+        sql`CASE WHEN ${products.quantity} <= ${products.minStockLevel} AND ${products.quantity} > 0 THEN 1 END`,
       ),
       expiringCount: count(
         sql`CASE WHEN ${

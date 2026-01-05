@@ -331,7 +331,6 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
                                   product.expiryDate,
                                 ).toLocaleDateString('en-US', {
                                   month: 'short',
-                                  day: 'numeric',
                                   year: 'numeric',
                                 })}
                               </span>
