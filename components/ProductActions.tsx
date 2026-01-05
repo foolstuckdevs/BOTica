@@ -24,6 +24,7 @@ const ProductActions = ({ product, onDeleted }: ProductActionsProps) => {
   const { canEditMasterData, loaded } = usePermissions();
   const [viewOpen, setViewOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [productDetails, setProductDetails] = useState<Product | null>(null);
 
   if (!session?.user?.pharmacyId) {
@@ -51,16 +52,21 @@ const ProductActions = ({ product, onDeleted }: ProductActionsProps) => {
   };
 
   const handleDelete = async () => {
-    const result = await deleteProduct(product.id, pharmacyId);
-    if (!result.success) {
-      toast.error('Failed to delete product');
-      return;
-    }
+    setIsDeleting(true);
+    try {
+      const result = await deleteProduct(product.id, pharmacyId);
+      if (!result.success) {
+        toast.error('Failed to delete product');
+        return;
+      }
 
-    toast.success('Product deleted');
-    setDeleteDialogOpen(false);
-    onDeleted?.(product.id);
-    router.refresh();
+      toast.success('Product deleted');
+      setDeleteDialogOpen(false);
+      onDeleted?.(product.id);
+      router.refresh();
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -108,6 +114,7 @@ const ProductActions = ({ product, onDeleted }: ProductActionsProps) => {
         onConfirm={handleDelete}
         entityName={product.name}
         entityType="product"
+        isLoading={isDeleting}
       />
     </>
   );

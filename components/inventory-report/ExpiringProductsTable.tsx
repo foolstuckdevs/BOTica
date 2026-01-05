@@ -559,7 +559,7 @@ export function ExpiringProductsTable({
                       </td>
                       <td className="py-3 px-4">
                         {product.expiryDate
-                          ? format(new Date(product.expiryDate), 'MMM d, yyyy')
+                          ? format(new Date(product.expiryDate), 'MMM yyyy')
                           : 'N/A'}
                       </td>
                       <td className="py-3 px-4">
@@ -578,7 +578,7 @@ export function ExpiringProductsTable({
                           );
                           return (
                             <span
-                              className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${statusInfo.className}`}
+                              className={`inline-flex w-fit whitespace-nowrap px-2 py-1 rounded-full text-xs font-medium ${statusInfo.className}`}
                             >
                               {statusInfo.text}
                             </span>

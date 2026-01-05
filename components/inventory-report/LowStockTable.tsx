@@ -210,10 +210,14 @@ export function LowStockTable({
               <Package2 className="h-5 w-5 text-muted-foreground" />
               <div>
                 <CardTitle className="text-lg font-semibold">
-                  Low Stock Products
+                  {statusFilter === 'out_of_stock'
+                    ? 'Out of Stock Products'
+                    : 'Low Stock Products'}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Products with quantity below their minimum quantity
+                  {statusFilter === 'out_of_stock'
+                    ? 'Products with zero quantity in stock'
+                    : 'Products with quantity below their minimum quantity'}
                 </p>
               </div>
             </div>
@@ -410,7 +414,7 @@ export function LowStockTable({
                       <td className="py-3 px-4">{product.supplierName}</td>
                       <td className="py-3 px-4">
                         <span
-                          className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                          className={`inline-flex w-fit whitespace-nowrap px-2 py-1 rounded-full text-xs font-medium ${
                             product.status === 'out_of_stock'
                               ? 'bg-gray-100 text-gray-800'
                               : 'bg-blue-100 text-blue-800'

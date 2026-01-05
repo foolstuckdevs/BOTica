@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Calendar } from './ui/calendar';
 import {
   Calendar as CalendarIcon,
@@ -378,31 +379,24 @@ const ProductForm = ({
                       <FormItem>
                         <FormLabel>Category</FormLabel>
                         <FormControl>
-                          <Select
-                            onValueChange={(value) =>
-                              field.onChange(Number(value) || undefined)
-                            }
+                          <SearchableSelect
+                            options={categories.map((category) => ({
+                              value: String(category.id),
+                              label: category.name,
+                            }))}
                             value={
                               field.value !== undefined
                                 ? String(field.value)
                                 : undefined
                             }
+                            onValueChange={(value) =>
+                              field.onChange(Number(value) || undefined)
+                            }
+                            placeholder="Select category"
+                            searchPlaceholder="Search categories..."
                             disabled={categories.length === 0}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {categories.map((category) => (
-                                <SelectItem
-                                  key={category.id}
-                                  value={String(category.id)}
-                                >
-                                  {category.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            triggerClassName="w-full h-10"
+                          />
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>

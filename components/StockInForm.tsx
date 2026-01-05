@@ -438,7 +438,7 @@ const StockInForm = ({
   const appendProduct = useCallback(
     (product: ProductLookupResult) => {
       const unitCost = product.costPrice ?? '0.00';
-      const quantity = product.quantity ?? 1;
+      const quantity = 0; // Default to 0 so user must explicitly set quantity
       const amount = (quantity * Number.parseFloat(unitCost || '0')).toFixed(2);
 
       fieldArray.prepend({
@@ -472,15 +472,11 @@ const StockInForm = ({
       );
 
       if (existingIndex !== -1) {
-        toast.info(
-          `${product.name} is already in this Stock-In form. Adjust the quantity in the list.`,
+        // Product already exists, but still add it and show a warning notice
+        appendProduct(product);
+        toast.warning(
+          `${product.name} is already in this Stock-In form. A new entry has been added.`,
         );
-        setSearchQuery('');
-        setSearchResults([]);
-        setSearchError(null);
-        setShowResults(false);
-        searchInputRef.current?.blur();
-        return;
       } else {
         appendProduct(product);
         toast.success(`${product.name} added to the list.`);

@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -242,7 +243,11 @@ export function QuickAddProductDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-xl p-0 overflow-hidden">
+      <DialogContent
+        className="sm:max-w-xl p-0 overflow-hidden"
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader className="px-5 pt-5 pb-2 text-left">
           <DialogTitle className="text-base font-semibold">
             Quick Add Product
@@ -329,26 +334,19 @@ export function QuickAddProductDialog({
                 >
                   Category
                 </Label>
-                <Select
+                <SearchableSelect
+                  options={categories.map((category) => ({
+                    value: category.id.toString(),
+                    label: category.name,
+                  }))}
                   value={formData.categoryId}
                   onValueChange={(value) =>
                     setFormData((prev) => ({ ...prev, categoryId: value }))
                   }
-                >
-                  <SelectTrigger id="quickadd-category" className="h-9 w-full">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem
-                        key={category.id}
-                        value={category.id.toString()}
-                      >
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select"
+                  searchPlaceholder="Search categories..."
+                  triggerClassName="h-9 w-full"
+                />
               </div>
               <div className="space-y-1">
                 <Label
@@ -455,12 +453,30 @@ export function QuickAddProductDialog({
                       }
                       onSelect={(date) => {
                         if (date) {
+                          // Normalize to first day of month
+                          const normalized = new Date(
+                            date.getFullYear(),
+                            date.getMonth(),
+                            1,
+                          );
                           setFormData((prev) => ({
                             ...prev,
-                            expiryDate: format(date, 'yyyy-MM-dd'),
+                            expiryDate: format(normalized, 'yyyy-MM-dd'),
                           }));
+                          setOpenExpiryPopover(false);
                         }
-                        setOpenExpiryPopover(false);
+                      }}
+                      onMonthChange={(month) => {
+                        // Update date when navigating months
+                        const normalized = new Date(
+                          month.getFullYear(),
+                          month.getMonth(),
+                          1,
+                        );
+                        setFormData((prev) => ({
+                          ...prev,
+                          expiryDate: format(normalized, 'yyyy-MM-dd'),
+                        }));
                       }}
                       startMonth={new Date(new Date().getFullYear(), 0)}
                       endMonth={new Date(new Date().getFullYear() + 10, 11)}

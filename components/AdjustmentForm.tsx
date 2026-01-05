@@ -104,6 +104,11 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
         const list: LightweightProduct[] = json.data || [];
         const lower = search.trim().toLowerCase();
         const ranked = list.slice().sort((a, b) => {
+          // Prioritize out of stock products first
+          const aOutOfStock = a.quantity === 0 ? 0 : 1;
+          const bOutOfStock = b.quantity === 0 ? 0 : 1;
+          if (aOutOfStock !== bOutOfStock) return aOutOfStock - bOutOfStock;
+
           const aNameMatch = a.name.toLowerCase().startsWith(lower) ? 0 : 1;
           const bNameMatch = b.name.toLowerCase().startsWith(lower) ? 0 : 1;
           if (aNameMatch !== bNameMatch) return aNameMatch - bNameMatch;

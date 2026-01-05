@@ -89,6 +89,7 @@ function humanizeVerb(action?: string) {
   if (/CREATED$/.test(action)) return 'created';
   if (/UPDATED$/.test(action)) return 'updated';
   if (/(DELETED|ARCHIVED)$/.test(action)) return 'deleted';
+  if (/RESTORED$/.test(action)) return 'restored';
   if (/AUTH_SIGNIN$/.test(action)) return 'signed in';
   if (/AUTH_SIGNOUT$/.test(action)) return 'signed out';
   if (/SALE_COMPLETED$/.test(action)) return 'completed';

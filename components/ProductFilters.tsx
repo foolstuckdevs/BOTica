@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Button } from '@/components/ui/button';
 import { Category, Supplier } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -70,38 +71,34 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
           <SelectItem value="expired">Expired</SelectItem>
         </SelectContent>
       </Select>
-      <Select
+      <SearchableSelect
+        options={[
+          { value: 'all', label: 'All Categories' },
+          ...categories.map((cat) => ({
+            value: String(cat.id),
+            label: cat.name,
+          })),
+        ]}
         value={filters.categoryId}
         onValueChange={(value) => onChange({ ...filters, categoryId: value })}
-      >
-        <SelectTrigger className="w-36">
-          <SelectValue placeholder="All Categories" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Categories</SelectItem>
-          {categories.map((cat) => (
-            <SelectItem key={cat.id} value={String(cat.id)}>
-              {cat.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select
+        placeholder="All Categories"
+        searchPlaceholder="Search categories..."
+        triggerClassName="w-36 h-10"
+      />
+      <SearchableSelect
+        options={[
+          { value: 'all', label: 'All Suppliers' },
+          ...suppliers.map((sup) => ({
+            value: String(sup.id),
+            label: sup.name,
+          })),
+        ]}
         value={filters.supplierId}
         onValueChange={(value) => onChange({ ...filters, supplierId: value })}
-      >
-        <SelectTrigger className="w-36">
-          <SelectValue placeholder="All Suppliers" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Suppliers</SelectItem>
-          {suppliers.map((sup) => (
-            <SelectItem key={sup.id} value={String(sup.id)}>
-              {sup.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        placeholder="All Suppliers"
+        searchPlaceholder="Search suppliers..."
+        triggerClassName="w-36 h-10"
+      />
 
       {hasActiveFilters && (
         <Button

@@ -245,7 +245,13 @@ export default function InventoryReportClient({
               >
                 <div className="flex items-center gap-3">
                   <TrendingDown className="w-4 h-4 text-orange-600" />
-                  <span>Low Stock</span>
+                  <span>
+                    {statusFilter === 'out_of_stock'
+                      ? 'Out of Stock'
+                      : statusFilter === 'low'
+                      ? 'Low Stock'
+                      : 'Low Stock'}
+                  </span>
                   {filteredLowStockProducts.length > 0 && (
                     <span className="bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 text-xs px-2 py-1 rounded-full font-semibold">
                       {filteredLowStockProducts.length}
