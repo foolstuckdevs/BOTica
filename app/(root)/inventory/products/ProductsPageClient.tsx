@@ -6,6 +6,7 @@ import React, {
   useRef,
   useMemo,
 } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Product, Category, Supplier } from '@/types';
 import { ProductFiltersClient } from '../../../../components/ProductFiltersClient';
 import { DataTable } from '@/components/DataTable';
@@ -33,41 +34,102 @@ export function ProductsPageClient({
   suppliers,
 }: ProductsPageClientProps) {
   const { canEditMasterData } = usePermissions();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Read initial state from URL query params
+  const initialPageIndex = Math.max(
+    0,
+    parseInt(searchParams.get('page') || '1', 10) - 1,
+  );
+  const initialPageSize = Math.min(
+    100,
+    Math.max(1, parseInt(searchParams.get('pageSize') || '50', 10)),
+  );
+
   const [filters, setFilters] = useState({
-    search: '',
-    categoryId: 'all',
-    supplierId: 'all',
-    status: 'all',
+    search: searchParams.get('search') || '',
+    categoryId: searchParams.get('categoryId') || 'all',
+    supplierId: searchParams.get('supplierId') || 'all',
+    status: searchParams.get('status') || 'all',
   });
-  const [pageIndex, setPageIndex] = useState(0); // zero-based
-  const [pageSize, setPageSize] = useState(50);
+  const [pageIndex, setPageIndex] = useState(initialPageIndex);
+  const [pageSize, setPageSize] = useState(initialPageSize);
   const [serverData, setServerData] = useState<PaginatedProducts | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const handleFiltersChange = useCallback(
-    (nextFilters: typeof filters) => {
-      setFilters((prev) => {
-        const hasChanged =
-          prev.search !== nextFilters.search ||
-          prev.categoryId !== nextFilters.categoryId ||
-          prev.supplierId !== nextFilters.supplierId ||
-          prev.status !== nextFilters.status;
+  // Sync state to URL (shallow navigation to preserve state across refreshes)
+  const updateUrl = useCallback(
+    (
+      pi: number,
+      ps: number,
+      filtersObj: typeof filters,
+      replace: boolean = false,
+    ) => {
+      const params = new URLSearchParams();
+      // Only add non-default values to keep URL clean
+      if (pi > 0) params.set('page', String(pi + 1));
+      if (ps !== 50) params.set('pageSize', String(ps));
+      if (filtersObj.search) params.set('search', filtersObj.search);
+      if (filtersObj.categoryId !== 'all')
+        params.set('categoryId', filtersObj.categoryId);
+      if (filtersObj.supplierId !== 'all')
+        params.set('supplierId', filtersObj.supplierId);
+      if (filtersObj.status !== 'all') params.set('status', filtersObj.status);
 
-        if (!hasChanged) {
-          return prev;
-        }
+      const queryString = params.toString();
+      const newUrl = queryString ? `${pathname}?${queryString}` : pathname;
 
-        if (pageIndex !== 0) {
-          setPageIndex(0);
-        }
-
-        return nextFilters;
-      });
+      if (replace) {
+        router.replace(newUrl, { scroll: false });
+      } else {
+        router.push(newUrl, { scroll: false });
+      }
     },
-    [pageIndex],
+    [pathname, router],
   );
+
+  const handleFiltersChange = useCallback((nextFilters: typeof filters) => {
+    setFilters((prev) => {
+      const hasChanged =
+        prev.search !== nextFilters.search ||
+        prev.categoryId !== nextFilters.categoryId ||
+        prev.supplierId !== nextFilters.supplierId ||
+        prev.status !== nextFilters.status;
+
+      if (!hasChanged) {
+        return prev;
+      }
+
+      // Reset to page 0 when filters change
+      setPageIndex(0);
+
+      return nextFilters;
+    });
+  }, []);
+
+  // Sync filters to URL with debounce to avoid calling router during render
+  const urlSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    // Clear any pending URL sync
+    if (urlSyncTimeoutRef.current) {
+      clearTimeout(urlSyncTimeoutRef.current);
+    }
+
+    // Debounce URL updates to avoid excessive history entries while typing
+    urlSyncTimeoutRef.current = setTimeout(() => {
+      updateUrl(pageIndex, pageSize, filters, true);
+    }, 300);
+
+    return () => {
+      if (urlSyncTimeoutRef.current) {
+        clearTimeout(urlSyncTimeoutRef.current);
+      }
+    };
+  }, [filters, pageIndex, pageSize, updateUrl]);
 
   const loadPage = useCallback(
     async (
@@ -249,7 +311,9 @@ export function ProductsPageClient({
                   pageIndex,
                   pageSize,
                   pageCount: serverData.pageCount,
-                  onPageChange: (pi) => setPageIndex(pi),
+                  onPageChange: (pi) => {
+                    setPageIndex(pi);
+                  },
                   onPageSizeChange: (ps) => {
                     setPageSize(ps);
                     setPageIndex(0);

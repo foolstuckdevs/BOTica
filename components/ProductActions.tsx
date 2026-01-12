@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ type ProductActionsProps = {
 
 const ProductActions = ({ product, onDeleted }: ProductActionsProps) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const { canEditMasterData, loaded } = usePermissions();
   const [viewOpen, setViewOpen] = useState(false);
@@ -80,9 +82,16 @@ const ProductActions = ({ product, onDeleted }: ProductActionsProps) => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() =>
-                router.push(`/inventory/products/${product.id}/edit`)
-              }
+              onClick={() => {
+                // Build returnUrl with current page/filter state
+                const currentUrl = searchParams.toString()
+                  ? `${pathname}?${searchParams.toString()}`
+                  : pathname;
+                const encodedReturnUrl = encodeURIComponent(currentUrl);
+                router.push(
+                  `/inventory/products/${product.id}/edit?returnUrl=${encodedReturnUrl}`,
+                );
+              }}
               title="Edit"
             >
               <Pencil className="h-4 w-4 text-gray-600" />

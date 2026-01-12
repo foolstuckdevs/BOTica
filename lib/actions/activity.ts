@@ -41,7 +41,7 @@ export async function getRecentActivity(
       details: activityLogs.description,
       createdAt: activityLogs.createdAt,
       userId: activityLogs.userId,
-      userFullName: users.fullName,
+      username: users.fullName,
     })
     .from(activityLogs)
     .leftJoin(users, eq(users.id, activityLogs.userId))
@@ -54,7 +54,7 @@ export async function getRecentActivity(
     action: r.action,
     details: parseDetails(r.details),
     createdAt: r.createdAt,
-    userFullName: r.userFullName ?? null,
+    username: r.username ?? null,
   }));
 
   if (actionPrefixes?.length) {

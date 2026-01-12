@@ -5,7 +5,13 @@ import { getSuppliers } from '@/lib/actions/suppliers';
 import { auth } from '@/auth';
 
 // params values are always strings because they come from URL parameters.
-const Page = async ({ params }: { params: Promise<{ id: string }> }) => {
+const Page = async ({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnUrl?: string }>;
+}) => {
   const session = await auth();
 
   // Middleware ensures session exists for protected routes
@@ -19,7 +25,8 @@ const Page = async ({ params }: { params: Promise<{ id: string }> }) => {
 
   const pharmacyId = session.user.pharmacyId;
 
-  const { id } = await params; //
+  const { id } = await params;
+  const { returnUrl } = await searchParams;
   const product = await getProductById(Number(id), pharmacyId);
   const categories = await getCategories(pharmacyId);
   const suppliers = await getSuppliers(pharmacyId);
@@ -35,6 +42,7 @@ const Page = async ({ params }: { params: Promise<{ id: string }> }) => {
       categories={categories}
       suppliers={suppliers}
       pharmacyId={pharmacyId}
+      returnUrl={returnUrl}
     />
   );
 };

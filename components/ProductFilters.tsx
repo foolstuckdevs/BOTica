@@ -76,11 +76,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
       {/* Filters Dropdown */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 px-3 gap-2"
-          >
+          <Button variant="outline" size="sm" className="h-9 px-3 gap-2">
             <Filter className="h-4 w-4" />
             Filters
             {activeFilterCount > 0 && (
@@ -104,7 +100,9 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
               </label>
               <Select
                 value={filters.status}
-                onValueChange={(value) => onChange({ ...filters, status: value })}
+                onValueChange={(value) =>
+                  onChange({ ...filters, status: value })
+                }
               >
                 <SelectTrigger className="w-full h-9">
                   <SelectValue placeholder="All Status" />
@@ -133,7 +131,9 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
                   })),
                 ]}
                 value={filters.categoryId}
-                onValueChange={(value) => onChange({ ...filters, categoryId: value })}
+                onValueChange={(value) =>
+                  onChange({ ...filters, categoryId: value })
+                }
                 placeholder="All Categories"
                 searchPlaceholder="Search categories..."
                 triggerClassName="w-full h-9"
@@ -154,7 +154,9 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
                   })),
                 ]}
                 value={filters.supplierId}
-                onValueChange={(value) => onChange({ ...filters, supplierId: value })}
+                onValueChange={(value) =>
+                  onChange({ ...filters, supplierId: value })
+                }
                 placeholder="All Suppliers"
                 searchPlaceholder="Search suppliers..."
                 triggerClassName="w-full h-9"
@@ -183,7 +185,8 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
           )}
           {filters.categoryId !== 'all' && (
             <Badge variant="secondary" className="gap-1 pr-1">
-              {categories.find((c) => String(c.id) === filters.categoryId)?.name || 'Category'}
+              {categories.find((c) => String(c.id) === filters.categoryId)
+                ?.name || 'Category'}
               <button
                 onClick={() => onChange({ ...filters, categoryId: 'all' })}
                 className="ml-1 rounded-full hover:bg-muted p-0.5"
@@ -194,7 +197,8 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
           )}
           {filters.supplierId !== 'all' && (
             <Badge variant="secondary" className="gap-1 pr-1">
-              {suppliers.find((s) => String(s.id) === filters.supplierId)?.name || 'Supplier'}
+              {suppliers.find((s) => String(s.id) === filters.supplierId)
+                ?.name || 'Supplier'}
               <button
                 onClick={() => onChange({ ...filters, supplierId: 'all' })}
                 className="ml-1 rounded-full hover:bg-muted p-0.5"

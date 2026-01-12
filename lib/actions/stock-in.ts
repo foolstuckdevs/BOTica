@@ -205,25 +205,11 @@ export const createStockIn = async (
             // Use the existing product with matching lot/expiry
             targetProductId = existingProduct.id;
           } else {
-            // Calculate selling price based on original markup percentage
-            const originalCost = parseAmount(originalProduct.costPrice);
-            const originalSelling = parseAmount(originalProduct.sellingPrice);
-            const newCost = parseAmount(item.unitCost);
-
-            let newSellingPrice: string;
-            if (originalCost > 0) {
-              // Calculate markup percentage and apply to new cost
-              const markupPercentage =
-                (originalSelling - originalCost) / originalCost;
-              const calculatedSelling = newCost * (1 + markupPercentage);
-              newSellingPrice = calculatedSelling.toFixed(2);
-            } else {
-              // If original cost was 0, use original selling price or default markup (20%)
-              newSellingPrice =
-                originalSelling > 0
-                  ? originalProduct.sellingPrice
-                  : (newCost * 1.2).toFixed(2);
-            }
+            // Use user-provided selling price if available, otherwise keep original selling price
+            // This gives users full control over pricing - no auto-markup calculation
+            const newSellingPrice = item.sellingPrice
+              ? parseAmount(item.sellingPrice).toFixed(2)
+              : parseAmount(originalProduct.sellingPrice).toFixed(2);
 
             // Create a new product entry with the new lot/expiry
             const [newProduct] = await tx

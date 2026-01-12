@@ -19,8 +19,12 @@ const page = async () => {
   // Legacy full preload removed: products now fetched on-demand via /api/pos/lookup
   const pharmacyInfo = await getPharmacy(pharmacyId);
 
+  // Use a unique key to force remount on navigation
+  const mountKey = `pos-${Date.now()}`;
+
   return (
     <POSPage
+      key={mountKey}
       products={[]}
       pharmacyInfo={pharmacyInfo}
       pharmacyId={pharmacyId}

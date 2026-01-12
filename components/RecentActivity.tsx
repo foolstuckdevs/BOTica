@@ -75,7 +75,7 @@ export default async function RecentActivity({ pharmacyId, limit = 8 }: Props) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">
                       <span className="font-medium">
-                        {it.userFullName ?? 'Someone'}
+                        {it.username ?? 'Someone'}
                       </span>{' '}
                       <span className="text-muted-foreground">
                         {getDisplayAction(it.action)}

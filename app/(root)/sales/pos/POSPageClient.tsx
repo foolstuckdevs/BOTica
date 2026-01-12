@@ -45,6 +45,7 @@ export default function POSPage({
   const [pendingSearchTerm, setPendingSearchTerm] = useState<string | null>(
     null,
   );
+  const [initialLoading, setInitialLoading] = useState(true);
   const initialLoadedRef = useRef(false);
   const previousSearchRef = useRef('');
   const SEARCH_DEBOUNCE_MS = 150;
@@ -181,16 +182,54 @@ export default function POSPage({
     [pageSize],
   );
 
-  // Initial load: fetch first page immediately (no debounce) to avoid empty grid flash.
-  // Subsequent typed searches are debounced in separate effect below.
+  // Initial load: fetch first page on mount/navigation (no debounce)
+  // This effect runs on every mount and when pharmacyId changes
   useEffect(() => {
+    // Reset state for fresh load
+    initialLoadedRef.current = false;
+    previousSearchRef.current = '';
+    setProducts([]);
+    setOffset(0);
+    setHasMore(true);
+    setInitialLoading(true);
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoadingLookup(true);
+
+    fetchProducts({ offset: 0, limit: pageSize, signal: controller.signal })
+      .then((list) => {
+        setProducts(list);
+        setOffset(list.length);
+        setHasMore(list.length === pageSize);
+        initialLoadedRef.current = true;
+      })
+      .catch((e: unknown) => {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        const msg = e instanceof Error ? e.message : 'Initial load error';
+        toast.error(msg);
+        initialLoadedRef.current = true; // Mark as loaded even on error
+      })
+      .finally(() => {
+        setLoadingLookup(false);
+        setInitialLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [pharmacyId, fetchProducts, pageSize]);
+
+  // Handle search clear (reload base products)
+  useEffect(() => {
+    // Skip if initial load hasn't completed
+    if (!initialLoadedRef.current) return;
+
     const term = trimmedSearch;
     const previousTerm = previousSearchRef.current;
     previousSearchRef.current = term;
 
-    const isInitialLoadPending = !initialLoadedRef.current;
-    const clearedSearch = term.length === 0 && previousTerm.length > 0;
-    if (!isInitialLoadPending && !clearedSearch) {
+    // Only handle when search is cleared
+    if (term.length !== 0 || previousTerm.length === 0) {
       return;
     }
 
@@ -203,14 +242,15 @@ export default function POSPage({
         setProducts(list);
         setOffset(list.length);
         setHasMore(list.length === pageSize);
-        initialLoadedRef.current = true;
       })
       .catch((e: unknown) => {
         if (e instanceof DOMException && e.name === 'AbortError') return;
-        const msg = e instanceof Error ? e.message : 'Initial load error';
+        const msg = e instanceof Error ? e.message : 'Reload error';
         toast.error(msg);
       })
-      .finally(() => setLoadingLookup(false));
+      .finally(() => {
+        setLoadingLookup(false);
+      });
   }, [trimmedSearch, fetchProducts, pageSize]);
   // Lookup effect (debounced name/brand/lot query)
   useEffect(() => {
@@ -589,53 +629,69 @@ export default function POSPage({
             )}
 
             {/* Products Grid */}
-            {isSearchLoading && filteredProducts.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-16 relative min-h-[240px] flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="h-12 w-12 rounded-full border-4 border-gray-200 border-t-blue-600 animate-spin" />
-                  <p className="text-sm text-gray-500 tracking-wide">
-                    Searching...
-                  </p>
-                </div>
-              </div>
-            ) : filteredProducts.length > 0 ? (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {filteredProducts.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      onAddToCart={() => handleAddToCart(product)}
-                    />
-                  ))}
-                </div>
-                {hasMore && (
-                  <div className="flex justify-center mt-6">
-                    <button
-                      onClick={handleLoadMore}
-                      disabled={loadingLookup}
-                      className="px-6 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium shadow-sm disabled:opacity-50"
-                    >
-                      {loadingLookup ? 'Loading...' : 'Load More'}
-                    </button>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 relative min-h-[320px]">
+              {/* Loading overlay - similar to DataTable/Transactions */}
+              {initialLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-xl">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="h-10 w-10 rounded-full border-4 border-gray-200 border-t-blue-600 animate-spin" />
+                    <span className="text-sm text-gray-500 tracking-wide">
+                      Loading...
+                    </span>
                   </div>
-                )}
-              </>
-            ) : (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
-                <div className="text-center text-gray-500">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Search className="w-10 h-10 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-medium mb-2 text-gray-900">
-                    {emptyStateTitle}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {emptyStateDescription}
-                  </p>
                 </div>
-              </div>
-            )}
+              )}
+
+              {isSearchLoading &&
+              filteredProducts.length === 0 &&
+              !initialLoading ? (
+                <div className="p-16 flex items-center justify-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="h-10 w-10 rounded-full border-4 border-gray-200 border-t-blue-600 animate-spin" />
+                    <p className="text-sm text-gray-500 tracking-wide">
+                      Searching...
+                    </p>
+                  </div>
+                </div>
+              ) : filteredProducts.length > 0 ? (
+                <div className="p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {filteredProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onAddToCart={() => handleAddToCart(product)}
+                      />
+                    ))}
+                  </div>
+                  {hasMore && (
+                    <div className="flex justify-center mt-6">
+                      <button
+                        onClick={handleLoadMore}
+                        disabled={loadingLookup}
+                        className="px-6 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm font-medium shadow-sm disabled:opacity-50"
+                      >
+                        {loadingLookup ? 'Loading...' : 'Load More'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : !initialLoading ? (
+                <div className="p-12">
+                  <div className="text-center text-gray-500">
+                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-10 h-10 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2 text-gray-900">
+                      {emptyStateTitle}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {emptyStateDescription}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           {/* Current Sale Section */}

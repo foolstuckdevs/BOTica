@@ -1,13 +1,18 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { eq, and, desc, sql, gt } from 'drizzle-orm';
+import { eq, and, desc, sql, gt, lt } from 'drizzle-orm';
 import { notifications, products } from '@/database/schema';
 import { NotificationParams } from '@/types';
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 
-export const getNotifications = async (pharmacyId: number) => {
+const NOTIFICATIONS_PAGE_SIZE = 30;
+
+export const getNotifications = async (
+  pharmacyId: number,
+  options?: { cursor?: number; limit?: number },
+) => {
   try {
     const session = await auth();
     if (!session?.user?.pharmacyId) {
@@ -19,7 +24,15 @@ export const getNotifications = async (pharmacyId: number) => {
       throw new Error('Unauthorized access to pharmacy data');
     }
 
-    // Decoupled: do not sync during read to avoid re-creating notifications on open
+    const limit = options?.limit ?? NOTIFICATIONS_PAGE_SIZE;
+    const cursor = options?.cursor;
+
+    // Build where conditions
+    const whereConditions = [eq(notifications.pharmacyId, pharmacyId)];
+    if (cursor) {
+      // Cursor-based pagination: get notifications older than the cursor ID
+      whereConditions.push(lt(notifications.id, cursor));
+    }
 
     const result = await db
       .select({
@@ -38,14 +51,42 @@ export const getNotifications = async (pharmacyId: number) => {
       })
       .from(notifications)
       .leftJoin(products, eq(notifications.productId, products.id))
-      .where(eq(notifications.pharmacyId, pharmacyId))
+      .where(and(...whereConditions))
       .orderBy(desc(notifications.createdAt))
-      .limit(50); // Limit to last 50 notifications
+      .limit(limit + 1); // Fetch one extra to check if there are more
 
-    return result;
+    const hasMore = result.length > limit;
+    const items = hasMore ? result.slice(0, limit) : result;
+    const nextCursor = hasMore ? items[items.length - 1]?.id : undefined;
+
+    return {
+      items,
+      hasMore,
+      nextCursor,
+    };
   } catch (error) {
     console.error('Error fetching notifications:', error);
     throw new Error('Failed to fetch notifications');
+  }
+};
+
+// Get total notification count for display purposes
+export const getTotalNotificationCount = async (pharmacyId: number) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.pharmacyId || session.user.pharmacyId !== pharmacyId) {
+      throw new Error('Unauthorized');
+    }
+
+    const [result] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(eq(notifications.pharmacyId, pharmacyId));
+
+    return result?.count ?? 0;
+  } catch (error) {
+    console.error('Error fetching total notification count:', error);
+    return 0;
   }
 };
 

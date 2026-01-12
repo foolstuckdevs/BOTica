@@ -10,7 +10,7 @@ export type ActivityRow = {
   action: string;
   details: Record<string, unknown> | null;
   createdAt: string | Date;
-  userFullName: string | null;
+  username: string | null;
 };
 
 export const columns: ColumnDef<ActivityRow>[] = [
@@ -35,7 +35,7 @@ export const columns: ColumnDef<ActivityRow>[] = [
     sortingFn: 'datetime',
   },
   {
-    accessorKey: 'userFullName',
+    accessorKey: 'username',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="User" />
     ),
@@ -63,7 +63,8 @@ export const columns: ColumnDef<ActivityRow>[] = [
     },
   },
   {
-    id: 'target',
+    accessorKey: 'details',
+    id: 'details',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Target / Details" />
     ),

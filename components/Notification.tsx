@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Bell,
   X,
@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   AlertCircle,
   PackageX,
+  Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +45,10 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<number | undefined>(undefined);
 
   // Initial unread count on mount
   useEffect(() => {
@@ -56,6 +62,7 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
     })();
   }, [pharmacyId]);
 
+  // Load notifications when popover opens
   useEffect(() => {
     if (!isOpen) return;
     (async () => {
@@ -65,7 +72,9 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
           getNotifications(pharmacyId),
           getUnreadNotificationCount(pharmacyId),
         ]);
-        setNotifications(notificationsData as AppNotification[]);
+        setNotifications(notificationsData.items as AppNotification[]);
+        setHasMore(notificationsData.hasMore);
+        setNextCursor(notificationsData.nextCursor);
         setUnreadCount(unreadCountData);
       } catch (error) {
         console.error('Error fetching notifications:', error);
@@ -75,6 +84,26 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
     })();
   }, [isOpen, pharmacyId]);
 
+  // Load more notifications
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMore || loadingMore || !nextCursor) return;
+
+    try {
+      setLoadingMore(true);
+      const result = await getNotifications(pharmacyId, { cursor: nextCursor });
+      setNotifications((prev) => [
+        ...prev,
+        ...(result.items as AppNotification[]),
+      ]);
+      setHasMore(result.hasMore);
+      setNextCursor(result.nextCursor);
+    } catch (error) {
+      console.error('Error loading more notifications:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadingMore, nextCursor, pharmacyId]);
+
   // Poll for new notifications every 5 minutes when not open
   useEffect(() => {
     // Quick refresh via custom event broadcast from POS or others
@@ -83,8 +112,10 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
         const count = await getUnreadNotificationCount(pharmacyId);
         setUnreadCount(count);
         if (isOpen) {
-          const list = await getNotifications(pharmacyId);
-          setNotifications(list as AppNotification[]);
+          const result = await getNotifications(pharmacyId);
+          setNotifications(result.items as AppNotification[]);
+          setHasMore(result.hasMore);
+          setNextCursor(result.nextCursor);
         }
       } catch (error) {
         console.error('Error refreshing notifications via event:', error);
@@ -118,11 +149,7 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
         ),
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
-      // Refresh list when popover remains open
-      if (isOpen) {
-        const list = await getNotifications(pharmacyId);
-        setNotifications(list as AppNotification[]);
-      }
+      // No need to refresh the full list - optimistic update is sufficient
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -135,34 +162,56 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
         prev.map((notif) => ({ ...notif, isRead: true })),
       );
       setUnreadCount(0);
-      if (isOpen) {
-        const list = await getNotifications(pharmacyId);
-        setNotifications(list as AppNotification[]);
-      }
+      // No need to refresh - optimistic update covers it
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
     }
   };
 
   const handleDeleteNotification = async (notificationId: number) => {
+    // Prevent double-clicks - if already deleting, ignore
+    if (deletingIds.has(notificationId)) {
+      return;
+    }
+
+    // Check if notification still exists in our local state
+    const deletedNotification = notifications.find(
+      (n) => n.id === notificationId,
+    );
+    if (!deletedNotification) {
+      // Already removed from UI, nothing to do
+      return;
+    }
+
+    // Mark as deleting
+    setDeletingIds((prev) => new Set(prev).add(notificationId));
+
+    // Optimistically remove from UI immediately
+    setNotifications((prev) =>
+      prev.filter((notif) => notif.id !== notificationId),
+    );
+    if (!deletedNotification.isRead) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+
     try {
       await deleteNotification(notificationId);
-      const deletedNotification = notifications.find(
-        (n) => n.id === notificationId,
-      );
-      setNotifications((prev) =>
-        prev.filter((notif) => notif.id !== notificationId),
-      );
-
-      if (deletedNotification && !deletedNotification.isRead) {
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
-      if (isOpen) {
-        const list = await getNotifications(pharmacyId);
-        setNotifications(list as AppNotification[]);
-      }
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      // Only log if it's not a "not found" error (already deleted)
+      const errorMessage = error instanceof Error ? error.message : '';
+      if (
+        !errorMessage.includes('not found') &&
+        !errorMessage.includes('Not found')
+      ) {
+        console.error('Error deleting notification:', error);
+      }
+      // Note: We don't restore the item since it's likely already deleted
+    } finally {
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(notificationId);
+        return next;
+      });
     }
   };
 
@@ -234,6 +283,7 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
             <ScrollArea className="h-80">
               {loading ? (
                 <div className="p-4 text-center text-gray-500">
+                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
                   Loading notifications...
                 </div>
               ) : notifications.length === 0 ? (
@@ -266,6 +316,7 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
                                 onDelete={handleDeleteNotification}
                                 onClose={() => setIsOpen(false)}
                                 isAdmin={isAdmin}
+                                isDeleting={deletingIds.has(notification.id)}
                               />
                             ))}
                           </div>
@@ -285,8 +336,33 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
                                 onDelete={handleDeleteNotification}
                                 onClose={() => setIsOpen(false)}
                                 isAdmin={isAdmin}
+                                isDeleting={deletingIds.has(notification.id)}
                               />
                             ))}
+                          </div>
+                        )}
+                        {/* Load More Button */}
+                        {hasMore && (
+                          <div className="p-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-xs text-gray-500 hover:text-gray-700"
+                              onClick={handleLoadMore}
+                              disabled={loadingMore}
+                            >
+                              {loadingMore ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                  Loading...
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="h-3 w-3 mr-2" />
+                                  Load more notifications
+                                </>
+                              )}
+                            </Button>
                           </div>
                         )}
                       </>
@@ -309,6 +385,7 @@ interface NotificationItemProps {
   onDelete: (id: number) => void;
   onClose: () => void;
   isAdmin: boolean;
+  isDeleting?: boolean;
 }
 
 function NotificationItem({
@@ -317,6 +394,7 @@ function NotificationItem({
   onDelete,
   onClose,
   isAdmin,
+  isDeleting = false,
 }: NotificationItemProps) {
   const router = useRouter();
   const getNotificationIcon = (type: string) => {
@@ -436,8 +514,11 @@ function NotificationItem({
                 }}
                 className="h-6 w-6 text-gray-400 hover:text-red-600"
                 title="Delete notification"
+                disabled={isDeleting}
               >
-                <Trash2 className="h-3 w-3" />
+                <Trash2
+                  className={`h-3 w-3 ${isDeleting ? 'animate-pulse' : ''}`}
+                />
               </Button>
             </div>
           </div>

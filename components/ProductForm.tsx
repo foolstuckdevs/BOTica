@@ -57,6 +57,7 @@ interface Props extends Partial<Product> {
   categories: Category[];
   suppliers: Supplier[];
   pharmacyId: number;
+  returnUrl?: string;
 }
 
 const UNIT_OPTIONS: { value: UnitType; label: string }[] = [
@@ -88,6 +89,7 @@ const ProductForm = ({
   categories,
   suppliers,
   pharmacyId,
+  returnUrl,
   ...product
 }: Props) => {
   const router = useRouter();
@@ -179,7 +181,8 @@ const ProductForm = ({
         toast.success(`Product ${type === 'create' ? 'added' : 'updated'}`);
         form.reset();
         setSelectedImageFile(null);
-        router.push('/inventory/products');
+        // Use returnUrl to preserve pagination state, fallback to default
+        router.push(returnUrl || '/inventory/products');
       } else {
         toast.error(result?.message || 'Operation failed');
       }

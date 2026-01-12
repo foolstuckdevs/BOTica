@@ -627,6 +627,7 @@ const StockInForm = ({
           expiryDate: item.expiryDate
             ? formatDateForApi(item.expiryDate)
             : undefined,
+          sellingPrice: item.sellingPrice || undefined,
         })),
       };
 

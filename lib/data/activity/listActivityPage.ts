@@ -63,7 +63,7 @@ export async function listActivityPage(params: ActivityPageParams) {
       action: activityLogs.action,
       description: activityLogs.description,
       createdAt: activityLogs.createdAt,
-      userFullName: users.fullName,
+      username: users.fullName,
     })
     .from(activityLogs)
     .leftJoin(users, eq(users.id, activityLogs.userId))
@@ -77,7 +77,7 @@ export async function listActivityPage(params: ActivityPageParams) {
     action: r.action,
     details: parseDetails(r.description),
     createdAt: r.createdAt,
-    userFullName: r.userFullName ?? null,
+    username: r.username ?? null,
   }));
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
