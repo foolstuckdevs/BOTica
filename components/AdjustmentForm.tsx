@@ -152,20 +152,46 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
   const onSubmit = (data: AdjustmentFormValues) => {
     if (!selectedProduct) return;
 
-    const newAdjustment: PendingAdjustment = {
-      ...data,
-      productName: selectedProduct.name,
-      currentStock: selectedProduct.quantity,
-      newStock: selectedProduct.quantity + data.quantityChange,
-      unit: selectedProduct.unit || 'units',
-    };
+    // Check if this product already has a pending adjustment
+    const existingIndex = pendingAdjustments.findIndex(
+      (adj) => adj.productId === data.productId
+    );
 
-    setPendingAdjustments((prev) => [...prev, newAdjustment]);
+    if (existingIndex !== -1) {
+      // Update existing adjustment - combine quantities
+      setPendingAdjustments((prev) => {
+        const updated = [...prev];
+        const existing = updated[existingIndex];
+        const combinedQuantityChange = existing.quantityChange + data.quantityChange;
+        updated[existingIndex] = {
+          ...existing,
+          quantityChange: combinedQuantityChange,
+          newStock: existing.currentStock + combinedQuantityChange,
+          reason: data.reason, // Use the latest reason
+          notes: data.notes ? 
+            (existing.notes ? `${existing.notes}; ${data.notes}` : data.notes) : 
+            existing.notes,
+        };
+        return updated;
+      });
+      toast.success('Adjustment updated for this product');
+    } else {
+      // Add new adjustment
+      const newAdjustment: PendingAdjustment = {
+        ...data,
+        productName: selectedProduct.name,
+        currentStock: selectedProduct.quantity,
+        newStock: selectedProduct.quantity + data.quantityChange,
+        unit: selectedProduct.unit || 'units',
+      };
+      setPendingAdjustments((prev) => [...prev, newAdjustment]);
+      toast.success('Adjustment added to pending list');
+    }
+
     reset();
     setSelectedProduct(null);
     setSearch('');
     setIsSearching(false);
-    toast.success('Adjustment added to pending list');
   };
 
   const submitAllAdjustments = async () => {

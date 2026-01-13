@@ -3,7 +3,8 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 // import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
+import { formatDateTimePH } from '@/lib/date-format';
 
 export type ActivityRow = {
   id: number;
@@ -25,7 +26,7 @@ export const columns: ColumnDef<ActivityRow>[] = [
         typeof v === 'string' || v instanceof Date ? new Date(v) : new Date();
       return (
         <div className="leading-tight">
-          <div className="font-medium">{format(d, 'PP p')}</div>
+          <div className="font-medium">{formatDateTimePH(d)}</div>
           <div className="text-xs text-muted-foreground">
             {formatDistanceToNow(d, { addSuffix: true })}
           </div>
