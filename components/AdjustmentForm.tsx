@@ -154,7 +154,7 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
 
     // Check if this product already has a pending adjustment
     const existingIndex = pendingAdjustments.findIndex(
-      (adj) => adj.productId === data.productId
+      (adj) => adj.productId === data.productId,
     );
 
     if (existingIndex !== -1) {
@@ -162,15 +162,18 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
       setPendingAdjustments((prev) => {
         const updated = [...prev];
         const existing = updated[existingIndex];
-        const combinedQuantityChange = existing.quantityChange + data.quantityChange;
+        const combinedQuantityChange =
+          existing.quantityChange + data.quantityChange;
         updated[existingIndex] = {
           ...existing,
           quantityChange: combinedQuantityChange,
           newStock: existing.currentStock + combinedQuantityChange,
           reason: data.reason, // Use the latest reason
-          notes: data.notes ? 
-            (existing.notes ? `${existing.notes}; ${data.notes}` : data.notes) : 
-            existing.notes,
+          notes: data.notes
+            ? existing.notes
+              ? `${existing.notes}; ${data.notes}`
+              : data.notes
+            : existing.notes,
         };
         return updated;
       });
