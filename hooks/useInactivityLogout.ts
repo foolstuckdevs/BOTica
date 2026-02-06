@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { signOut } from 'next-auth/react';
+import { logAutoLogout } from '@/lib/actions/auto-logout';
 
 interface Options {
   assistantTimeoutMs?: number; // default 15 min
@@ -44,6 +45,8 @@ export function useInactivityLogout({
       }
       timerRef.current = setTimeout(async () => {
         onTimeout?.();
+        // Log the auto-logout activity before signing out
+        await logAutoLogout();
         await signOut({ callbackUrl: '/sign-in?reason=idle' });
       }, timeoutMs);
     }

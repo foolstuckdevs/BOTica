@@ -109,6 +109,7 @@ function humanizeAction(action?: string) {
     .replace(/^SALE_/, 'sale ');
   if (base === 'AUTH_SIGNIN') return 'signed in';
   if (base === 'AUTH_SIGNOUT') return 'signed out';
+  if (base === 'AUTH_AUTO_SIGNOUT') return 'auto signed out';
   return base.replace(/_/g, ' ').toLowerCase();
 }
 

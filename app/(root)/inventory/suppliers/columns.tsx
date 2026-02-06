@@ -38,7 +38,7 @@ export const columns: ColumnDef<Supplier>[] = [
     ),
     cell: ({ getValue }) => (
       <span className="text-sm text-muted-foreground">
-        {getValue<string>()}
+        {getValue<string>() || '—'}
       </span>
     ),
   },
@@ -49,7 +49,7 @@ export const columns: ColumnDef<Supplier>[] = [
     ),
     cell: ({ getValue }) => (
       <span className="text-sm text-muted-foreground">
-        {getValue<string>()}
+        {getValue<string>() || '—'}
       </span>
     ),
   },
@@ -60,7 +60,7 @@ export const columns: ColumnDef<Supplier>[] = [
     ),
     cell: ({ getValue }) => (
       <span className="text-sm text-muted-foreground line-clamp-1">
-        {getValue<string>()}
+        {getValue<string>() || '—'}
       </span>
     ),
   },

@@ -1,8 +1,9 @@
 'use server';
 
+import { z } from 'zod';
 import { db } from '@/database/drizzle';
 import { categories } from '@/database/schema';
-import { Category, CategoryParams } from '@/types';
+import { CategoryParams } from '@/types';
 import {
   getCategoriesSchema,
   createCategorySchema,
@@ -49,7 +50,7 @@ export async function getCategories(pharmacyId: number) {
  * Create new category (with pharmacy scope)
  */
 export async function createCategory(
-  params: Pick<Category, 'name' | 'description'> & { pharmacyId: number },
+  params: CategoryParams & { pharmacyId: number },
 ) {
   try {
     // RBAC: Admin-only for master data mutations (categories)
@@ -78,7 +79,10 @@ export async function createCategory(
 
     const newCategory = await db
       .insert(categories)
-      .values(validatedData)
+      .values({
+        ...validatedData,
+        description: validatedData.description ?? null,
+      })
       .returning();
 
     revalidatePath('/categories');
@@ -115,7 +119,7 @@ export async function createCategory(
  * Update category (with pharmacy check)
  */
 export const updateCategory = async (
-  data: { id: number; pharmacyId: number } & CategoryParams,
+  data: z.infer<typeof updateCategorySchema>,
 ) => {
   try {
     // RBAC: Admin-only for master data mutations (categories)
@@ -158,7 +162,7 @@ export const updateCategory = async (
       .update(categories)
       .set({
         name: validatedData.name,
-        description: validatedData.description,
+        description: validatedData.description ?? null,
       })
       .where(
         and(

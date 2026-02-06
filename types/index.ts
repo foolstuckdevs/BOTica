@@ -43,7 +43,7 @@ export interface Category {
 
 export type CategoryParams = {
   name: string;
-  description: string;
+  description?: string;
   pharmacyId?: number;
 };
 

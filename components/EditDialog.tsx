@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,16 @@ export const EditDialog = <T extends FieldValues>({
     resolver: zodResolver(schema),
     defaultValues,
   });
+
+  useEffect(() => {
+    if (open) {
+      // Reset form with current defaultValues when dialog opens
+      form.reset(defaultValues);
+    } else {
+      // Reset to empty when dialog closes
+      form.reset();
+    }
+  }, [open, defaultValues, form]);
 
   const handleSubmit = async (data: T) => {
     const result = await onSubmit(data);

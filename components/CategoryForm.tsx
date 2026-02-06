@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
@@ -46,6 +46,12 @@ const CategoryForm = () => {
       description: '',
     },
   });
+
+  useEffect(() => {
+    if (!open) {
+      form.reset();
+    }
+  }, [open, form]);
 
   const onSubmit = async (data: z.infer<typeof categorySchema>) => {
     if (!session?.user?.pharmacyId) {

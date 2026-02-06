@@ -94,6 +94,7 @@ function humanizeVerb(action?: string) {
   if (/RESTORED$/.test(action)) return 'restored';
   if (/AUTH_SIGNIN$/.test(action)) return 'signed in';
   if (/AUTH_SIGNOUT$/.test(action)) return 'signed out';
+  if (/AUTH_AUTO_SIGNOUT$/.test(action)) return 'auto signed out';
   if (/SALE_COMPLETED$/.test(action)) return 'completed';
   if (/^STOCKIN_/.test(action)) return 'received'; // All stock-in actions show as "received"
   return 'done';

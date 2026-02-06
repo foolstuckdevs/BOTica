@@ -1,15 +1,44 @@
 import { z } from 'zod';
 import {
   dosageFormSchemaOptional,
-  unitSchemaOptional,
+  unitSchema,
   pharmacyIdSchema,
   productIdSchema,
 } from './common';
 
+const costPriceSchema = z
+  .string()
+  .trim()
+  .min(1, 'Cost price is required')
+  .regex(/^\d+(?:\.\d{0,2})?$/, 'Cost price must be a valid number')
+  .refine((value) => {
+    const amount = Number(value);
+    return Number.isFinite(amount) && amount >= 0 && amount <= 10_000;
+  }, {
+    message: 'Cost Price must be at least 0.00 up to 10,000.00',
+  });
+
+const sellingPriceSchema = z
+  .string()
+  .trim()
+  .min(1, 'Selling price is required')
+  .regex(/^\d+(?:\.\d{0,2})?$/, 'Selling price must be a valid number')
+  .refine((value) => {
+    const amount = Number(value);
+    return Number.isFinite(amount) && amount >= 1 && amount <= 10_000;
+  }, {
+    message: 'Selling price must be at least 1.00 up to 10,000.00',
+  });
+
+const unitRequiredSchema = z.enum(['PIECE', 'BOX'], {
+  required_error: 'Unit is required',
+  invalid_type_error: 'Unit is required',
+});
+
 export const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   genericName: z.string().optional(),
-  categoryId: z.number().min(1, 'Category is required').optional(),
+  categoryId: z.number({ required_error: 'Category is required', invalid_type_error: 'Category is required' }).min(1, 'Category is required'),
   lotNumber: z.string().optional(),
   brandName: z.string().optional(),
   dosageForm: dosageFormSchemaOptional,
@@ -23,24 +52,14 @@ export const productSchema = z.object({
     .number()
     .min(0, 'Quantity must be at least 0')
     .max(9999, 'Quantity cannot exceed 9999'),
-  costPrice: z
-    .string()
-    .regex(
-      /^(?:\d{1,6})(?:\.\d{1,2})?$/,
-      'Cost price must be a valid number up to 999,999.99',
-    ),
-  sellingPrice: z
-    .string()
-    .regex(
-      /^(?:\d{1,6})(?:\.\d{1,2})?$/,
-      'Selling price must be a valid number up to 999,999.99',
-    ),
+  costPrice: costPriceSchema,
+  sellingPrice: sellingPriceSchema,
   minStockLevel: z
     .number()
     .min(0)
     .max(999, 'Minimum stock cannot exceed 999')
     .optional(),
-  unit: unitSchemaOptional,
+  unit: unitRequiredSchema,
   supplierId: z.number().min(1, 'Supplier is required').optional(),
   imageUrl: z.string().optional().or(z.literal('')),
 });
@@ -49,7 +68,7 @@ export const productSchema = z.object({
 export const productFormSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
   genericName: z.string().optional(),
-  categoryId: z.number().min(1, 'Category is required').optional(),
+  categoryId: z.number({ required_error: 'Category is required', invalid_type_error: 'Category is required' }).min(1, 'Category is required'),
   lotNumber: z.string().optional(),
   brandName: z.string().optional(),
   dosageForm: dosageFormSchemaOptional,
@@ -62,24 +81,14 @@ export const productFormSchema = z.object({
     .number()
     .min(0, 'Quantity must be at least 0')
     .max(9999, 'Quantity cannot exceed 9999'),
-  costPrice: z
-    .string()
-    .regex(
-      /^(?:\d{1,6})(?:\.\d{1,2})?$/,
-      'Cost price must be a valid number up to 999,999.99',
-    ),
-  sellingPrice: z
-    .string()
-    .regex(
-      /^(?:\d{1,6})(?:\.\d{1,2})?$/,
-      'Selling price must be a valid number up to 999,999.99',
-    ),
+  costPrice: costPriceSchema,
+  sellingPrice: sellingPriceSchema,
   minStockLevel: z
     .number()
     .min(0)
     .max(999, 'Minimum stock cannot exceed 999')
     .optional(),
-  unit: unitSchemaOptional,
+  unit: unitRequiredSchema,
   supplierId: z.number().min(1, 'Supplier is required').optional(),
   imageUrl: z.string().optional().or(z.literal('')),
 });

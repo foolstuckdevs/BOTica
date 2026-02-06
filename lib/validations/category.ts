@@ -7,13 +7,20 @@ import { pharmacyIdSchema } from './common';
 export const categorySchema = z.object({
   name: z
     .string()
+    .min(1, 'Category is required')
     .min(4, 'Name must be at least 4 characters')
     .max(50, 'Name too long')
     .regex(/^[A-Za-z\s&]+$/, 'Name can include letters, spaces, and &'),
   description: z
     .string()
-    .min(8, 'Description too short')
-    .max(255, 'Description too long'),
+    .transform((val) => val.trim() === '' ? undefined : val)
+    .optional()
+    .refine((val) => !val || val.length >= 8, {
+      message: 'Description too short',
+    })
+    .refine((val) => !val || val.length <= 255, {
+      message: 'Description too long',
+    }),
 }) satisfies z.ZodType<CategoryParams>;
 
 export const createCategorySchema = categorySchema.extend({
@@ -25,14 +32,20 @@ export const updateCategorySchema = z.object({
   pharmacyId: pharmacyIdSchema,
   name: z
     .string()
-    .min(4, 'Name must be at least 4 characters')
-    .max(30, 'Name too long')
+    .min(1, 'Category is required')
+    .min(4, 'Category name must be at least 4 characters')
+    .max(30, 'Category name too long')
     .regex(/^[A-Za-z\s&]+$/, 'Name can include letters, spaces, and &'),
   description: z
     .string()
-    .min(10, 'Description too short')
-    .max(255, 'Description too long')
-    .optional(),
+    .transform((val) => val.trim() === '' ? undefined : val)
+    .optional()
+    .refine((val) => !val || val.length >= 10, {
+      message: 'Description too short',
+    })
+    .refine((val) => !val || val.length <= 255, {
+      message: 'Description too long',
+    }),
 });
 
 export const deleteCategorySchema = z.object({

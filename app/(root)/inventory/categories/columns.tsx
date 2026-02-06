@@ -29,7 +29,7 @@ export const columns: ColumnDef<Category>[] = [
     ),
     cell: ({ getValue }) => (
       <span className="text-sm text-muted-foreground">
-        {getValue<string>() || '-'}
+        {getValue<string>() || '—'}
       </span>
     ),
     enableSorting: false,

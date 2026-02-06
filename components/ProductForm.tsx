@@ -123,6 +123,8 @@ const ProductForm = ({
     },
   });
 
+  const watchedCostPrice = form.watch('costPrice');
+
   const onSubmit = async (values: z.infer<typeof productFormSchema>) => {
     try {
       setIsSubmitting(true);
@@ -259,6 +261,7 @@ const ProductForm = ({
                       <FormItem>
                         <FormLabel className="flex items-center gap-1">
                           Unit
+                          <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <Select
@@ -380,7 +383,10 @@ const ProductForm = ({
                     name="categoryId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Category</FormLabel>
+                        <FormLabel className="flex items-center gap-1">
+                          Category
+                          <span className="text-red-500">*</span>
+                        </FormLabel>
                         <FormControl>
                           <SearchableSelect
                             options={categories.map((category) => ({
@@ -670,39 +676,55 @@ const ProductForm = ({
                   <FormField
                     control={form.control}
                     name="sellingPrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-1">
-                          Selling Price
-                          <span className="text-red-500">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <div className="relative w-full">
-                            <Input
-                              placeholder="₱ 0.00"
-                              className="w-full"
-                              value={field.value}
-                              onChange={(e) => {
-                                const raw = e.target.value.replace(
-                                  /[^\d.]/g,
-                                  '',
-                                );
-                                if (raw === '' || /^\d*\.?\d{0,2}$/.test(raw)) {
-                                  field.onChange(raw);
-                                }
-                              }}
-                              onBlur={() => {
-                                const value = parseFloat(field.value);
-                                if (!isNaN(value)) {
-                                  field.onChange(value.toFixed(2));
-                                }
-                              }}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const cost = parseFloat(watchedCostPrice || '0');
+                      const selling = parseFloat(field.value || '0');
+                      const profitMargin =
+                        selling > 0 ? ((selling - cost) / selling) * 100 : 0;
+                      const isLowerThanCost = selling > 0 && selling < cost;
+
+                      return (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-1">
+                            Selling Price
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative w-full">
+                              <Input
+                                placeholder="₱ 0.00"
+                                className="w-full"
+                                value={field.value}
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(
+                                    /[^\d.]/g,
+                                    '',
+                                  );
+                                  if (
+                                    raw === '' ||
+                                    /^\d*\.?\d{0,2}$/.test(raw)
+                                  ) {
+                                    field.onChange(raw);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  const value = parseFloat(field.value);
+                                  if (!isNaN(value)) {
+                                    field.onChange(value.toFixed(2));
+                                  }
+                                }}
+                              />
+                            </div>
+                          </FormControl>
+                          {isLowerThanCost && (
+                            <p className="text-[0.7rem] pl-1 font-medium text-destructive mt-1">
+                              Note: Selling price is lower than cost price
+                            </p>
+                          )}
+                          <FormMessage className="text-xs" />
+                        </FormItem>
+                      );
+                    }}
                   />
                 </CardContent>
               </Card>
@@ -722,7 +744,6 @@ const ProductForm = ({
                       <FormItem>
                         <FormLabel className="flex items-center gap-1">
                           Quantity
-                          <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <div className="w-full">
@@ -794,7 +815,7 @@ const ProductForm = ({
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push('/inventory/products')}
+              onClick={() => router.push(returnUrl || '/inventory/products')}
               className="w-full sm:w-auto"
             >
               Cancel

@@ -15,7 +15,7 @@ import { logActivity } from '@/lib/actions/activity';
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days for remembered sessions, will be overridden for regular sessions
+    maxAge: 4 * 60 * 60, // 4 hours absolute maximum (will be overridden in jwt callback based on rememberMe)
   },
   providers: [
     CredentialsProvider({
@@ -193,7 +193,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       const now = Math.floor(Date.now() / 1000);
       const getDuration = (remember: boolean) =>
-        remember ? 30 * 24 * 60 * 60 : 12 * 60 * 60;
+        remember ? 24 * 60 * 60 : 4 * 60 * 60; // 24 hours if remembered, 4 hours otherwise
 
       if (user) {
         const rememberMe =

@@ -25,11 +25,13 @@ interface ProductViewDialogProps {
 }
 
 const Label = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-muted-foreground text-xs">{children}</p>
+  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+    {children}
+  </p>
 );
 
 const Value = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-sm font-medium">{children}</p>
+  <p className="text-sm font-semibold text-foreground">{children}</p>
 );
 
 const InfoBlock = ({
@@ -38,13 +40,14 @@ const InfoBlock = ({
 }: {
   label: string;
   value: string | number | null | undefined;
-}) =>
-  value ? (
-    <div className="space-y-1">
-      <Label>{label}</Label>
-      <Value>{value}</Value>
+}) => (
+  <div className="rounded-lg border bg-background/60 p-3 shadow-sm">
+    <Label>{label}</Label>
+    <div className="mt-1">
+      <Value>{value || '—'}</Value>
     </div>
-  ) : null;
+  </div>
+);
 
 const Section = ({
   title,
@@ -57,12 +60,12 @@ const Section = ({
   color: string;
   children: React.ReactNode;
 }) => (
-  <div className="space-y-4">
-    <h3 className={`text-sm font-semibold flex items-center gap-2 ${color}`}>
+  <div className="rounded-lg border bg-card p-5 space-y-5">
+    <h3 className={`text-base font-bold flex items-center gap-2.5 ${color} pb-3 border-b`}>
       {icon}
       {title}
     </h3>
-    <div className="grid gap-4 pl-5">{children}</div>
+    <div className="grid gap-5">{children}</div>
   </div>
 );
 
@@ -71,83 +74,49 @@ const ProductViewDialog = ({
   open,
   onOpenChange,
 }: ProductViewDialogProps) => {
+  const fields = [
+    { label: 'Product Name', value: product.name },
+    { label: 'Generic Name', value: product.genericName },
+    { label: 'Category', value: product.categoryName },
+    { label: 'Unit', value: product.unit },
+    { label: 'Brand Name', value: product.brandName },
+    { label: 'Lot Number', value: product.lotNumber },
+    { label: 'Dosage Form', value: product.dosageForm },
+    {
+      label: 'Expiry Date',
+      value: product.expiryDate ? formatExpiryDatePH(product.expiryDate) : undefined,
+    },
+    { label: 'Current Quantity', value: product.quantity },
+    { label: 'Minimum Stock Level', value: product.minStockLevel },
+    { label: 'Supplier', value: product.supplierName },
+    { label: 'Cost Price', value: formatCurrency(Number(product.costPrice)) },
+    { label: 'Selling Price', value: formatCurrency(Number(product.sellingPrice)) },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <PackageIcon className="w-5 h-5 text-primary" />
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-4 border-b">
+          <DialogTitle className="flex items-center gap-3 text-xl font-bold">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <PackageIcon className="w-6 h-6 text-primary" />
+            </div>
             Product Details
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-10 pt-4">
-          {/* First Row: Basic Info & Inventory Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b pb-8">
-            <Section
-              title="Basic Information"
-              icon={<InfoIcon className="w-4 h-4" />}
-              color="text-blue-600"
-            >
-              <InfoBlock label="Product Name" value={product.name} />
-              <InfoBlock label="Generic Name" value={product.genericName} />
-              <InfoBlock label="Category" value={product.categoryName} />
-              <InfoBlock label="Unit" value={product.unit} />
-            </Section>
-
-            <Section
-              title="Inventory Details"
-              icon={<BoxIcon className="w-4 h-4" />}
-              color="text-green-600"
-            >
-              <InfoBlock label="Lot Number" value={product.lotNumber} />
-              <InfoBlock label="Dosage Form" value={product.dosageForm} />
-              <InfoBlock label="Brand Name" value={product.brandName} />
-              <InfoBlock
-                label="Expiry Date"
-                value={
-                  product.expiryDate
-                    ? formatExpiryDatePH(product.expiryDate)
-                    : 'N/A'
-                }
-              />
-              <InfoBlock label="Quantity" value={product.quantity} />
-            </Section>
-          </div>
-
-          {/* Second Row: Pricing & Stock */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Section
-              title="Pricing"
-              icon={<Banknote className="w-4 h-4" />}
-              color="text-yellow-600"
-            >
-              <InfoBlock
-                label="Cost Price"
-                value={formatCurrency(Number(product.costPrice))}
-              />
-              <InfoBlock
-                label="Selling Price"
-                value={formatCurrency(Number(product.sellingPrice))}
-              />
-            </Section>
-
-            <Section
-              title="Stock Management"
-              icon={<LayersIcon className="w-4 h-4" />}
-              color="text-purple-600"
-            >
-              <InfoBlock
-                label="Minimum Stock Level"
-                value={product.minStockLevel}
-              />
-              <InfoBlock label="Supplier" value={product.supplierName} />
-            </Section>
+        <div className="py-1">
+          <div className="rounded-xl border bg-muted/20 p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {fields.map((field) => (
+                <InfoBlock key={field.label} label={field.label} value={field.value} />
+              ))}
+            </div>
           </div>
         </div>
 
-        <div className="flex justify-end pt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="flex justify-end pt-4 border-t">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="px-6">
             Close
           </Button>
         </div>
