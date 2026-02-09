@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import {
   dosageFormSchemaOptional,
-  unitSchema,
   pharmacyIdSchema,
   productIdSchema,
 } from './common';

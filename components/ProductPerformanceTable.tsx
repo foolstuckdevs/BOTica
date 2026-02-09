@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { ProductPerformanceData } from '@/types';
 import { TableExportMenu } from '@/components/TableExportMenu';
 import { buildFilterSubtitle } from '@/lib/filterSubtitle';
@@ -462,18 +463,17 @@ export const ProductPerformanceTable = ({
               onPeriodChange={setFilterPeriod}
               onDateRangeChange={setSelectedRange}
             />
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="h-8 w-[160px] px-3 py-0 text-sm leading-none">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat === 'all' ? 'All Categories' : cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={categories.map((cat) => ({
+                value: cat,
+                label: cat === 'all' ? 'All Categories' : cat,
+              }))}
+              value={category}
+              onValueChange={setCategory}
+              placeholder="All Categories"
+              searchPlaceholder="Search categories..."
+              triggerClassName="h-8 w-[160px] px-3 py-0 text-sm leading-none"
+            />
           </div>
         </div>
       </CardHeader>

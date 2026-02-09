@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Button } from '@/components/ui/button';
 import { TableExportMenu } from '@/components/TableExportMenu';
 import { buildFilterSubtitle } from '@/lib/filterSubtitle';
@@ -277,27 +278,24 @@ export function LowStockTable({
                         <label className="text-xs font-medium text-muted-foreground">
                           Category
                         </label>
-                        <Select
-                          value={categoryFilter}
-                          onValueChange={onCategoryFilterChange}
-                        >
-                          <SelectTrigger className="h-8 w-full text-xs px-2 py-1 mt-1">
-                            <SelectValue placeholder="Filter by category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Categories</SelectItem>
-                            {/* Get unique categories from products */}
-                            {Array.from(
+                        <SearchableSelect
+                          options={[
+                            { value: 'all', label: 'All Categories' },
+                            ...Array.from(
                               new Set(products.map((p) => p.categoryName)),
                             )
                               .sort()
-                              .map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+                              .map((category) => ({
+                                value: category,
+                                label: category,
+                              })),
+                          ]}
+                          value={categoryFilter}
+                          onValueChange={onCategoryFilterChange || (() => {})}
+                          placeholder="Filter by category"
+                          searchPlaceholder="Search categories..."
+                          triggerClassName="h-8 w-full text-xs px-2 py-1 mt-1"
+                        />
                       </div>
                     </div>
                     {hasActiveFilters && (

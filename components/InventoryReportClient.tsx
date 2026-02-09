@@ -146,27 +146,6 @@ export default function InventoryReportClient({
     inactiveLoaded,
   ]);
 
-  const filteredExpiringProducts = useMemo(() => {
-    return inventoryData.expiringProducts.filter((product) => {
-      // Exclude beyond 210 days (7 months) automatically
-      if (product.daysRemaining > 210) return false;
-      const matchesSearch = product.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      // Keep existing expiry quick filters for <= 90 day granular selection
-      const matchesFilter =
-        expiryFilter === 'all' ||
-        (expiryFilter === '30days' && product.daysRemaining <= 30) ||
-        (expiryFilter === '60days' &&
-          product.daysRemaining > 30 &&
-          product.daysRemaining <= 60) ||
-        (expiryFilter === '90days' &&
-          product.daysRemaining > 60 &&
-          product.daysRemaining <= 90);
-      return matchesSearch && matchesFilter;
-    });
-  }, [inventoryData.expiringProducts, searchTerm, expiryFilter]);
-
   const filteredLowStockProducts = useMemo(() => {
     return inventoryData.lowStockProducts.filter((product) => {
       const matchesSearch = product.name
@@ -281,13 +260,12 @@ export default function InventoryReportClient({
             <TabsContent value="expiring" className="m-0">
               {expiringLoaded ? (
                 <ExpiringProductsTable
-                  products={filteredExpiringProducts}
+                  products={inventoryData.expiringProducts}
                   searchTerm={searchTerm}
                   onSearchChange={setSearchTerm}
                   expiryFilter={expiryFilter}
                   onExpiryFilterChange={setExpiryFilter}
                   statusFilter={initialExpiringStatus ?? 'all'}
-                  onStatusFilterChange={() => {}}
                 />
               ) : (
                 <SkeletonTable rows={8} columns={5} />

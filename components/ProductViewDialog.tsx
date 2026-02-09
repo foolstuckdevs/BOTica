@@ -2,10 +2,6 @@
 
 import {
   PackageIcon,
-  Banknote,
-  InfoIcon,
-  BoxIcon,
-  LayersIcon,
 } from 'lucide-react';
 import { Product } from '@/types';
 import { Button } from '@/components/ui/button';

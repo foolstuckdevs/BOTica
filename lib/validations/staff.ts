@@ -40,8 +40,15 @@ export const createStaffSchema = z.object({
 export const staffFormSchema = z.object({
   fullName: z
     .string()
+    .min(1, 'Full name is required')
     .min(8, 'Full name must be at least 8 characters')
     .regex(/^[A-Za-z\s]+$/, 'Full name must contain only letters and spaces'),
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z
+    .string()
+    .min(1, 'Email is required')
+    .email('Invalid email address'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .min(8, 'Password must be at least 8 characters'),
 });

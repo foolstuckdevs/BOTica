@@ -66,10 +66,22 @@ interface ProductLookupResult extends LightweightProduct {
 
 const stockInItemFormSchema = stockInItemSchema.extend({
   expiryDate: z.date().optional(),
-  sellingPrice: z.string().optional(),
+  sellingPrice: z
+    .string()
+    .trim()
+    .regex(/^\d+(?:\.\d{0,2})?$/, 'Selling price must be a valid number.')
+    .refine((value) => {
+      const amount = Number(value);
+      return Number.isFinite(amount) && amount >= 1 && amount <= 10_000;
+    }, {
+      message: 'Selling price must be at least 1.00 up to 10,000.00',
+    })
+    .optional()
+    .or(z.literal('')),
 });
 
 const stockInFormSchema = stockInSchema.extend({
+  supplierId: z.number({ required_error: 'Supplier is required.', invalid_type_error: 'Supplier is required.' }).int().positive('Supplier is required.').optional(),
   deliveryDate: z.date({ message: 'Delivery date is required.' }),
   attachmentUrl: z.string().min(1, 'Receipt image/PDF is required.'),
   discount: z
@@ -78,7 +90,10 @@ const stockInFormSchema = stockInSchema.extend({
     .optional(),
   subtotal: z.string().optional(),
   total: z.string().optional(),
-  items: z.array(stockInItemFormSchema).min(1),
+  items: z.array(stockInItemFormSchema).min(1, 'Add at least one item.'),
+}).refine((data) => data.supplierId !== undefined && data.supplierId !== null, {
+  message: 'Supplier is required.',
+  path: ['supplierId'],
 });
 
 type StockInFormValues = z.infer<typeof stockInFormSchema>;
@@ -763,7 +778,7 @@ const StockInForm = ({
                     name="deliveryDate"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Delivery Date</FormLabel>
+                        <FormLabel>Delivery Date <span className="text-red-500">*</span></FormLabel>
                         <Popover
                           open={openDeliveryDatePopover}
                           onOpenChange={setOpenDeliveryDatePopover}

@@ -13,21 +13,32 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 
 // Form schema for client-side validation (only fields user fills out)
-// Form schema for client-side validation (only fields user fills out)
 const adjustmentFormSchema = z.object({
-  productId: z.number().int().positive(),
+  productId: z.number({ required_error: 'Please select a product.', invalid_type_error: 'Please select a product.' }).int().positive(),
   quantityChange: z
-    .number()
-    .int()
-    .min(-9999, { message: 'Quantity cannot be less than -9999' })
-    .max(9999, { message: 'Quantity cannot be greater than 9999' }),
-  reason: adjustmentReasonSchema,
+    .number({ required_error: 'Quantity change is required.', invalid_type_error: 'Quantity change is required.' })
+    .int({ message: 'Quantity must be a whole number.' })
+    .refine((val) => val > 0, {
+      message: 'Quantity must be greater than 0.',
+    })
+    .refine((val) => val <= 9999, {
+      message: 'Quantity cannot be greater than 9999.',
+    }),
+  reason: z.string().min(1, 'Please select a reason.').refine(
+    (val) => ['DAMAGED', 'EXPIRED', 'LOST_OR_STOLEN', 'STOCK_CORRECTION'].includes(val),
+    { message: 'Please select a valid reason.' }
+  ),
   notes: z.string().optional(),
 });
 
 type AdjustmentFormValues = z.infer<typeof adjustmentFormSchema>;
+type AdjustmentReason = z.infer<typeof adjustmentReasonSchema>;
 
-interface PendingAdjustment extends AdjustmentFormValues {
+interface PendingAdjustment {
+  productId: number;
+  quantityChange: number;
+  reason: AdjustmentReason;
+  notes?: string;
   productName: string;
   currentStock: number;
   newStock: number;
@@ -149,8 +160,25 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
     setIsSearching(false);
   };
 
+  // Reasons that subtract from stock
+  const reductionReasons = ['DAMAGED', 'EXPIRED', 'LOST_OR_STOLEN'];
+
   const onSubmit = (data: AdjustmentFormValues) => {
     if (!selectedProduct) return;
+
+    // Auto-negate quantity for reduction reasons
+    const effectiveQuantityChange = reductionReasons.includes(data.reason)
+      ? -Math.abs(data.quantityChange)
+      : Math.abs(data.quantityChange);
+
+    // Prevent negative stock
+    const projectedStock = selectedProduct.quantity + effectiveQuantityChange;
+    if (projectedStock < 0) {
+      toast.error(
+        `Cannot remove ${Math.abs(effectiveQuantityChange)} — only ${selectedProduct.quantity} in stock.`,
+      );
+      return;
+    }
 
     // Check if this product already has a pending adjustment
     const existingIndex = pendingAdjustments.findIndex(
@@ -163,12 +191,12 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
         const updated = [...prev];
         const existing = updated[existingIndex];
         const combinedQuantityChange =
-          existing.quantityChange + data.quantityChange;
+          existing.quantityChange + effectiveQuantityChange;
         updated[existingIndex] = {
           ...existing,
           quantityChange: combinedQuantityChange,
           newStock: existing.currentStock + combinedQuantityChange,
-          reason: data.reason, // Use the latest reason
+          reason: data.reason as AdjustmentReason, // Use the latest reason
           notes: data.notes
             ? existing.notes
               ? `${existing.notes}; ${data.notes}`
@@ -181,10 +209,13 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
     } else {
       // Add new adjustment
       const newAdjustment: PendingAdjustment = {
-        ...data,
+        productId: data.productId,
+        quantityChange: effectiveQuantityChange,
+        reason: data.reason as AdjustmentReason,
+        notes: data.notes,
         productName: selectedProduct.name,
         currentStock: selectedProduct.quantity,
-        newStock: selectedProduct.quantity + data.quantityChange,
+        newStock: selectedProduct.quantity + effectiveQuantityChange,
         unit: selectedProduct.unit || 'units',
       };
       setPendingAdjustments((prev) => [...prev, newAdjustment]);
@@ -435,24 +466,43 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
                   <div className="text-xs font-medium text-blue-500 uppercase tracking-wider mb-1">
                     Adjustment
                   </div>
-                  <div
-                    className={`text-lg font-semibold ${
-                      quantityChange >= 0 ? 'text-blue-600' : 'text-red-600'
-                    }`}
-                  >
-                    {quantityChange >= 0 ? '+' : ''}
-                    {quantityChange}
-                  </div>
+                  {(() => {
+                    const reason = watch('reason') || '';
+                    const isReduction = reductionReasons.includes(reason);
+                    const effectiveChange = isReduction
+                      ? -Math.abs(quantityChange)
+                      : Math.abs(quantityChange);
+                    return (
+                      <div
+                        className={`text-lg font-semibold ${
+                          effectiveChange >= 0 ? 'text-blue-600' : 'text-red-600'
+                        }`}
+                      >
+                        {effectiveChange >= 0 ? '+' : ''}
+                        {effectiveChange}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="bg-green-50 p-3 rounded-lg border border-green-100">
                   <div className="text-xs font-medium text-green-500 uppercase tracking-wider mb-1">
                     New Stock
                   </div>
-                  <div className="text-lg font-semibold text-green-600">
-                    {selectedProduct.quantity + quantityChange}{' '}
-                    {(selectedProduct.unit || 'units').toLowerCase()}
-                  </div>
+                  {(() => {
+                    const reason = watch('reason') || '';
+                    const isReduction = reductionReasons.includes(reason);
+                    const effectiveChange = isReduction
+                      ? -Math.abs(quantityChange)
+                      : Math.abs(quantityChange);
+                    const newStock = selectedProduct.quantity + effectiveChange;
+                    return (
+                      <div className={`text-lg font-semibold ${newStock < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {Math.max(0, newStock)}{' '}
+                        {(selectedProduct.unit || 'units').toLowerCase()}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -470,8 +520,8 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
                   <input
                     type="number"
                     {...register('quantityChange', { valueAsNumber: true })}
-                    placeholder="e.g. -5 or +10"
-                    min={-9999}
+                    placeholder="e.g. 5"
+                    min={1}
                     max={9999}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -601,7 +651,7 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
                       </div>
                       <button
                         onClick={() => removePendingAdjustment(index)}
-                        className="text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                        className="text-gray-400 hover:text-red-500 transition"
                         aria-label="Remove adjustment"
                       >
                         <X className="w-4 h-4" />

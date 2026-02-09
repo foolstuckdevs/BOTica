@@ -90,6 +90,7 @@ export function QuickAddProductDialog({
 }: QuickAddProductDialogProps) {
   const [openExpiryPopover, setOpenExpiryPopover] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     name: initialName,
     brandName: '',
@@ -97,28 +98,31 @@ export function QuickAddProductDialog({
     categoryId: '',
     unit: 'PIECE' as 'PIECE' | 'BOX',
     dosageForm: '' as DosageFormType | '',
-    costPrice: '0.00',
-    sellingPrice: '0.00',
+    costPrice: '',
+    sellingPrice: '',
     expiryDate: '',
     lotNumber: '',
   });
 
-  // Reset form when dialog opens with new initial name
+  const resetForm = () => {
+    setFormData({
+      name: initialName,
+      brandName: '',
+      genericName: '',
+      categoryId: '',
+      unit: 'PIECE',
+      dosageForm: '',
+      costPrice: '',
+      sellingPrice: '',
+      expiryDate: '',
+      lotNumber: '',
+    });
+    setErrors({});
+  };
+
+  // Reset form when dialog opens or closes
   const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen) {
-      setFormData({
-        name: initialName,
-        brandName: '',
-        genericName: '',
-        categoryId: '',
-        unit: 'PIECE',
-        dosageForm: '',
-        costPrice: '0.00',
-        sellingPrice: '0.00',
-        expiryDate: '',
-        lotNumber: '',
-      });
-    }
+    resetForm();
     onOpenChange(isOpen);
   };
 
@@ -146,33 +150,51 @@ export function QuickAddProductDialog({
     const sellingPrice = formData.sellingPrice.trim();
     const expiryDate = formData.expiryDate.trim();
 
+    // Validate all fields and collect errors
+    const newErrors: Record<string, string> = {};
+
     if (!name) {
-      toast.error('Product name is required');
-      return;
+      newErrors.name = 'Product name is required';
+    }
+
+    if (!formData.categoryId) {
+      newErrors.categoryId = 'Category is required';
     }
 
     if (!lotNumber) {
-      toast.error('Lot/Batch number is required');
-      return;
+      newErrors.lotNumber = 'Lot/Batch number is required';
     }
 
-    if (!costPrice) {
-      toast.error('Cost price is required');
-      return;
+    if (!costPrice || Number(costPrice) === 0) {
+      newErrors.costPrice = 'Cost price is required';
+    } else if (!/^\d+(?:\.\d{0,2})?$/.test(costPrice)) {
+      newErrors.costPrice = 'Cost price must be a valid number';
+    } else {
+      const costVal = Number(costPrice);
+      if (!Number.isFinite(costVal) || costVal < 0 || costVal > 10_000) {
+        newErrors.costPrice = 'Cost price must be at least 0.00 up to 10,000.00';
+      }
     }
 
-    if (!sellingPrice) {
-      toast.error('Selling price is required');
+    if (!sellingPrice || Number(sellingPrice) === 0) {
+      newErrors.sellingPrice = 'Selling price is required';
+    } else if (!/^\d+(?:\.\d{0,2})?$/.test(sellingPrice)) {
+      newErrors.sellingPrice = 'Selling price must be a valid number';
+    } else {
+      const sellVal = Number(sellingPrice);
+      if (!Number.isFinite(sellVal) || sellVal < 1 || sellVal > 10_000) {
+        newErrors.sellingPrice = 'Selling price must be at least 1.00 up to 10,000.00';
+      }
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
       return;
     }
 
     const parsedCost = Number.parseFloat(costPrice);
     const parsedSelling = Number.parseFloat(sellingPrice);
-
-    if (Number.isNaN(parsedCost) || Number.isNaN(parsedSelling)) {
-      toast.error('Prices must be valid numbers');
-      return;
-    }
 
     const normalizedCostPrice = parsedCost.toFixed(2);
     const normalizedSellingPrice = parsedSelling.toFixed(2);
@@ -203,18 +225,7 @@ export function QuickAddProductDialog({
         toast.success(`Product "${formData.name}" created`);
 
         // Prepare for the next add by clearing the form fields
-        setFormData({
-          name: '',
-          brandName: '',
-          genericName: '',
-          categoryId: '',
-          unit: 'PIECE',
-          dosageForm: '',
-          costPrice: '0.00',
-          sellingPrice: '0.00',
-          expiryDate: '',
-          lotNumber: '',
-        });
+        resetForm();
 
         onProductCreated({
           id: result.data.id,
@@ -274,13 +285,15 @@ export function QuickAddProductDialog({
               <Input
                 id="quickadd-name"
                 value={formData.name}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
-                }
+                onChange={(e) => {
+                  setFormData((prev) => ({ ...prev, name: e.target.value }));
+                  if (errors.name) setErrors((prev) => { const { name, ...rest } = prev; return rest; });
+                }}
                 placeholder="e.g., Biogesic 500mg Tablet"
-                className="h-9"
+                className={cn('h-9', errors.name && 'border-red-500')}
                 autoFocus
               />
+              {errors.name && <p className="text-xs text-red-500 mt-0.5">{errors.name}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -332,7 +345,7 @@ export function QuickAddProductDialog({
                   htmlFor="quickadd-category"
                   className="text-xs font-medium text-slate-700"
                 >
-                  Category
+                  Category <span className="text-red-500">*</span>
                 </Label>
                 <SearchableSelect
                   options={categories.map((category) => ({
@@ -340,13 +353,15 @@ export function QuickAddProductDialog({
                     label: category.name,
                   }))}
                   value={formData.categoryId}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, categoryId: value }))
-                  }
+                  onValueChange={(value) => {
+                    setFormData((prev) => ({ ...prev, categoryId: value }));
+                    if (errors.categoryId) setErrors((prev) => { const { categoryId, ...rest } = prev; return rest; });
+                  }}
                   placeholder="Select"
                   searchPlaceholder="Search categories..."
-                  triggerClassName="h-9 w-full"
+                  triggerClassName={cn('h-9 w-full', errors.categoryId && 'border-red-500')}
                 />
+                {errors.categoryId && <p className="text-xs text-red-500 mt-0.5">{errors.categoryId}</p>}
               </div>
               <div className="space-y-1">
                 <Label
@@ -394,15 +409,17 @@ export function QuickAddProductDialog({
                 <Input
                   id="quickadd-lot"
                   value={formData.lotNumber}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData((prev) => ({
                       ...prev,
                       lotNumber: e.target.value,
-                    }))
-                  }
+                    }));
+                    if (errors.lotNumber) setErrors((prev) => { const { lotNumber, ...rest } = prev; return rest; });
+                  }}
                   placeholder="e.g., BATCH-2026A"
-                  className="h-9"
+                  className={cn('h-9', errors.lotNumber && 'border-red-500')}
                 />
+                {errors.lotNumber && <p className="text-xs text-red-500 mt-0.5">{errors.lotNumber}</p>}
               </div>
               <div className="space-y-1">
                 <Label
@@ -519,15 +536,17 @@ export function QuickAddProductDialog({
                 <Input
                   id="quickadd-cost"
                   value={formData.costPrice}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData((prev) => ({
                       ...prev,
                       costPrice: sanitizeMoneyInput(e.target.value),
-                    }))
-                  }
+                    }));
+                    if (errors.costPrice) setErrors((prev) => { const { costPrice, ...rest } = prev; return rest; });
+                  }}
                   placeholder="0.00"
-                  className="h-9"
+                  className={cn('h-9', errors.costPrice && 'border-red-500')}
                 />
+                {errors.costPrice && <p className="text-xs text-red-500 mt-0.5">{errors.costPrice}</p>}
               </div>
               <div className="space-y-1">
                 <Label
@@ -539,15 +558,17 @@ export function QuickAddProductDialog({
                 <Input
                   id="quickadd-selling"
                   value={formData.sellingPrice}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData((prev) => ({
                       ...prev,
                       sellingPrice: sanitizeMoneyInput(e.target.value),
-                    }))
-                  }
+                    }));
+                    if (errors.sellingPrice) setErrors((prev) => { const { sellingPrice, ...rest } = prev; return rest; });
+                  }}
                   placeholder="0.00"
-                  className="h-9"
+                  className={cn('h-9', errors.sellingPrice && 'border-red-500')}
                 />
+                {errors.sellingPrice && <p className="text-xs text-red-500 mt-0.5">{errors.sellingPrice}</p>}
               </div>
             </div>
 
@@ -564,7 +585,7 @@ export function QuickAddProductDialog({
           <Button
             type="button"
             variant="ghost"
-            onClick={() => onOpenChange(false)}
+            onClick={() => { resetForm(); onOpenChange(false); }}
             disabled={loading}
             size="sm"
           >

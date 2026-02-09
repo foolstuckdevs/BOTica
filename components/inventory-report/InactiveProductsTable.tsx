@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Popover,
   PopoverContent,
@@ -295,26 +296,24 @@ function InactiveProductsTableInner({ products, onRestore }: Props) {
                       <label className="text-xs font-medium text-muted-foreground">
                         Category
                       </label>
-                      <Select
-                        value={categoryFilter}
-                        onValueChange={setCategoryFilter}
-                      >
-                        <SelectTrigger className="h-8 w-full text-xs px-2 py-1 mt-1">
-                          <SelectValue placeholder="Filter by category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Categories</SelectItem>
-                          {Array.from(
+                      <SearchableSelect
+                        options={[
+                          { value: 'all', label: 'All Categories' },
+                          ...Array.from(
                             new Set(products.map((p) => p.categoryName)),
                           )
                             .sort()
-                            .map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+                            .map((category) => ({
+                              value: category,
+                              label: category,
+                            })),
+                        ]}
+                        value={categoryFilter}
+                        onValueChange={setCategoryFilter}
+                        placeholder="Filter by category"
+                        searchPlaceholder="Search categories..."
+                        triggerClassName="h-8 w-full text-xs px-2 py-1 mt-1"
+                      />
                     </div>
                     {hasActiveFilters && (
                       <div className="pt-2 border-t">

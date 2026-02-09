@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Button } from '@/components/ui/button';
 import {
   ChevronLeft,
@@ -67,19 +68,6 @@ export function ExpiringProductsTable({
       maximumFractionDigits: 2,
     }).format(amount);
 
-  const clearAllFilters = () => {
-    onExpiryFilterChange('all');
-    if (onStatusFilterChange) onStatusFilterChange('all');
-    if (onCategoryFilterChange) onCategoryFilterChange('all');
-    onSearchChange('');
-  };
-
-  const hasActiveFilters =
-    expiryFilter !== 'all' ||
-    statusFilter !== 'all' ||
-    categoryFilter !== 'all' ||
-    searchTerm !== '';
-
   // Helper functions for display logic
   const getDisplayDaysRemaining = (daysRemaining: number): string =>
     daysRemaining < 0 ? '0 days' : `${daysRemaining} days`;
@@ -134,6 +122,28 @@ export function ExpiringProductsTable({
     if (onStatusFilterChange) onStatusFilterChange(v);
     else setInternalStatusFilter(v);
   };
+
+  const [internalCategoryFilter, setInternalCategoryFilter] = React.useState<string>(categoryFilter);
+  const effectiveCategoryFilter = onCategoryFilterChange
+    ? categoryFilter
+    : internalCategoryFilter;
+  const handleCategoryChange = (v: string) => {
+    if (onCategoryFilterChange) onCategoryFilterChange(v);
+    else setInternalCategoryFilter(v);
+  };
+
+  const clearAllFilters = () => {
+    onExpiryFilterChange('all');
+    handleStatusChange('all');
+    handleCategoryChange('all');
+    onSearchChange('');
+  };
+
+  const hasActiveFilters =
+    expiryFilter !== 'all' ||
+    effectiveStatusFilter !== 'all' ||
+    effectiveCategoryFilter !== 'all' ||
+    searchTerm !== '';
 
   const [currentPage, setCurrentPage] = React.useState(1);
   const [itemsPerPage, setItemsPerPage] = React.useState(20);
@@ -196,15 +206,42 @@ export function ExpiringProductsTable({
     setCurrentPage(1);
   }, [searchTerm, expiryFilter, statusFilter, categoryFilter]);
 
-  // Apply status + exclusion filtering (exclude > 210 days)
+  // Apply status + exclusion filtering (exclude > 210 days) + search + category + expiry
   const filteredProducts = React.useMemo(() => {
     return products.filter((p) => {
+      // Status filtering
       const token = getStatusToken(p.daysRemaining);
       if (token === 'exclude') return false;
-      if (effectiveStatusFilter === 'all') return true;
-      return token === effectiveStatusFilter;
+      if (effectiveStatusFilter !== 'all' && token !== effectiveStatusFilter) {
+        return false;
+      }
+
+      // Expiry quick-filter (≤30, 31–60, 61–90 day buckets)
+      if (expiryFilter !== 'all') {
+        if (expiryFilter === '30days' && p.daysRemaining > 30) return false;
+        if (expiryFilter === '60days' && (p.daysRemaining <= 30 || p.daysRemaining > 60)) return false;
+        if (expiryFilter === '90days' && (p.daysRemaining <= 60 || p.daysRemaining > 90)) return false;
+      }
+
+      // Search filtering
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        const matchesSearch =
+          p.name.toLowerCase().includes(search) ||
+          p.brandName?.toLowerCase().includes(search) ||
+          p.categoryName.toLowerCase().includes(search) ||
+          p.lotNumber?.toLowerCase().includes(search);
+        if (!matchesSearch) return false;
+      }
+
+      // Category filtering
+      if (effectiveCategoryFilter && effectiveCategoryFilter !== 'all') {
+        if (p.categoryName !== effectiveCategoryFilter) return false;
+      }
+
+      return true;
     });
-  }, [products, effectiveStatusFilter]);
+  }, [products, effectiveStatusFilter, searchTerm, effectiveCategoryFilter, expiryFilter]);
 
   // Apply sorting
   const sortedProducts = React.useMemo(() => {
@@ -416,27 +453,24 @@ export function ExpiringProductsTable({
                         <label className="text-xs font-medium text-muted-foreground">
                           Category
                         </label>
-                        <Select
-                          value={categoryFilter}
-                          onValueChange={onCategoryFilterChange}
-                        >
-                          <SelectTrigger className="h-8 w-full text-xs px-2 py-1 mt-1">
-                            <SelectValue placeholder="Filter by category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Categories</SelectItem>
-                            {/* Get unique categories from products */}
-                            {Array.from(
+                        <SearchableSelect
+                          options={[
+                            { value: 'all', label: 'All Categories' },
+                            ...Array.from(
                               new Set(products.map((p) => p.categoryName)),
                             )
                               .sort()
-                              .map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+                              .map((category) => ({
+                                value: category,
+                                label: category,
+                              })),
+                          ]}
+                          value={effectiveCategoryFilter}
+                          onValueChange={handleCategoryChange}
+                          placeholder="Filter by category"
+                          searchPlaceholder="Search categories..."
+                          triggerClassName="h-8 w-full text-xs px-2 py-1 mt-1"
+                        />
                       </div>
                     </div>
                     {hasActiveFilters && (

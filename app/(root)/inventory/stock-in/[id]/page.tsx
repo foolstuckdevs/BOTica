@@ -84,7 +84,7 @@ const StockInViewPage = () => {
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+    <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
       {/* Back Button */}
       <Button
         variant="ghost"
@@ -111,7 +111,8 @@ const StockInViewPage = () => {
           <CardTitle className="text-lg">Delivery Information</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Column 1: Supplier and Attachment */}
             <div className="space-y-4">
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-gray-500">
@@ -119,15 +120,6 @@ const StockInViewPage = () => {
                 </p>
                 <p className="font-medium text-gray-900 mt-1">
                   {stockIn.supplierName || '—'}
-                </p>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <p className="text-xs uppercase tracking-wide text-gray-500">
-                  Delivery Date
-                </p>
-                <p className="font-medium text-gray-900 mt-1">
-                  {formatDatePH(stockIn.deliveryDate)}
                 </p>
               </div>
 
@@ -161,7 +153,17 @@ const StockInViewPage = () => {
               </div>
             </div>
 
+            {/* Column 2: Delivery Date and Discount */}
             <div className="space-y-4">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs uppercase tracking-wide text-gray-500">
+                  Delivery Date
+                </p>
+                <p className="font-medium text-gray-900 mt-1">
+                  {formatDatePH(stockIn.deliveryDate)}
+                </p>
+              </div>
+
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-gray-500">
                   Discount
@@ -170,7 +172,10 @@ const StockInViewPage = () => {
                   {formatCurrency(Number(stockIn.discount))}
                 </p>
               </div>
+            </div>
 
+            {/* Column 3: Subtotal and Total */}
+            <div className="space-y-4">
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <p className="text-xs uppercase tracking-wide text-gray-500">
                   Subtotal
