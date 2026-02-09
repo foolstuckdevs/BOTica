@@ -19,25 +19,29 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip as RechartsTooltip } from 'recharts';
-import { Calendar } from 'lucide-react';
+import { Calendar, Loader2 } from 'lucide-react';
 import useIsMobile from '@/hooks/use-mobile';
 import { ChartDataPoint } from '@/types';
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
 import { formatInTimeZone } from 'date-fns-tz';
 import { addDays } from 'date-fns';
+import { getChartDataByRange } from '@/lib/actions/dashboard';
 
 interface SalesChartProps {
   chartData: ChartDataPoint[];
+  pharmacyId: number;
   loading?: boolean;
 }
 
-export function SalesChart({ chartData, loading = false }: SalesChartProps) {
+export function SalesChart({ chartData, pharmacyId, loading = false }: SalesChartProps) {
   const isMobile = useIsMobile();
   const [timeRange, setTimeRange] = React.useState('30d');
   const [customDateRange, setCustomDateRange] = React.useState<
     DateRange | undefined
   >();
-  const [filteredData, setFilteredData] = React.useState<ChartDataPoint[]>([]);
+  // Holds server-fetched data for custom date ranges
+  const [customData, setCustomData] = React.useState<ChartDataPoint[] | null>(null);
+  const [customLoading, setCustomLoading] = React.useState(false);
 
   const toManilaDate = React.useCallback((dateStr: string) => {
     return new Date(`${dateStr}T00:00:00+08:00`);
@@ -54,106 +58,85 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
     if (isMobile) setTimeRange('7d');
   }, [isMobile]);
 
-  // Filter chart data based on time range or custom date range
+  // Fetch data from server when a custom date range is fully selected
   React.useEffect(() => {
-    let filtered = chartData;
-
-    if (customDateRange?.from && customDateRange?.to) {
-      // Use custom date range if provided - convert to Philippines timezone
-      const fromDate = formatInTimeZone(
-        customDateRange.from,
-        'Asia/Manila',
-        'yyyy-MM-dd',
-      );
-      const toDate = formatInTimeZone(
-        customDateRange.to,
-        'Asia/Manila',
-        'yyyy-MM-dd',
-      );
-
-      const dataMap = new Map(chartData.map((item) => [item.date, item]));
-      const start = toManilaDate(fromDate);
-      const end = toManilaDate(toDate);
-      const range: ChartDataPoint[] = [];
-
-      for (
-        let cursor = new Date(start);
-        cursor <= end;
-        cursor = addDays(cursor, 1)
-      ) {
-        const key = formatInTimeZone(cursor, 'Asia/Manila', 'yyyy-MM-dd');
-        const existing = dataMap.get(key);
-        range.push(
-          existing ?? {
-            date: key,
-            sales: 0,
-            purchases: 0,
-            grossProfit: 0,
-            transactionCount: 0,
-          },
-        );
-      }
-
-      filtered = range;
-    } else {
-      // Fall back to quick time range filters - use Philippines timezone
-      const days = timeRange === '7d' ? 7 : 30;
-
-      // Get current date in Philippines timezone
-      const now = new Date();
-      const philippinesTime = formatInTimeZone(
-        now,
-        'Asia/Manila',
-        'yyyy-MM-dd',
-      );
-      const currentPhilippinesDate = new Date(
-        philippinesTime + 'T00:00:00.000Z',
-      );
-
-      // Calculate cutoff date
-      const cutoffDate = new Date(currentPhilippinesDate);
-      cutoffDate.setDate(cutoffDate.getDate() - days);
-      const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
-
-      const dataMap = new Map(chartData.map((item) => [item.date, item]));
-      const start = toManilaDate(cutoffDateStr);
-      const end = toManilaDate(philippinesTime);
-      const range: ChartDataPoint[] = [];
-
-      for (
-        let cursor = new Date(start);
-        cursor <= end;
-        cursor = addDays(cursor, 1)
-      ) {
-        const key = formatInTimeZone(cursor, 'Asia/Manila', 'yyyy-MM-dd');
-        const existing = dataMap.get(key);
-        range.push(
-          existing ?? {
-            date: key,
-            sales: 0,
-            purchases: 0,
-            grossProfit: 0,
-            transactionCount: 0,
-          },
-        );
-      }
-
-      filtered = range;
+    if (!customDateRange?.from || !customDateRange?.to) {
+      setCustomData(null);
+      return;
     }
 
-    filtered.sort((a, b) => a.date.localeCompare(b.date));
-    setFilteredData(filtered);
-  }, [chartData, timeRange, customDateRange, toManilaDate]);
+    let cancelled = false;
+    const fromStr = formatInTimeZone(customDateRange.from, 'Asia/Manila', 'yyyy-MM-dd');
+    const toStr = formatInTimeZone(customDateRange.to, 'Asia/Manila', 'yyyy-MM-dd');
+
+    setCustomLoading(true);
+    getChartDataByRange(pharmacyId, fromStr, toStr)
+      .then((data) => {
+        if (!cancelled) {
+          setCustomData(data);
+          setCustomLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCustomData([]);
+          setCustomLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customDateRange, pharmacyId]);
+
+  // Build chart display data: use server-fetched custom data, or slice from the prop for quick filters
+  const filteredData = React.useMemo(() => {
+    // Custom range — use server-fetched data
+    if (customDateRange?.from && customDateRange?.to && customData) {
+      return [...customData].sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    // Quick filter (7d / 30d) — slice from the pre-loaded prop data
+    const days = timeRange === '7d' ? 7 : 30;
+    const now = new Date();
+    const todayStr = formatInTimeZone(now, 'Asia/Manila', 'yyyy-MM-dd');
+    const cutoff = addDays(toManilaDate(todayStr), -days);
+    const cutoffStr = formatInTimeZone(cutoff, 'Asia/Manila', 'yyyy-MM-dd');
+
+    const dataMap = new Map(chartData.map((item) => [item.date, item]));
+    const range: ChartDataPoint[] = [];
+    for (
+      let cursor = new Date(toManilaDate(cutoffStr));
+      cursor <= toManilaDate(todayStr);
+      cursor = addDays(cursor, 1)
+    ) {
+      const key = formatInTimeZone(cursor, 'Asia/Manila', 'yyyy-MM-dd');
+      const existing = dataMap.get(key);
+      range.push(
+        existing ?? {
+          date: key,
+          sales: 0,
+          purchases: 0,
+          grossProfit: 0,
+          transactionCount: 0,
+        },
+      );
+    }
+
+    range.sort((a, b) => a.date.localeCompare(b.date));
+    return range;
+  }, [chartData, timeRange, customDateRange, customData, toManilaDate]);
 
   const handleQuickFilter = (range: string) => {
     setTimeRange(range);
-    setCustomDateRange(undefined); // Clear custom range when using quick filter
+    setCustomDateRange(undefined);
+    setCustomData(null);
   };
 
   const handleCustomDateChange = (range: DateRange | undefined) => {
     setCustomDateRange(range);
     if (range?.from && range?.to) {
-      setTimeRange(''); // Clear quick filter when using custom range
+      setTimeRange('');
     }
   };
 
@@ -258,10 +241,10 @@ export function SalesChart({ chartData, loading = false }: SalesChartProps) {
       </CardHeader>
 
       <CardContent>
-        {loading ? (
+        {loading || customLoading ? (
           <div className="flex items-center justify-center h-[300px]">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
               <p className="text-sm text-muted-foreground">
                 Loading chart data...
               </p>

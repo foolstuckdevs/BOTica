@@ -30,15 +30,61 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import React from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { DataTableViewOptions } from '@/components/DataTableViewOptions';
+
+// ---------------------------------------------------------------------------
+// URL Search‑Param helpers – keep table state across router.refresh()
+// ---------------------------------------------------------------------------
+const DT_PARAM = {
+  PAGE: 'dt_page',
+  PAGE_SIZE: 'dt_size',
+  SORT: 'dt_sort',
+  SEARCH: 'dt_q',
+  COLS: 'dt_cols',
+} as const;
+
+/** Parse sorting string  "col.desc,col2.asc" → SortingState */
+function parseSorting(raw: string | null): SortingState {
+  if (!raw) return [];
+  return raw.split(',').map((s) => {
+    const [id, dir] = s.split('.');
+    return { id, desc: dir === 'desc' };
+  });
+}
+
+/** Serialize SortingState → "col.desc,col2.asc" */
+function serializeSorting(sorting: SortingState): string {
+  return sorting.map((s) => `${s.id}.${s.desc ? 'desc' : 'asc'}`).join(',');
+}
+
+/** Parse hidden-columns param  "col1,col2" → VisibilityState */
+function parseVisibility(raw: string | null): VisibilityState {
+  if (!raw) return {};
+  const vis: VisibilityState = {};
+  raw.split(',').forEach((col) => {
+    if (col) vis[col] = false;
+  });
+  return vis;
+}
+
+/** Serialize VisibilityState → "col1,col2" (only hidden ones) */
+function serializeVisibility(v: VisibilityState): string {
+  return Object.entries(v)
+    .filter(([, visible]) => !visible)
+    .map(([col]) => col)
+    .join(',');
+}
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   isLoading?: boolean;
   showItemCount?: boolean;
+  /** Set to true to disable URL persistence (e.g. for nested/modal tables) */
+  disableUrlState?: boolean;
   searchConfig?: {
     enabled: boolean;
     placeholder?: string;
@@ -67,19 +113,123 @@ export function DataTable<TData, TValue>({
   },
   manualPagination,
   showItemCount = true,
+  disableUrlState = false,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Determine whether we should use URL persistence
+  // Disable for manual-pagination tables (they manage their own URL state)
+  const useUrlState = !disableUrlState && !manualPagination;
+
+  // ---------------------------------------------------------------------------
+  // Initialise state from URL search params (survives router.refresh)
+  // ---------------------------------------------------------------------------
+  const [sorting, setSorting] = React.useState<SortingState>(() =>
+    useUrlState ? parseSorting(searchParams.get(DT_PARAM.SORT)) : [],
+  );
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [globalFilter, setGlobalFilter] = React.useState('');
-  // Local pagination state for non-manual mode to avoid undefined pagination during initial render
-  const [localPagination, setLocalPagination] = React.useState({
-    pageIndex: 0,
-    pageSize: 10,
+    React.useState<VisibilityState>(() =>
+      useUrlState ? parseVisibility(searchParams.get(DT_PARAM.COLS)) : {},
+    );
+  const [globalFilter, setGlobalFilter] = React.useState(() =>
+    useUrlState ? searchParams.get(DT_PARAM.SEARCH) ?? '' : '',
+  );
+  // Local pagination state for non-manual mode
+  const [localPagination, setLocalPagination] = React.useState(() => {
+    if (!useUrlState) return { pageIndex: 0, pageSize: 10 };
+    const page = parseInt(searchParams.get(DT_PARAM.PAGE) ?? '1', 10);
+    const size = parseInt(searchParams.get(DT_PARAM.PAGE_SIZE) ?? '10', 10);
+    return {
+      pageIndex: Math.max(0, page - 1),
+      pageSize: Math.max(1, Math.min(100, size)),
+    };
   });
+
+  // ---------------------------------------------------------------------------
+  // Sync state → URL (debounced to avoid excessive history pushes)
+  // ---------------------------------------------------------------------------
+  const urlSyncRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    if (!useUrlState) return;
+
+    if (urlSyncRef.current) clearTimeout(urlSyncRef.current);
+    urlSyncRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+
+      // Page (1-based in URL for readability)
+      if (localPagination.pageIndex > 0) {
+        params.set(DT_PARAM.PAGE, String(localPagination.pageIndex + 1));
+      } else {
+        params.delete(DT_PARAM.PAGE);
+      }
+
+      // Page size
+      if (localPagination.pageSize !== 10) {
+        params.set(DT_PARAM.PAGE_SIZE, String(localPagination.pageSize));
+      } else {
+        params.delete(DT_PARAM.PAGE_SIZE);
+      }
+
+      // Sorting
+      const sortStr = serializeSorting(sorting);
+      if (sortStr) {
+        params.set(DT_PARAM.SORT, sortStr);
+      } else {
+        params.delete(DT_PARAM.SORT);
+      }
+
+      // Search / global filter
+      if (globalFilter) {
+        params.set(DT_PARAM.SEARCH, globalFilter);
+      } else {
+        params.delete(DT_PARAM.SEARCH);
+      }
+
+      // Hidden columns
+      const colStr = serializeVisibility(columnVisibility);
+      if (colStr) {
+        params.set(DT_PARAM.COLS, colStr);
+      } else {
+        params.delete(DT_PARAM.COLS);
+      }
+
+      const qs = params.toString();
+      const url = qs ? `${pathname}?${qs}` : pathname;
+
+      // Use replace so we don't pollute browser history with every keystroke
+      router.replace(url, { scroll: false });
+    }, 300);
+
+    return () => {
+      if (urlSyncRef.current) clearTimeout(urlSyncRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    useUrlState,
+    localPagination.pageIndex,
+    localPagination.pageSize,
+    sorting,
+    globalFilter,
+    columnVisibility,
+  ]);
+
+  // ---------------------------------------------------------------------------
+  // Auto-clamp page index when data shrinks (e.g. after delete on last page)
+  // ---------------------------------------------------------------------------
+  React.useEffect(() => {
+    if (manualPagination) return; // manual mode handles this externally
+    const totalRows = data.length;
+    const maxPage = Math.max(0, Math.ceil(totalRows / localPagination.pageSize) - 1);
+    if (localPagination.pageIndex > maxPage) {
+      setLocalPagination((prev) => ({ ...prev, pageIndex: maxPage }));
+    }
+  }, [data.length, localPagination.pageSize, localPagination.pageIndex, manualPagination]);
 
   // When manual pagination is used, table state is driven externally.
   const table = useReactTable({
@@ -165,6 +315,39 @@ export function DataTable<TData, TValue>({
     searchConfig.searchableColumns,
     table,
   ]);
+
+  // Restore column-specific search from URL (must run after targetColumnId is resolved)
+  const columnSearchRestoredRef = React.useRef(false);
+  React.useEffect(() => {
+    if (columnSearchRestoredRef.current) return;
+    if (!useUrlState || !targetColumnId || searchConfig.globalFilter) return;
+    const urlSearch = searchParams.get(DT_PARAM.SEARCH);
+    if (urlSearch) {
+      table.getColumn(targetColumnId)?.setFilterValue(urlSearch);
+      columnSearchRestoredRef.current = true;
+    }
+  }, [useUrlState, targetColumnId, searchConfig.globalFilter, searchParams, table]);
+
+  // For column-specific search, also sync the filter value → URL
+  React.useEffect(() => {
+    if (!useUrlState || searchConfig.globalFilter || !targetColumnId) return;
+    const colVal =
+      (table.getColumn(targetColumnId)?.getFilterValue() as string) ?? '';
+    // We only sync to URL — the actual state is in columnFilters
+    if (urlSyncRef.current) clearTimeout(urlSyncRef.current);
+    urlSyncRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (colVal) {
+        params.set(DT_PARAM.SEARCH, colVal);
+      } else {
+        params.delete(DT_PARAM.SEARCH);
+      }
+      const qs = params.toString();
+      const url = qs ? `${pathname}?${qs}` : pathname;
+      router.replace(url, { scroll: false });
+    }, 300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [columnFilters]);
 
   const searchValue = React.useMemo(() => {
     if (!searchConfig.enabled) return '';

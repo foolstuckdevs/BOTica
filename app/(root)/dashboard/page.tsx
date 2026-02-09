@@ -34,7 +34,7 @@ const Page = async () => {
   const salesComparisonPromise = getSalesComparison(pharmacyId);
   const topSellingProductsPromise = getTopSellingProducts(pharmacyId, 6);
   const lowStockProductsPromise = getLowStockProducts(pharmacyId, 5);
-  const chartDataPromise = getChartData(pharmacyId, 30);
+  const chartDataPromise = getChartData(pharmacyId, 90);
 
   return (
     <div className="flex flex-col w-full space-y-6">
@@ -61,7 +61,7 @@ const Page = async () => {
           <div className="h-72 rounded-lg border bg-muted/40 dark:bg-muted/20 animate-pulse" />
         }
       >
-        <ChartSection chartDataPromise={chartDataPromise} />
+        <ChartSection chartDataPromise={chartDataPromise} pharmacyId={pharmacyId} />
       </Suspense>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -118,11 +118,13 @@ async function CardsSection({
 
 async function ChartSection({
   chartDataPromise,
+  pharmacyId,
 }: {
   chartDataPromise: ReturnType<typeof getChartData>;
+  pharmacyId: number;
 }) {
   const chartData = await chartDataPromise;
-  return <SalesChart chartData={chartData} />;
+  return <SalesChart chartData={chartData} pharmacyId={pharmacyId} />;
 }
 
 async function LowStockSection({

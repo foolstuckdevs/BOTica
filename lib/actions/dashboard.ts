@@ -427,6 +427,97 @@ export const getChartData = async (
   }
 };
 
+/**
+ * Fetch chart data for an explicit date range (used by custom date picker).
+ * Accepts yyyy-MM-dd strings in Asia/Manila timezone.
+ */
+export const getChartDataByRange = async (
+  pharmacyId: number,
+  startDateStr: string,
+  endDateStr: string,
+): Promise<ChartDataPoint[]> => {
+  try {
+    const timeZone = 'Asia/Manila';
+
+    // Convert Manila local dates to UTC timestamps for database query
+    const startDate = new Date(startDateStr + 'T00:00:00+08:00');
+    const endDate = new Date(endDateStr + 'T23:59:59.999+08:00');
+
+    const salesDateInManila = sql<string>`DATE(${sales.createdAt} AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')`;
+
+    const salesTotals = await db
+      .select({
+        date: salesDateInManila,
+        totalSales: sum(sales.totalAmount),
+        transactionCount: count(sales.id),
+      })
+      .from(sales)
+      .where(
+        and(
+          eq(sales.pharmacyId, pharmacyId),
+          gte(sales.createdAt, startDate),
+          lte(sales.createdAt, endDate),
+        ),
+      )
+      .groupBy(salesDateInManila)
+      .orderBy(salesDateInManila);
+
+    const costTotals = await db
+      .select({
+        date: salesDateInManila,
+        totalCost: sum(
+          sql`CAST(${products.costPrice} AS NUMERIC) * ${saleItems.quantity}`,
+        ),
+      })
+      .from(saleItems)
+      .innerJoin(sales, eq(saleItems.saleId, sales.id))
+      .innerJoin(products, eq(saleItems.productId, products.id))
+      .where(
+        and(
+          eq(sales.pharmacyId, pharmacyId),
+          gte(sales.createdAt, startDate),
+          lte(sales.createdAt, endDate),
+        ),
+      )
+      .groupBy(salesDateInManila)
+      .orderBy(salesDateInManila);
+
+    const salesTotalsMap = new Map(
+      salesTotals.map((item) => [item.date, item]),
+    );
+    const costTotalsMap = new Map(costTotals.map((item) => [item.date, item]));
+
+    const chartData: ChartDataPoint[] = [];
+    const currentDate = new Date(startDateStr + 'T00:00:00+08:00');
+    const endDateForLoop = new Date(endDateStr + 'T00:00:00+08:00');
+
+    while (currentDate <= endDateForLoop) {
+      const dateStr = formatInTimeZone(currentDate, timeZone, 'yyyy-MM-dd');
+      const salesData = salesTotalsMap.get(dateStr);
+      const costData = costTotalsMap.get(dateStr);
+
+      const salesAmount = Number(salesData?.totalSales) || 0;
+      const costAmount = Number(costData?.totalCost) || 0;
+      const transactionCount = Number(salesData?.transactionCount) || 0;
+
+      chartData.push({
+        date: dateStr,
+        sales: salesAmount,
+        purchases: costAmount,
+        grossProfit: salesAmount - costAmount,
+        transactionCount,
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return chartData;
+  } catch (error) {
+    console.error('Error fetching chart data by range:', error);
+    return [];
+  }
+};
+
 // Get aggregated metrics for a time period
 export const getChartMetrics = async (
   pharmacyId: number,
