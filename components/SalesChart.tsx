@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip as RechartsTooltip } from 'recharts';
 import { Calendar, Loader2 } from 'lucide-react';
 import useIsMobile from '@/hooks/use-mobile';
+import { useRealtimeRefresh, REALTIME_EVENTS } from '@/hooks/useRealtimeEvent';
 import { ChartDataPoint } from '@/types';
 import { CustomDatePicker, DateRange } from './CustomDatePicker';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -35,6 +36,10 @@ interface SalesChartProps {
 
 export function SalesChart({ chartData, pharmacyId, loading = false }: SalesChartProps) {
   const isMobile = useIsMobile();
+
+  // Auto-refresh chart when sales occur
+  useRealtimeRefresh([REALTIME_EVENTS.SALE_COMPLETED]);
+
   const [timeRange, setTimeRange] = React.useState('30d');
   const [customDateRange, setCustomDateRange] = React.useState<
     DateRange | undefined

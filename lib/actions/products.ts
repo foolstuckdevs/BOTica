@@ -12,6 +12,7 @@ import {
 } from '@/database/schema';
 import { ProductParams } from '@/types';
 import { revalidatePath } from 'next/cache';
+import { broadcastEvent, REALTIME_EVENTS } from '@/lib/realtime';
 import {
   pharmacyIdSchema,
   productIdSchema,
@@ -212,6 +213,12 @@ export const createProduct = async (
 
     revalidatePath('/products');
 
+    // Broadcast realtime event to all connected clients
+    broadcastEvent(REALTIME_EVENTS.PRODUCT_CHANGED, {
+      pharmacyId: validatedData.pharmacyId,
+      action: 'created',
+    });
+
     return {
       success: true,
       data: JSON.parse(JSON.stringify(newProduct[0])),
@@ -387,6 +394,12 @@ export const updateProduct = async (
 
     revalidatePath('/products');
 
+    // Broadcast realtime event to all connected clients
+    broadcastEvent(REALTIME_EVENTS.PRODUCT_CHANGED, {
+      pharmacyId: validatedData.pharmacyId,
+      action: 'updated',
+    });
+
     return {
       success: true,
       data: JSON.parse(JSON.stringify(updatedProductArr[0])),
@@ -450,6 +463,7 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         pharmacyId,
         details: { id, name: (existingProduct[0] as { name?: string })?.name },
       });
+      broadcastEvent(REALTIME_EVENTS.PRODUCT_CHANGED, { pharmacyId, action: 'archived' });
       return {
         success: true,
         message: 'Product archived (still linked to records)',
@@ -481,6 +495,7 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         pharmacyId,
         details: { id, name: (existingProduct[0] as { name?: string })?.name },
       });
+      broadcastEvent(REALTIME_EVENTS.PRODUCT_CHANGED, { pharmacyId, action: 'deleted' });
       return {
         success: true,
         message: 'Product deleted permanently',
@@ -499,6 +514,7 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         pharmacyId,
         details: { id, name: (existingProduct[0] as { name?: string })?.name },
       });
+      broadcastEvent(REALTIME_EVENTS.PRODUCT_CHANGED, { pharmacyId, action: 'archived' });
       return {
         success: true,
         message: 'Product archived (linked to past transactions)',
@@ -557,6 +573,8 @@ export const restoreProduct = async (id: number, pharmacyId: number) => {
       pharmacyId,
       details: { id, name: (existing[0] as { name?: string })?.name },
     });
+
+    broadcastEvent(REALTIME_EVENTS.PRODUCT_CHANGED, { pharmacyId, action: 'restored' });
 
     return { success: true, message: 'Product restored' };
   } catch (error) {

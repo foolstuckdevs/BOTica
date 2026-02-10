@@ -11,6 +11,7 @@ import {
 import type { StockIn, StockInItem, StockInParams } from '@/types';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from '@/lib/actions/activity';
+import { broadcastEvent, REALTIME_EVENTS } from '@/lib/realtime';
 
 const toAmountString = (value: number) => value.toFixed(2);
 
@@ -326,6 +327,14 @@ export const createStockIn = async (
 
     revalidatePath('/inventory/stock-in');
     revalidatePath('/products');
+
+    // Broadcast realtime events to all connected clients
+    broadcastEvent(REALTIME_EVENTS.STOCK_UPDATED, {
+      pharmacyId: validated.pharmacyId,
+    });
+    broadcastEvent(REALTIME_EVENTS.PRODUCT_CHANGED, {
+      pharmacyId: validated.pharmacyId,
+    });
 
     return {
       success: true,

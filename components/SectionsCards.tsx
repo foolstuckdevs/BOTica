@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useRealtimeRefresh, REALTIME_EVENTS } from '@/hooks/useRealtimeEvent';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -35,6 +36,13 @@ export function SectionCards({
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'Admin';
   const now = new Date();
+
+  // Auto-refresh dashboard cards when sales/stock events occur
+  useRealtimeRefresh([
+    REALTIME_EVENTS.SALE_COMPLETED,
+    REALTIME_EVENTS.STOCK_UPDATED,
+    REALTIME_EVENTS.PRODUCT_CHANGED,
+  ]);
 
   const lowStockCount = productStats.filter(
     (p) =>

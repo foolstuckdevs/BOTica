@@ -14,6 +14,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from '@/lib/actions/activity';
 import { processSaleSchema, pharmacyIdSchema } from '@/lib/validations';
+import { broadcastEvent, REALTIME_EVENTS } from '@/lib/realtime';
 
 // Temporary in-memory idempotency key store (will reset on redeploy). For production, move to DB table.
 const processedSaleKeys = new Map<
@@ -252,6 +253,19 @@ export const processSale = async (
     // Revalidate inventory and POS pages
     revalidatePath('/sales/pos');
     revalidatePath('/products');
+
+    // Broadcast realtime events to all connected clients
+    broadcastEvent(REALTIME_EVENTS.SALE_COMPLETED, {
+      pharmacyId: validatedData.pharmacyId,
+      saleId: result.sale.id,
+      totalAmount: result.sale.totalAmount,
+    });
+    broadcastEvent(REALTIME_EVENTS.STOCK_UPDATED, {
+      pharmacyId: validatedData.pharmacyId,
+    });
+    broadcastEvent(REALTIME_EVENTS.NOTIFICATION_CREATED, {
+      pharmacyId: validatedData.pharmacyId,
+    });
 
     // Activity log
     await logActivity({

@@ -10,6 +10,7 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useRealtimeRefresh, REALTIME_EVENTS } from '@/hooks/useRealtimeEvent';
 
 export interface TopSellingProduct {
   name: string;
@@ -23,6 +24,9 @@ interface TopSellingProductsProps {
 }
 
 export const TopSellingProducts = ({ products }: TopSellingProductsProps) => {
+  // Auto-refresh when sales occur
+  useRealtimeRefresh([REALTIME_EVENTS.SALE_COMPLETED]);
+
   const colors = [
     '#3b82f6',
     '#10b981',

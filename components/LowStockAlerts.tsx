@@ -10,12 +10,19 @@ import {
 import { AlertTriangle, ArrowRight } from 'lucide-react';
 import { LowStockProduct } from '@/types';
 import Link from 'next/link';
+import { useRealtimeRefresh, REALTIME_EVENTS } from '@/hooks/useRealtimeEvent';
 
 interface LowStockAlertsProps {
   lowStockProducts: LowStockProduct[];
 }
 
 export const LowStockAlerts = ({ lowStockProducts }: LowStockAlertsProps) => {
+  // Auto-refresh when stock changes
+  useRealtimeRefresh([
+    REALTIME_EVENTS.STOCK_UPDATED,
+    REALTIME_EVENTS.SALE_COMPLETED,
+  ]);
+
   return (
     <Card>
       <CardHeader>

@@ -33,6 +33,7 @@ import {
 } from '@/lib/actions/notifications';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { useRealtimeEvent, REALTIME_EVENTS } from '@/hooks/useRealtimeEvent';
 import type { Notification as AppNotification } from '@/types';
 
 interface NotificationProps {
@@ -104,25 +105,33 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
     }
   }, [hasMore, loadingMore, nextCursor, pharmacyId]);
 
-  // Poll for new notifications every 5 minutes when not open
-  useEffect(() => {
-    // Quick refresh via custom event broadcast from POS or others
-    const onRefresh = async () => {
-      try {
-        const count = await getUnreadNotificationCount(pharmacyId);
-        setUnreadCount(count);
-        if (isOpen) {
-          const result = await getNotifications(pharmacyId);
-          setNotifications(result.items as AppNotification[]);
-          setHasMore(result.hasMore);
-          setNextCursor(result.nextCursor);
-        }
-      } catch (error) {
-        console.error('Error refreshing notifications via event:', error);
+  // Realtime: instantly refresh notifications when server broadcasts an event
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const count = await getUnreadNotificationCount(pharmacyId);
+      setUnreadCount(count);
+      if (isOpen) {
+        const result = await getNotifications(pharmacyId);
+        setNotifications(result.items as AppNotification[]);
+        setHasMore(result.hasMore);
+        setNextCursor(result.nextCursor);
       }
-    };
+    } catch (error) {
+      console.error('Error refreshing notifications:', error);
+    }
+  }, [pharmacyId, isOpen]);
+
+  useRealtimeEvent(
+    [REALTIME_EVENTS.NOTIFICATION_CREATED, REALTIME_EVENTS.SALE_COMPLETED, REALTIME_EVENTS.STOCK_UPDATED],
+    refreshNotifications,
+  );
+
+  useEffect(() => {
+    // Keep the custom event listener for same-tab POS refresh
+    const onRefresh = () => { refreshNotifications(); };
     window.addEventListener('notifications:refresh', onRefresh);
 
+    // Fallback polling every 2 minutes (in case WebSocket drops)
     const interval = setInterval(async () => {
       if (!isOpen) {
         try {
@@ -132,13 +141,13 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
           console.error('Error polling notifications:', error);
         }
       }
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 2 * 60 * 1000); // 2 minutes fallback
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('notifications:refresh', onRefresh);
     };
-  }, [isOpen, pharmacyId]);
+  }, [isOpen, pharmacyId, refreshNotifications]);
 
   const handleMarkAsRead = async (notificationId: number) => {
     try {

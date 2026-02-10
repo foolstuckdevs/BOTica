@@ -10,6 +10,7 @@ import {
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { Adjustment } from '@/types';
+import { broadcastEvent, REALTIME_EVENTS } from '@/lib/realtime';
 import {
   getAdjustmentsSchema,
   createAdjustmentSchema,
@@ -241,6 +242,14 @@ export const createAdjustment = async ({
 
     revalidatePath('/products');
     revalidatePath('/adjustments');
+
+    // Broadcast realtime events to all connected clients
+    broadcastEvent(REALTIME_EVENTS.STOCK_UPDATED, {
+      pharmacyId: validatedData.pharmacyId,
+    });
+    broadcastEvent(REALTIME_EVENTS.NOTIFICATION_CREATED, {
+      pharmacyId: validatedData.pharmacyId,
+    });
 
     return { success: true, message: 'Inventory adjusted successfully' };
   } catch (error) {
