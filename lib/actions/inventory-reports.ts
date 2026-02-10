@@ -26,155 +26,158 @@ export async function getInventoryReportData(pharmacyId: number) {
   // Extended window for expiring products report (up to 7 months / 210 days)
   const twoHundredTenDaysFromNow = addDays(today, 210);
 
-  // 1. Get overview data (totals and values)
-  const overviewResults = await db
-    .select({
-      totalProducts: count(products.id),
-      totalValue: sql<string>`COALESCE(SUM(${products.quantity} * ${products.costPrice}), 0)`,
-      totalUnitsInStock: sql<string>`COALESCE(SUM(${products.quantity}), 0)`,
-      lowStockCount: count(
-        sql`CASE WHEN ${products.quantity} <= ${products.minStockLevel} AND ${products.quantity} > 0 THEN 1 END`,
-      ),
-      expiringCount: count(
-        sql`CASE WHEN ${
-          products.expiryDate
-        } <= ${thirtyDaysFromNow.toISOString()} AND ${
-          products.quantity
-        } > 0 THEN 1 END`,
-      ),
-      outOfStockCount: count(
-        sql`CASE WHEN ${products.quantity} = 0 THEN 1 END`,
-      ),
-      expiredCount: count(
-        sql`CASE WHEN ${products.expiryDate} < ${today.toISOString()} AND ${
-          products.quantity
-        } > 0 THEN 1 END`,
-      ),
-      inventoryCostValue: sql<string>`COALESCE(SUM(${products.quantity} * ${products.costPrice}), 0)`,
-      inventoryRetailValue: sql<string>`COALESCE(SUM(${products.quantity} * ${products.sellingPrice}), 0)`,
-    })
-    .from(products)
-    .where(
-      and(
-        eq(products.pharmacyId, pharmacyId),
-        sql`${products.deletedAt} IS NULL`,
-      ),
-    );
-
-  // 2. Get expiring products (now through 210 days ~7 months)
-  const expiringResults = await db
-    .select({
-      id: products.id,
-      name: products.name,
-      brandName: products.brandName,
-      lotNumber: products.lotNumber,
-      expiryDate: products.expiryDate,
-      daysRemaining: sql<number>`EXTRACT(DAY FROM (${
-        products.expiryDate
-      }::timestamp - ${today.toISOString()}::timestamp))`,
-      quantity: products.quantity,
-      value: sql<string>`${products.quantity} * ${products.costPrice}`,
-      sellingPrice: products.sellingPrice,
-      costPrice: products.costPrice,
-      unit: products.unit,
-      categoryId: products.categoryId,
-      categoryName: categories.name,
-    })
-    .from(products)
-    .leftJoin(categories, eq(products.categoryId, categories.id))
-    .where(
-      and(
-        eq(products.pharmacyId, pharmacyId),
-        gte(products.quantity, 1),
-        lte(products.expiryDate, twoHundredTenDaysFromNow.toISOString()),
-        sql`${products.deletedAt} IS NULL`,
-      ),
-    )
-    .orderBy(asc(products.expiryDate));
-
-  // 3. Get low stock products
-  const lowStockResults = await db
-    .select({
-      id: products.id,
-      name: products.name,
-      brandName: products.brandName,
-      lotNumber: products.lotNumber,
-      quantity: products.quantity,
-      minStockLevel: products.minStockLevel,
-      supplierId: suppliers.id,
-      supplierName: suppliers.name,
-      lastRestockDate: products.updatedAt,
-      value: sql<string>`${products.quantity} * ${products.costPrice}`,
-      unit: products.unit,
-      categoryId: products.categoryId,
-      categoryName: categories.name,
-    })
-    .from(products)
-    .leftJoin(categories, eq(products.categoryId, categories.id))
-    .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
-    .where(
-      and(
-        eq(products.pharmacyId, pharmacyId),
-        lte(products.quantity, products.minStockLevel),
-        sql`${products.deletedAt} IS NULL`,
-      ),
-    )
-    .orderBy(asc(products.quantity));
-
-  // 4. Get active products (not soft-deleted)
-  const activeResults = await db
-    .select({
-      id: products.id,
-      name: products.name,
-      brandName: products.brandName,
-      lotNumber: products.lotNumber,
-      expiryDate: products.expiryDate,
-      quantity: products.quantity,
-      unit: products.unit,
-      costPrice: products.costPrice,
-      sellingPrice: products.sellingPrice,
-      categoryName: categories.name,
-      deletedAt: products.deletedAt,
-    })
-    .from(products)
-    .leftJoin(categories, eq(products.categoryId, categories.id))
-    .where(
-      and(
-        eq(products.pharmacyId, pharmacyId),
-        sql`${products.deletedAt} IS NULL`,
-        gte(products.quantity, 1),
-        or(
-          isNull(products.expiryDate),
-          gte(products.expiryDate, today.toISOString()),
+  // Run all 5 independent queries in parallel for ~4-5× speedup
+  const [overviewResults, expiringResults, lowStockResults, activeResults, inactiveResults] = await Promise.all([
+    // 1. Overview data (totals and values)
+    db
+      .select({
+        totalProducts: count(products.id),
+        totalValue: sql<string>`COALESCE(SUM(${products.quantity} * ${products.costPrice}), 0)`,
+        totalUnitsInStock: sql<string>`COALESCE(SUM(${products.quantity}), 0)`,
+        lowStockCount: count(
+          sql`CASE WHEN ${products.quantity} <= ${products.minStockLevel} AND ${products.quantity} > 0 THEN 1 END`,
+        ),
+        expiringCount: count(
+          sql`CASE WHEN ${
+            products.expiryDate
+          } <= ${thirtyDaysFromNow.toISOString()} AND ${
+            products.quantity
+          } > 0 THEN 1 END`,
+        ),
+        outOfStockCount: count(
+          sql`CASE WHEN ${products.quantity} = 0 THEN 1 END`,
+        ),
+        expiredCount: count(
+          sql`CASE WHEN ${products.expiryDate} < ${today.toISOString()} AND ${
+            products.quantity
+          } > 0 THEN 1 END`,
+        ),
+        inventoryCostValue: sql<string>`COALESCE(SUM(${products.quantity} * ${products.costPrice}), 0)`,
+        inventoryRetailValue: sql<string>`COALESCE(SUM(${products.quantity} * ${products.sellingPrice}), 0)`,
+      })
+      .from(products)
+      .where(
+        and(
+          eq(products.pharmacyId, pharmacyId),
+          sql`${products.deletedAt} IS NULL`,
         ),
       ),
-    )
-    .orderBy(asc(products.name));
 
-  // 5. Get inactive products (soft-deleted)
-  const inactiveResults = await db
-    .select({
-      id: products.id,
-      name: products.name,
-      brandName: products.brandName,
-      lotNumber: products.lotNumber,
-      expiryDate: products.expiryDate,
-      quantity: products.quantity,
-      unit: products.unit,
-      costPrice: products.costPrice,
-      sellingPrice: products.sellingPrice,
-      categoryName: categories.name,
-      deletedAt: products.deletedAt,
-    })
-    .from(products)
-    .leftJoin(categories, eq(products.categoryId, categories.id))
-    .where(
-      and(
-        eq(products.pharmacyId, pharmacyId),
-        sql`${products.deletedAt} IS NOT NULL`,
-      ),
-    )
-    .orderBy(asc(products.name));
+    // 2. Expiring products (now through 210 days ~7 months)
+    db
+      .select({
+        id: products.id,
+        name: products.name,
+        brandName: products.brandName,
+        lotNumber: products.lotNumber,
+        expiryDate: products.expiryDate,
+        daysRemaining: sql<number>`EXTRACT(DAY FROM (${
+          products.expiryDate
+        }::timestamp - ${today.toISOString()}::timestamp))`,
+        quantity: products.quantity,
+        value: sql<string>`${products.quantity} * ${products.costPrice}`,
+        sellingPrice: products.sellingPrice,
+        costPrice: products.costPrice,
+        unit: products.unit,
+        categoryId: products.categoryId,
+        categoryName: categories.name,
+      })
+      .from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(
+        and(
+          eq(products.pharmacyId, pharmacyId),
+          gte(products.quantity, 1),
+          lte(products.expiryDate, twoHundredTenDaysFromNow.toISOString()),
+          sql`${products.deletedAt} IS NULL`,
+        ),
+      )
+      .orderBy(asc(products.expiryDate)),
+
+    // 3. Low stock products
+    db
+      .select({
+        id: products.id,
+        name: products.name,
+        brandName: products.brandName,
+        lotNumber: products.lotNumber,
+        quantity: products.quantity,
+        minStockLevel: products.minStockLevel,
+        supplierId: suppliers.id,
+        supplierName: suppliers.name,
+        lastRestockDate: products.updatedAt,
+        value: sql<string>`${products.quantity} * ${products.costPrice}`,
+        unit: products.unit,
+        categoryId: products.categoryId,
+        categoryName: categories.name,
+      })
+      .from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
+      .where(
+        and(
+          eq(products.pharmacyId, pharmacyId),
+          lte(products.quantity, products.minStockLevel),
+          sql`${products.deletedAt} IS NULL`,
+        ),
+      )
+      .orderBy(asc(products.quantity)),
+
+    // 4. Active products (not soft-deleted)
+    db
+      .select({
+        id: products.id,
+        name: products.name,
+        brandName: products.brandName,
+        lotNumber: products.lotNumber,
+        expiryDate: products.expiryDate,
+        quantity: products.quantity,
+        unit: products.unit,
+        costPrice: products.costPrice,
+        sellingPrice: products.sellingPrice,
+        categoryName: categories.name,
+        deletedAt: products.deletedAt,
+      })
+      .from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(
+        and(
+          eq(products.pharmacyId, pharmacyId),
+          sql`${products.deletedAt} IS NULL`,
+          gte(products.quantity, 1),
+          or(
+            isNull(products.expiryDate),
+            gte(products.expiryDate, today.toISOString()),
+          ),
+        ),
+      )
+      .orderBy(asc(products.name)),
+
+    // 5. Inactive products (soft-deleted)
+    db
+      .select({
+        id: products.id,
+        name: products.name,
+        brandName: products.brandName,
+        lotNumber: products.lotNumber,
+        expiryDate: products.expiryDate,
+        quantity: products.quantity,
+        unit: products.unit,
+        costPrice: products.costPrice,
+        sellingPrice: products.sellingPrice,
+        categoryName: categories.name,
+        deletedAt: products.deletedAt,
+      })
+      .from(products)
+      .leftJoin(categories, eq(products.categoryId, categories.id))
+      .where(
+        and(
+          eq(products.pharmacyId, pharmacyId),
+          sql`${products.deletedAt} IS NOT NULL`,
+        ),
+      )
+      .orderBy(asc(products.name)),
+  ]);
 
   // Note: Category breakdown and value-by-range are intentionally omitted for a simpler report
 

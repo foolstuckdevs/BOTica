@@ -69,6 +69,7 @@ async function embed(text: string): Promise<number[]> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ input: text, model }),
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!res.ok) {

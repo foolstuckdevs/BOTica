@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  compress: true,
   // Ensure bcryptjs runs in Node.js runtime (not Edge)
   serverExternalPackages: ['bcryptjs'],
   
