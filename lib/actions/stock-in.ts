@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { stockIns, stockInItems, suppliers, products, notifications } from '@/database/schema';
-import { and, desc, eq, gt, sql } from 'drizzle-orm';
+import { stockIns, stockInItems, suppliers, products } from '@/database/schema';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import {
   createStockInSchema,
   getStockInByIdSchema,
@@ -324,66 +324,6 @@ export const createStockIn = async (
       },
       userId: validated.createdBy,
     });
-
-    // ── Post-transaction notifications (expiry & low-stock) ──────────
-    try {
-      const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const today = new Date();
-      const in30Days = new Date();
-      in30Days.setDate(today.getDate() + 30);
-
-      for (const entry of itemsWithProducts) {
-        const p = entry.originalProduct;
-        const itemExpiry = entry.item.expiryDate
-          ? new Date(entry.item.expiryDate)
-          : p.expiryDate ? new Date(p.expiryDate as unknown as string) : null;
-        const label = `${p.name}${p.brandName ? ` (${p.brandName})` : ''}`;
-
-        // Check expiry
-        if (itemExpiry) {
-          const expMidnight = new Date(itemExpiry.getFullYear(), itemExpiry.getMonth(), itemExpiry.getDate());
-          const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-          let expiryType: 'EXPIRED' | 'EXPIRING' | null = null;
-          let expiryMsg = '';
-
-          if (expMidnight < todayMidnight) {
-            expiryType = 'EXPIRED';
-            expiryMsg = `${label} received via stock-in has already expired.`;
-          } else if (expMidnight <= in30Days) {
-            expiryType = 'EXPIRING';
-            expiryMsg = `${label} received via stock-in is expiring soon.`;
-          }
-
-          if (expiryType) {
-            const recent = await db
-              .select({ id: notifications.id })
-              .from(notifications)
-              .where(
-                and(
-                  eq(notifications.pharmacyId, validated.pharmacyId),
-                  eq(notifications.productId, entry.item.productId),
-                  eq(notifications.type, expiryType),
-                  gt(notifications.createdAt, recentCutoff),
-                ),
-              )
-              .limit(1);
-
-            if (recent.length === 0) {
-              await db.insert(notifications).values({
-                type: expiryType,
-                productId: entry.item.productId,
-                message: expiryMsg,
-                pharmacyId: validated.pharmacyId,
-                isRead: false,
-              });
-            }
-          }
-        }
-      }
-    } catch (notifErr) {
-      console.error('Non-fatal: stock-in notification dispatch failed', notifErr);
-    }
 
     revalidatePath('/inventory/stock-in');
     revalidatePath('/products');

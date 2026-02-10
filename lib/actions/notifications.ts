@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { eq, and, desc, sql, gt, lt } from 'drizzle-orm';
+import { eq, and, desc, sql, lt } from 'drizzle-orm';
 import { notifications, products } from '@/database/schema';
 import { NotificationParams } from '@/types';
 import { revalidatePath } from 'next/cache';
@@ -102,7 +102,6 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
     const today = new Date();
     const in30Days = new Date();
     in30Days.setDate(today.getDate() + 30);
-    const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24h throttle
 
     // Fetch all active products for this pharmacy
     const prodRows = await db
@@ -122,35 +121,46 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
         ),
       );
 
-    // Utility to upsert a notification if not already present unread for same product/type
+    // Collect all existing notifications for this pharmacy in one query
+    // so we can check membership in-memory instead of N queries.
+    const existingNotifs = await db
+      .select({
+        productId: notifications.productId,
+        type: notifications.type,
+      })
+      .from(notifications)
+      .where(eq(notifications.pharmacyId, pharmacyId));
+
+    const existingSet = new Set(
+      existingNotifs.map((n) => `${n.productId}::${n.type}`),
+    );
+
+    /**
+     * Only create a notification if one has NEVER existed for this
+     * product + type combination.  This ensures:
+     *  - Read notifications are not duplicated.
+     *  - Deleted notifications stay dismissed.
+     *  - A new notification is only created when a condition is detected
+     *    for the very first time (or after stock recovers and drops again,
+     *    which is handled by the transition-based logic in sales/adjustments).
+     */
     const ensureNotification = async (
       type: 'LOW_STOCK' | 'OUT_OF_STOCK' | 'EXPIRING' | 'EXPIRED',
       productId: number,
       message: string,
     ) => {
-      // Throttle: don't create if an entry exists in the last 24h for same product/type
-      const recent = await db
-        .select({ id: notifications.id })
-        .from(notifications)
-        .where(
-          and(
-            eq(notifications.pharmacyId, pharmacyId),
-            eq(notifications.productId, productId),
-            eq(notifications.type, type),
-            gt(notifications.createdAt, recentCutoff),
-          ),
-        )
-        .limit(1);
+      const key = `${productId}::${type}`;
+      if (existingSet.has(key)) return; // already notified — skip
 
-      if (recent.length === 0) {
-        await db.insert(notifications).values({
-          pharmacyId,
-          productId,
-          type,
-          message,
-          isRead: false,
-        });
-      }
+      await db.insert(notifications).values({
+        pharmacyId,
+        productId,
+        type,
+        message,
+        isRead: false,
+      });
+
+      existingSet.add(key); // prevent duplicate within this run
     };
 
     // Process products

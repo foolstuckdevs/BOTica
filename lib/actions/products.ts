@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { eq, and, gt, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 import {
   categories,
@@ -9,7 +9,6 @@ import {
   suppliers,
   saleItems,
   inventoryAdjustments,
-  notifications,
 } from '@/database/schema';
 import { ProductParams } from '@/types';
 import { revalidatePath } from 'next/cache';
@@ -219,97 +218,6 @@ export const createProduct = async (
       pharmacyId: validatedData.pharmacyId,
       action: 'created',
     });
-
-    // Create notifications for expiring/expired and low-stock products
-    try {
-      const productId = newProduct[0]?.id;
-      if (productId) {
-        const label = `${validatedData.name}${validatedData.brandName ? ` (${validatedData.brandName})` : ''}`;
-        const recentCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const today = new Date();
-        const in30Days = new Date();
-        in30Days.setDate(today.getDate() + 30);
-
-        // Check expiry
-        if (validatedData.expiryDate) {
-          const exp = new Date(validatedData.expiryDate);
-          const expMid = new Date(exp.getFullYear(), exp.getMonth(), exp.getDate());
-          const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-          let nType: 'EXPIRED' | 'EXPIRING' | null = null;
-          let nMsg = '';
-          if (expMid < todayMid) {
-            nType = 'EXPIRED';
-            nMsg = `${label} was added but has already expired.`;
-          } else if (expMid <= in30Days) {
-            nType = 'EXPIRING';
-            nMsg = `${label} was added and is expiring soon.`;
-          }
-
-          if (nType) {
-            const recent = await db.select({ id: notifications.id }).from(notifications)
-              .where(and(
-                eq(notifications.pharmacyId, validatedData.pharmacyId),
-                eq(notifications.productId, productId),
-                eq(notifications.type, nType),
-                gt(notifications.createdAt, recentCutoff),
-              )).limit(1);
-            if (recent.length === 0) {
-              await db.insert(notifications).values({
-                type: nType, productId, message: nMsg,
-                pharmacyId: validatedData.pharmacyId, isRead: false,
-              });
-              broadcastEvent(REALTIME_EVENTS.NOTIFICATION_CREATED, {
-                pharmacyId: validatedData.pharmacyId,
-              });
-            }
-          }
-        }
-
-        // Check low stock on creation
-        const qty = validatedData.quantity ?? 0;
-        const minLevel = validatedData.minStockLevel ?? 10;
-        if (qty <= 0) {
-          const recent = await db.select({ id: notifications.id }).from(notifications)
-            .where(and(
-              eq(notifications.pharmacyId, validatedData.pharmacyId),
-              eq(notifications.productId, productId),
-              eq(notifications.type, 'OUT_OF_STOCK'),
-              gt(notifications.createdAt, recentCutoff),
-            )).limit(1);
-          if (recent.length === 0) {
-            await db.insert(notifications).values({
-              type: 'OUT_OF_STOCK', productId,
-              message: `${label} was added with zero stock.`,
-              pharmacyId: validatedData.pharmacyId, isRead: false,
-            });
-            broadcastEvent(REALTIME_EVENTS.NOTIFICATION_CREATED, {
-              pharmacyId: validatedData.pharmacyId,
-            });
-          }
-        } else if (qty <= minLevel) {
-          const recent = await db.select({ id: notifications.id }).from(notifications)
-            .where(and(
-              eq(notifications.pharmacyId, validatedData.pharmacyId),
-              eq(notifications.productId, productId),
-              eq(notifications.type, 'LOW_STOCK'),
-              gt(notifications.createdAt, recentCutoff),
-            )).limit(1);
-          if (recent.length === 0) {
-            await db.insert(notifications).values({
-              type: 'LOW_STOCK', productId,
-              message: `${label} was added with low stock (${qty}).`,
-              pharmacyId: validatedData.pharmacyId, isRead: false,
-            });
-            broadcastEvent(REALTIME_EVENTS.NOTIFICATION_CREATED, {
-              pharmacyId: validatedData.pharmacyId,
-            });
-          }
-        }
-      }
-    } catch (notifErr) {
-      console.error('Non-fatal: product creation notification failed', notifErr);
-    }
 
     return {
       success: true,
