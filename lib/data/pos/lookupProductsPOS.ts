@@ -26,6 +26,13 @@ export async function lookupProductsPOS({
   // Exclude expired stock
   filters.push(sql`${products.expiryDate} >= CURRENT_DATE`);
 
+  // When browsing (no search), exclude out-of-stock products so
+  // the returned page count matches visible cards (prevents empty gaps
+  // and phantom "Load More" buttons).
+  if (!query || query.length < 2) {
+    filters.push(sql`${products.quantity} > 0`);
+  }
+
   let whereExpr = and(...filters);
 
   if (query && query.length >= 2) {

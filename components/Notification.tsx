@@ -51,16 +51,25 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<number | undefined>(undefined);
 
-  // Initial unread count on mount
+  // Initial unread count on mount + trigger inventory notification sync
   useEffect(() => {
     (async () => {
       try {
+        // Trigger server-side expiry/stock sync (fire-and-forget)
+        fetch('/api/notifications/sync', { method: 'POST' }).catch(() => {});
         const count = await getUnreadNotificationCount(pharmacyId);
         setUnreadCount(count);
       } catch (e) {
         console.error('Failed to load unread count', e);
       }
     })();
+
+    // Re-sync every 30 minutes so products approaching expiry are caught
+    const syncInterval = setInterval(() => {
+      fetch('/api/notifications/sync', { method: 'POST' }).catch(() => {});
+    }, 30 * 60 * 1000);
+
+    return () => clearInterval(syncInterval);
   }, [pharmacyId]);
 
   // Load notifications when popover opens
