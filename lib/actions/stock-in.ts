@@ -274,19 +274,25 @@ export const createStockIn = async (
       })
       .returning();
 
-    for (const entry of itemsWithProducts) {
-      const amount =
-        entry.item.quantity * Number.parseFloat(entry.item.unitCost);
-      await tx.insert(stockInItems).values({
-        stockInId: newStockIn.id,
-        productId: entry.item.productId,
-        quantity: entry.item.quantity,
-        unitCost: entry.item.unitCost,
-        amount: toAmountString(Number.isNaN(amount) ? 0 : amount),
-        lotNumber: entry.item.lotNumber || null,
-        expiryDate: entry.item.expiryDate ?? null,
-      });
+    // Batch-insert all stock-in items in a single query
+    await tx.insert(stockInItems).values(
+      itemsWithProducts.map((entry) => {
+        const amount =
+          entry.item.quantity * Number.parseFloat(entry.item.unitCost);
+        return {
+          stockInId: newStockIn.id,
+          productId: entry.item.productId,
+          quantity: entry.item.quantity,
+          unitCost: entry.item.unitCost,
+          amount: toAmountString(Number.isNaN(amount) ? 0 : amount),
+          lotNumber: entry.item.lotNumber || null,
+          expiryDate: entry.item.expiryDate ?? null,
+        };
+      }),
+    );
 
+    // Update product stock & cost
+    for (const entry of itemsWithProducts) {
       // Build update object - always update quantity
       const updateData: Record<string, unknown> = {
         quantity: sql`${products.quantity} + ${entry.item.quantity}`,

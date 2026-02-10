@@ -144,23 +144,25 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
      *    for the very first time (or after stock recovers and drops again,
      *    which is handled by the transition-based logic in sales/adjustments).
      */
-    const ensureNotification = async (
+
+    // Collect all new notifications, then batch-insert
+    const pendingInserts: Array<{
+      pharmacyId: number;
+      productId: number;
+      type: 'LOW_STOCK' | 'OUT_OF_STOCK' | 'EXPIRING' | 'EXPIRED';
+      message: string;
+      isRead: boolean;
+    }> = [];
+
+    const enqueue = (
       type: 'LOW_STOCK' | 'OUT_OF_STOCK' | 'EXPIRING' | 'EXPIRED',
       productId: number,
       message: string,
     ) => {
       const key = `${productId}::${type}`;
       if (existingSet.has(key)) return; // already notified — skip
-
-      await db.insert(notifications).values({
-        pharmacyId,
-        productId,
-        type,
-        message,
-        isRead: false,
-      });
-
       existingSet.add(key); // prevent duplicate within this run
+      pendingInserts.push({ pharmacyId, productId, type, message, isRead: false });
     };
 
     // Process products
@@ -168,21 +170,13 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
       const productLabel = `${p.name}${p.brandName ? ` (${p.brandName})` : ''}`;
 
       if (p.quantity <= 0) {
-        await ensureNotification(
-          'OUT_OF_STOCK',
-          p.id,
-          `${productLabel} is out of stock.`,
-        );
+        enqueue('OUT_OF_STOCK', p.id, `${productLabel} is out of stock.`);
         continue; // out-of-stock supersedes low stock
       }
 
       const minLevel = (p.minStockLevel as number) ?? 10;
       if (p.quantity <= minLevel) {
-        await ensureNotification(
-          'LOW_STOCK',
-          p.id,
-          `${productLabel} is low on stock.`,
-        );
+        enqueue('LOW_STOCK', p.id, `${productLabel} is low on stock.`);
       }
 
       const expDate = p.expiryDate
@@ -202,19 +196,16 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
         );
 
         if (exp < todayMid) {
-          await ensureNotification(
-            'EXPIRED',
-            p.id,
-            `${productLabel} has expired.`,
-          );
+          enqueue('EXPIRED', p.id, `${productLabel} has expired.`);
         } else if (exp <= in30Days) {
-          await ensureNotification(
-            'EXPIRING',
-            p.id,
-            `${productLabel} is expiring soon.`,
-          );
+          enqueue('EXPIRING', p.id, `${productLabel} is expiring soon.`);
         }
       }
+    }
+
+    // Batch-insert all new notifications in a single query
+    if (pendingInserts.length > 0) {
+      await db.insert(notifications).values(pendingInserts);
     }
   } catch (error) {
     console.error('Error syncing inventory notifications:', error);
