@@ -1,13 +1,35 @@
 'use server';
 
 import { db } from '@/database/drizzle';
-import { eq, and, desc, sql, lt } from 'drizzle-orm';
-import { notifications, products } from '@/database/schema';
+import { eq, and, desc, sql, lt, notExists } from 'drizzle-orm';
+import {
+  notifications,
+  notificationReads,
+  notificationDismissals,
+  products,
+} from '@/database/schema';
 import { NotificationParams } from '@/types';
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 
 const NOTIFICATIONS_PAGE_SIZE = 30;
+
+/**
+ * Build a per-user "not dismissed" subquery filter.
+ * Only returns notifications that the current user has NOT dismissed.
+ */
+const notDismissedByUser = (userId: string) =>
+  notExists(
+    db
+      .select({ one: sql`1` })
+      .from(notificationDismissals)
+      .where(
+        and(
+          eq(notificationDismissals.notificationId, notifications.id),
+          eq(notificationDismissals.userId, userId),
+        ),
+      ),
+  );
 
 export const getNotifications = async (
   pharmacyId: number,
@@ -15,7 +37,7 @@ export const getNotifications = async (
 ) => {
   try {
     const session = await auth();
-    if (!session?.user?.pharmacyId) {
+    if (!session?.user?.id || !session?.user?.pharmacyId) {
       throw new Error('Unauthorized');
     }
 
@@ -24,11 +46,15 @@ export const getNotifications = async (
       throw new Error('Unauthorized access to pharmacy data');
     }
 
+    const userId = session.user.id as string;
     const limit = options?.limit ?? NOTIFICATIONS_PAGE_SIZE;
     const cursor = options?.cursor;
 
-    // Build where conditions
-    const whereConditions = [eq(notifications.pharmacyId, pharmacyId)];
+    // Build where conditions — exclude dismissed notifications for this user
+    const whereConditions = [
+      eq(notifications.pharmacyId, pharmacyId),
+      notDismissedByUser(userId),
+    ];
     if (cursor) {
       // Cursor-based pagination: get notifications older than the cursor ID
       whereConditions.push(lt(notifications.id, cursor));
@@ -40,9 +66,14 @@ export const getNotifications = async (
         type: notifications.type,
         productId: notifications.productId,
         message: notifications.message,
-        isRead: notifications.isRead,
         pharmacyId: notifications.pharmacyId,
         createdAt: notifications.createdAt,
+        // Per-user read status via subquery
+        isRead: sql<boolean>`EXISTS (
+          SELECT 1 FROM notification_reads nr
+          WHERE nr.notification_id = ${notifications.id}
+            AND nr.user_id = ${userId}
+        )`.as('is_read'),
         product: {
           id: products.id,
           name: products.name,
@@ -70,18 +101,29 @@ export const getNotifications = async (
   }
 };
 
-// Get total notification count for display purposes
+// Get total notification count for display purposes (per-user, excluding dismissed)
 export const getTotalNotificationCount = async (pharmacyId: number) => {
   try {
     const session = await auth();
-    if (!session?.user?.pharmacyId || session.user.pharmacyId !== pharmacyId) {
+    if (
+      !session?.user?.id ||
+      !session?.user?.pharmacyId ||
+      session.user.pharmacyId !== pharmacyId
+    ) {
       throw new Error('Unauthorized');
     }
+
+    const userId = session.user.id as string;
 
     const [result] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(notifications)
-      .where(eq(notifications.pharmacyId, pharmacyId));
+      .where(
+        and(
+          eq(notifications.pharmacyId, pharmacyId),
+          notDismissedByUser(userId),
+        ),
+      );
 
     return result?.count ?? 0;
   } catch (error) {
@@ -139,7 +181,7 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
      * Only create a notification if one has NEVER existed for this
      * product + type combination.  This ensures:
      *  - Read notifications are not duplicated.
-     *  - Deleted notifications stay dismissed.
+     *  - Dismissed notifications stay dismissed (per-user).
      *  - A new notification is only created when a condition is detected
      *    for the very first time (or after stock recovers and drops again,
      *    which is handled by the transition-based logic in sales/adjustments).
@@ -151,7 +193,6 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
       productId: number;
       type: 'LOW_STOCK' | 'OUT_OF_STOCK' | 'EXPIRING' | 'EXPIRED';
       message: string;
-      isRead: boolean;
     }> = [];
 
     const enqueue = (
@@ -162,7 +203,7 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
       const key = `${productId}::${type}`;
       if (existingSet.has(key)) return; // already notified — skip
       existingSet.add(key); // prevent duplicate within this run
-      pendingInserts.push({ pharmacyId, productId, type, message, isRead: false });
+      pendingInserts.push({ pharmacyId, productId, type, message });
     };
 
     // Process products
@@ -212,10 +253,16 @@ export const syncInventoryNotifications = async (pharmacyId: number) => {
   }
 };
 
+/**
+ * Get the count of unread notifications for the current user.
+ * A notification is "unread" if:
+ *   1. It has NOT been dismissed by this user, AND
+ *   2. It has NOT been read by this user.
+ */
 export const getUnreadNotificationCount = async (pharmacyId: number) => {
   try {
     const session = await auth();
-    if (!session?.user?.pharmacyId) {
+    if (!session?.user?.id || !session?.user?.pharmacyId) {
       throw new Error('Unauthorized');
     }
 
@@ -224,13 +271,27 @@ export const getUnreadNotificationCount = async (pharmacyId: number) => {
       throw new Error('Unauthorized access to pharmacy data');
     }
 
+    const userId = session.user.id as string;
+
     const result = await db
       .select({ count: sql<number>`count(*)` })
       .from(notifications)
       .where(
         and(
           eq(notifications.pharmacyId, pharmacyId),
-          eq(notifications.isRead, false),
+          notDismissedByUser(userId),
+          // Not read by this user
+          notExists(
+            db
+              .select({ one: sql`1` })
+              .from(notificationReads)
+              .where(
+                and(
+                  eq(notificationReads.notificationId, notifications.id),
+                  eq(notificationReads.userId, userId),
+                ),
+              ),
+          ),
         ),
       );
 
@@ -241,12 +302,18 @@ export const getUnreadNotificationCount = async (pharmacyId: number) => {
   }
 };
 
+/**
+ * Mark a single notification as read FOR THE CURRENT USER.
+ * Inserts a row into notification_reads (idempotent via ON CONFLICT DO NOTHING).
+ */
 export const markNotificationAsRead = async (notificationId: number) => {
   try {
     const session = await auth();
-    if (!session?.user?.pharmacyId) {
+    if (!session?.user?.id || !session?.user?.pharmacyId) {
       throw new Error('Unauthorized');
     }
+
+    const userId = session.user.id as string;
 
     // First, verify the notification belongs to the user's pharmacy
     const notification = await db
@@ -262,10 +329,11 @@ export const markNotificationAsRead = async (notificationId: number) => {
       throw new Error('Notification not found or unauthorized');
     }
 
+    // Insert per-user read record
     await db
-      .update(notifications)
-      .set({ isRead: true })
-      .where(eq(notifications.id, notificationId));
+      .insert(notificationReads)
+      .values({ notificationId, userId })
+      .onConflictDoNothing();
 
     revalidatePath('/dashboard');
     revalidatePath('/notifications');
@@ -277,10 +345,13 @@ export const markNotificationAsRead = async (notificationId: number) => {
   }
 };
 
+/**
+ * Mark ALL non-dismissed, unread notifications as read for the current user.
+ */
 export const markAllNotificationsAsRead = async (pharmacyId: number) => {
   try {
     const session = await auth();
-    if (!session?.user?.pharmacyId) {
+    if (!session?.user?.id || !session?.user?.pharmacyId) {
       throw new Error('Unauthorized');
     }
 
@@ -289,15 +360,38 @@ export const markAllNotificationsAsRead = async (pharmacyId: number) => {
       throw new Error('Unauthorized access to pharmacy data');
     }
 
-    await db
-      .update(notifications)
-      .set({ isRead: true })
+    const userId = session.user.id as string;
+
+    // Get all unread, non-dismissed notification IDs for this user
+    const unreadNotifs = await db
+      .select({ id: notifications.id })
+      .from(notifications)
       .where(
         and(
           eq(notifications.pharmacyId, pharmacyId),
-          eq(notifications.isRead, false),
+          notDismissedByUser(userId),
+          notExists(
+            db
+              .select({ one: sql`1` })
+              .from(notificationReads)
+              .where(
+                and(
+                  eq(notificationReads.notificationId, notifications.id),
+                  eq(notificationReads.userId, userId),
+                ),
+              ),
+          ),
         ),
       );
+
+    if (unreadNotifs.length > 0) {
+      await db.insert(notificationReads).values(
+        unreadNotifs.map((n) => ({
+          notificationId: n.id,
+          userId,
+        })),
+      ).onConflictDoNothing();
+    }
 
     revalidatePath('/dashboard');
     revalidatePath('/notifications');
@@ -330,7 +424,6 @@ export const createNotification = async (
         productId: notificationData.productId,
         message: notificationData.message,
         pharmacyId: notificationData.pharmacyId,
-        isRead: false,
       })
       .returning();
 
@@ -344,14 +437,21 @@ export const createNotification = async (
   }
 };
 
+/**
+ * Dismiss a notification FOR THE CURRENT USER only.
+ * The notification row remains in the DB so other users can still see it.
+ * Inserts a row into notification_dismissals (idempotent).
+ */
 export const deleteNotification = async (notificationId: number) => {
   try {
     const session = await auth();
-    if (!session?.user?.pharmacyId) {
+    if (!session?.user?.id || !session?.user?.pharmacyId) {
       throw new Error('Unauthorized');
     }
 
-    // First, verify the notification belongs to the user's pharmacy
+    const userId = session.user.id as string;
+
+    // Verify the notification belongs to the user's pharmacy
     const notification = await db
       .select()
       .from(notifications)
@@ -365,14 +465,18 @@ export const deleteNotification = async (notificationId: number) => {
       throw new Error('Notification not found or unauthorized');
     }
 
-    await db.delete(notifications).where(eq(notifications.id, notificationId));
+    // Insert dismissal record instead of deleting the row
+    await db
+      .insert(notificationDismissals)
+      .values({ notificationId, userId })
+      .onConflictDoNothing();
 
     revalidatePath('/dashboard');
     revalidatePath('/notifications');
 
     return { success: true };
   } catch (error) {
-    console.error('Error deleting notification:', error);
-    throw new Error('Failed to delete notification');
+    console.error('Error dismissing notification:', error);
+    throw new Error('Failed to dismiss notification');
   }
 };

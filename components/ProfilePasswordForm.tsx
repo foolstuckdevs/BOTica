@@ -8,10 +8,12 @@ import { toast } from 'sonner';
 
 export default function ProfilePasswordForm({
   action,
+  onCancel,
 }: {
   action: (
     formData: FormData,
   ) => Promise<{ ok: boolean; message: string }> | Promise<void> | void;
+  onCancel?: () => void;
 }) {
   const [showCurrent, setShowCurrent] = React.useState(false);
   const [showNew, setShowNew] = React.useState(false);
@@ -122,7 +124,12 @@ export default function ProfilePasswordForm({
           </button>
         </div>
       </div>
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
         <Button
           type="submit"
           variant="default"

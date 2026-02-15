@@ -17,14 +17,13 @@ import {
 import Link from 'next/link';
 import { SignOutForm } from './SignOutForm';
 import { usePathname } from 'next/navigation';
-import getPageTitle from '@/lib/helpers/getPageTitle';
 import { Notification } from './Notification';
 import { SidebarTrigger } from './Sidebar';
+import Breadcrumbs from './Breadcrumbs';
 
 const Header = ({ session }: { session: Session }) => {
   const [isClient, setIsClient] = useState(false);
   const pathname = usePathname();
-  const pageTitle = getPageTitle(pathname);
   const userInitials = session?.user?.name
     ? session.user.name
         .split(' ')
@@ -48,10 +47,8 @@ const Header = ({ session }: { session: Session }) => {
         {/* Sidebar Trigger */}
         <SidebarTrigger />
 
-        {/* Page Title */}
-        <h1 className="text-lg font-semibold text-gray-800 tracking-tight">
-          {pageTitle}
-        </h1>
+        {/* Breadcrumb Navigation */}
+        <Breadcrumbs />
       </div>
 
       <div className="flex items-center space-x-3 pr-2">

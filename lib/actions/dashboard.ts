@@ -168,12 +168,12 @@ export const getProductStockSummaries = async (pharmacyId: number) => {
         expiryDate: products.expiryDate,
         quantity: products.quantity,
         minStockLevel: products.minStockLevel,
+        deletedAt: products.deletedAt,
       })
       .from(products)
       .where(
         and(
           eq(products.pharmacyId, validatedData.pharmacyId),
-          sql`${products.deletedAt} IS NULL`,
         ),
       );
   } catch (error) {

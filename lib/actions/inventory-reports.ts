@@ -23,8 +23,8 @@ export async function getInventoryReportData(pharmacyId: number) {
   const now = new Date();
   const today = new Date(formatInTimeZone(now, 'Asia/Manila', 'yyyy-MM-dd'));
   const thirtyDaysFromNow = addDays(today, 30);
-  // Extended window for expiring products report (up to 7 months / 210 days)
-  const twoHundredTenDaysFromNow = addDays(today, 210);
+  // Window for expiring products report (up to 90 days / 3 months)
+  const ninetyDaysFromNow = addDays(today, 90);
 
   // Run all 5 independent queries in parallel for ~4-5× speedup
   const [overviewResults, expiringResults, lowStockResults, activeResults, inactiveResults] = await Promise.all([
@@ -63,7 +63,7 @@ export async function getInventoryReportData(pharmacyId: number) {
         ),
       ),
 
-    // 2. Expiring products (now through 210 days ~7 months)
+    // 2. Expiring products (expired + up to 90 days / 3 months)
     db
       .select({
         id: products.id,
@@ -88,7 +88,7 @@ export async function getInventoryReportData(pharmacyId: number) {
         and(
           eq(products.pharmacyId, pharmacyId),
           gte(products.quantity, 1),
-          lte(products.expiryDate, twoHundredTenDaysFromNow.toISOString()),
+          lte(products.expiryDate, ninetyDaysFromNow.toISOString()),
           sql`${products.deletedAt} IS NULL`,
         ),
       )

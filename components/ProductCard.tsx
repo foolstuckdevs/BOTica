@@ -70,7 +70,7 @@ export const ProductCard = ({
           className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${
             urgency.level === 'expiring_soon'
               ? 'bg-red-100 text-red-700 border border-red-200'
-              : urgency.level === 'moderately_close'
+              : urgency.level === 'warning'
               ? 'bg-yellow-100 text-yellow-700 border border-yellow-200'
               : 'bg-green-100 text-green-700 border border-green-200'
           }`}
@@ -129,7 +129,7 @@ export const ProductCard = ({
               className={`font-medium ${
                 urgency.level === 'expiring_soon'
                   ? 'text-red-600'
-                  : urgency.level === 'moderately_close'
+                  : urgency.level === 'warning'
                   ? 'text-yellow-600'
                   : urgency.level === 'no_expiry'
                   ? 'text-gray-500'

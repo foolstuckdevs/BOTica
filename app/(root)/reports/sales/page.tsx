@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { SkeletonSalesOverview } from '@/components/ui/skeleton';
 
 // Separate component for data fetching to enable streaming
-async function SalesReportData() {
+async function SalesReportData({ initialTab }: { initialTab?: string }) {
   const session = await auth();
 
   // Middleware ensures session exists for protected routes
@@ -35,6 +35,7 @@ async function SalesReportData() {
         productData={productData}
         comprehensiveSalesData={comprehensiveSalesData}
         comprehensiveProductData={comprehensiveProductData}
+        initialTab={(initialTab as 'overview' | 'sales' | 'products' | 'daily') || 'overview'}
       />
     );
   } catch (error) {
@@ -77,17 +78,19 @@ async function SalesReportData() {
         productData={fallbackProductData}
         comprehensiveSalesData={[]}
         comprehensiveProductData={[]}
+        initialTab={(initialTab as 'overview' | 'sales' | 'products' | 'daily') || 'overview'}
       />
     );
   }
 }
 
-const page = async () => {
+const page = async ({ searchParams }: { searchParams: Promise<{ tab?: string }> }) => {
+  const { tab } = await searchParams;
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50">
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         <Suspense fallback={<SkeletonSalesOverview />}>
-          <SalesReportData />
+          <SalesReportData initialTab={tab} />
         </Suspense>
       </div>
     </div>

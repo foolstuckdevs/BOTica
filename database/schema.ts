@@ -11,6 +11,7 @@ import {
   uuid,
   pgEnum,
   jsonb,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -173,13 +174,44 @@ export const notifications = pgTable('notifications', {
   type: NOTIFICATION_TYPE_ENUM('type').notNull(),
   productId: integer('product_id').references(() => products.id),
   message: text('message').notNull(),
-  isRead: boolean('is_read').default(false),
   pharmacyId: integer('pharmacy_id')
     .notNull()
     .references(() => pharmacies.id),
 
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// Per-user notification read tracking
+export const notificationReads = pgTable(
+  'notification_reads',
+  {
+    id: serial('id').primaryKey(),
+    notificationId: integer('notification_id')
+      .references(() => notifications.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    readAt: timestamp('read_at').defaultNow(),
+  },
+  (table) => [uniqueIndex('nr_notif_user_idx').on(table.notificationId, table.userId)],
+);
+
+// Per-user notification dismissal tracking
+export const notificationDismissals = pgTable(
+  'notification_dismissals',
+  {
+    id: serial('id').primaryKey(),
+    notificationId: integer('notification_id')
+      .references(() => notifications.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    dismissedAt: timestamp('dismissed_at').defaultNow(),
+  },
+  (table) => [uniqueIndex('nd_notif_user_idx').on(table.notificationId, table.userId)],
+);
 
 // Activity Logs
 export const activityLogs = pgTable('activity_logs', {

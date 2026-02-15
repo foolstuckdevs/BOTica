@@ -18,8 +18,10 @@ const Page = async () => {
 
   const pharmacyId = session.user.pharmacyId;
 
-  const categories = await getCategories(pharmacyId);
-  const suppliers = await getSuppliers(pharmacyId);
+  const [categories, suppliers] = await Promise.all([
+    getCategories(pharmacyId),
+    getSuppliers(pharmacyId),
+  ]);
 
   return (
     <div className="p-4">

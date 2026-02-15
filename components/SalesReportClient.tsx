@@ -11,6 +11,8 @@ import SalesTable from '@/components/SalesTable';
 import DailyBreakdownTable from '@/components/DailyBreakdownTable';
 import type { SalesOverviewData, ProductPerformanceData } from '@/types';
 
+type SalesTab = 'overview' | 'sales' | 'products' | 'daily';
+
 interface Props {
   salesData: {
     today: SalesOverviewData;
@@ -32,6 +34,7 @@ interface Props {
     revenue: number;
     profit: number;
   }>;
+  initialTab?: SalesTab;
 }
 
 export default function SalesReportClient({
@@ -39,11 +42,12 @@ export default function SalesReportClient({
   productData,
   comprehensiveSalesData = [],
   comprehensiveProductData = [],
+  initialTab = 'overview',
 }: Props) {
-  // Lazy tab loading
-  const [salesTabLoaded, setSalesTabLoaded] = useState(false);
-  const [productsTabLoaded, setProductsTabLoaded] = useState(false);
-  const [dailyTabLoaded, setDailyTabLoaded] = useState(false);
+  // Lazy tab loading — pre-load the initial tab
+  const [salesTabLoaded, setSalesTabLoaded] = useState(initialTab === 'sales');
+  const [productsTabLoaded, setProductsTabLoaded] = useState(initialTab === 'products');
+  const [dailyTabLoaded, setDailyTabLoaded] = useState(initialTab === 'daily');
 
   const handleTabChange = useCallback(
     (val: string) => {
@@ -67,7 +71,7 @@ export default function SalesReportClient({
       </div>
       <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-lg overflow-hidden">
         <Tabs
-          defaultValue="overview"
+          defaultValue={initialTab}
           onValueChange={handleTabChange}
           className="w-full"
         >

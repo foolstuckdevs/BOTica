@@ -15,6 +15,7 @@ import {
   getAdjustmentsSchema,
   createAdjustmentSchema,
 } from '@/lib/validations';
+import { logActivity } from '@/lib/actions/activity';
 import { notifications } from '@/database/schema';
 import { gt } from 'drizzle-orm';
 import { pharmacyIdSchema } from '@/lib/validations';
@@ -204,7 +205,6 @@ export const createAdjustment = async ({
               productId: validatedData.productId,
               message: `${label} is out of stock.`,
               pharmacyId: validatedData.pharmacyId,
-              isRead: false,
             });
           }
         } else if (currentQuantity > minLevel && newQuantity <= minLevel) {
@@ -226,7 +226,6 @@ export const createAdjustment = async ({
               productId: validatedData.productId,
               message: `${label} is low on stock.`,
               pharmacyId: validatedData.pharmacyId,
-              isRead: false,
             });
           }
         }
@@ -239,6 +238,23 @@ export const createAdjustment = async ({
     }
 
     // Note: skip full inventory sync here to avoid instant re-creation of notifications
+
+    // Log activity
+    await logActivity({
+      action: 'ADJUSTMENT_CREATED',
+      pharmacyId: validatedData.pharmacyId,
+      userId: validatedData.userId,
+      details: {
+        productId: validatedData.productId,
+        productName: product.name,
+        brandName: product.brandName,
+        quantityChange: validatedData.quantityChange,
+        reason: validatedData.reason,
+        previousQuantity: currentQuantity,
+        newQuantity,
+        notes: validatedData.notes,
+      },
+    });
 
     revalidatePath('/products');
     revalidatePath('/adjustments');

@@ -44,23 +44,44 @@ export function SectionCards({
     REALTIME_EVENTS.PRODUCT_CHANGED,
   ]);
 
-  const lowStockCount = productStats.filter(
+  const activeProducts = productStats.filter((p) => !p.deletedAt);
+  const inactiveCount = productStats.filter((p) => p.deletedAt).length;
+  const activeCount = activeProducts.length;
+  const totalProductCount = activeCount + inactiveCount;
+
+  const outOfStockCount = activeProducts.filter((p) => p.quantity <= 0).length;
+
+  const lowStockOnlyCount = activeProducts.filter(
     (p) =>
       p.minStockLevel != null &&
       p.quantity <= p.minStockLevel &&
       p.quantity > 0,
   ).length;
 
-  const expiringSoonCount = productStats.filter((p) => {
-    if (!p.expiryDate) return false;
-    const expiry = new Date(p.expiryDate);
-    return (
-      expiry > now &&
-      expiry.getTime() - now.getTime() < 30 * 24 * 60 * 60 * 1000
-    );
+  const lowOutOfStockCount = lowStockOnlyCount + outOfStockCount;
+
+  // Near-expiry breakdown matching Expiring Products tab statuses:
+  // Only count products with stock (quantity > 0) to match inventory report
+  // Expired (≤0 days), Expiring Soon (1-30 days), Warning (31-90 days)
+  const inStockWithExpiry = activeProducts.filter(
+    (p) => p.expiryDate && p.quantity > 0,
+  );
+
+  const expiredCount = inStockWithExpiry.filter((p) => {
+    return new Date(p.expiryDate!) <= now;
   }).length;
 
-  const activeCount = productStats.filter((p) => p.quantity > 0).length;
+  const expiringSoonCount = inStockWithExpiry.filter((p) => {
+    const diff = new Date(p.expiryDate!).getTime() - now.getTime();
+    return diff > 0 && diff <= 30 * 24 * 60 * 60 * 1000;
+  }).length;
+
+  const warningCount = inStockWithExpiry.filter((p) => {
+    const diff = new Date(p.expiryDate!).getTime() - now.getTime();
+    return diff > 30 * 24 * 60 * 60 * 1000 && diff <= 90 * 24 * 60 * 60 * 1000;
+  }).length;
+
+  const nearExpiryCount = expiredCount + expiringSoonCount + warningCount;
 
   const { todaysSales, percentageChange, trend } = salesComparison;
 
@@ -107,21 +128,21 @@ export function SectionCards({
         )}
       </Card>
 
-      {/* Low Stock */}
+      {/* Low / Out of Stock */}
       <Card>
         <CardHeader>
           <CardDescription className="text-xs text-muted-foreground">
-            Low Stock Items
+            Low/Out of Stock Items
           </CardDescription>
           <CardTitle className="text-2xl font-bold tabular-nums text-yellow-700">
-            {lowStockCount} items
+            {lowOutOfStockCount} items
           </CardTitle>
           <Badge
             variant="outline"
             className="mt-2 flex gap-1 items-center rounded-md text-xs text-yellow-800 border-yellow-300 bg-yellow-100"
           >
             <TrendingUpIcon className="h-3 w-3" />
-            Restock Soon
+            {lowStockOnlyCount} low · {outOfStockCount} out of stock
           </Badge>
         </CardHeader>
         {isAdmin && (
@@ -137,21 +158,21 @@ export function SectionCards({
         )}
       </Card>
 
-      {/* Expiring Soon */}
+      {/* Near-Expiry Alerts */}
       <Card>
         <CardHeader>
           <CardDescription className="text-xs text-muted-foreground">
-            Expiring Soon (30 Days)
+            Near-Expiry Alerts
           </CardDescription>
           <CardTitle className="text-2xl font-bold tabular-nums text-red-700">
-            {expiringSoonCount} items
+            {nearExpiryCount} items
           </CardTitle>
           <Badge
             variant="outline"
             className="mt-2 flex gap-1 items-center rounded-md text-xs text-red-700 border-red-300 bg-red-100"
           >
             <CalendarClock className="h-3 w-3" />
-            Urgent
+            {expiredCount} expired · {expiringSoonCount} expiring soon · {warningCount} warning
           </Badge>
         </CardHeader>
         {isAdmin && (
@@ -161,7 +182,7 @@ export function SectionCards({
               prefetch={true}
               className="text-xs text-red-700 hover:underline flex items-center gap-1"
             >
-              View Expiry List <ArrowRight className="w-3 h-3" />
+              View Expiring Products <ArrowRight className="w-3 h-3" />
             </Link>
           </CardFooter>
         )}
@@ -181,7 +202,7 @@ export function SectionCards({
             className="mt-2 flex gap-1 items-center rounded-md text-xs text-green-700 border-green-300 bg-green-100"
           >
             <PackageCheck className="h-3 w-3" />
-            Up to date
+            {inactiveCount} inactive · {totalProductCount} total
           </Badge>
         </CardHeader>
         <CardFooter className="justify-end">

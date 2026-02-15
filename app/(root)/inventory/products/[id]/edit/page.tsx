@@ -27,9 +27,11 @@ const Page = async ({
 
   const { id } = await params;
   const { returnUrl } = await searchParams;
-  const product = await getProductById(Number(id), pharmacyId);
-  const categories = await getCategories(pharmacyId);
-  const suppliers = await getSuppliers(pharmacyId);
+  const [product, categories, suppliers] = await Promise.all([
+    getProductById(Number(id), pharmacyId),
+    getCategories(pharmacyId),
+    getSuppliers(pharmacyId),
+  ]);
 
   if (!product) {
     return <div>Product not found</div>;

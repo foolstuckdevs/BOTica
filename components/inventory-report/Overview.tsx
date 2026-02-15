@@ -8,17 +8,21 @@ import {
   PhilippinePeso,
   ShoppingCart,
   Package,
-  ArchiveX,
   Boxes,
+  CircleDollarSign,
 } from 'lucide-react';
 import type { InventoryOverviewData } from '@/types';
 
 interface Props {
   overview: InventoryOverviewData;
   expiringCount: number;
+  expiredCount: number;
+  activeCount: number;
+  inactiveCount: number;
+  revenueAtRisk: number;
 }
 
-export function InventoryOverview({ overview, expiringCount }: Props) {
+export function InventoryOverview({ overview, expiringCount, expiredCount, activeCount, inactiveCount, revenueAtRisk }: Props) {
   const formatCurrency = (amount: number): string =>
     new Intl.NumberFormat('en-PH', {
       style: 'currency',
@@ -27,9 +31,15 @@ export function InventoryOverview({ overview, expiringCount }: Props) {
       maximumFractionDigits: 2,
     }).format(amount);
 
+  // overview.totalProducts = all non-deleted rows from DB
+  // activeCount here = "available" products (in-stock & not expired) — a subset
+  // Total active products = overview.totalProducts (all non-deleted)
+  const totalActive = overview.totalProducts;
+  const totalProducts = totalActive + inactiveCount;
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Total Products */}
+      {/* Total Products (with active/inactive breakdown) */}
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
@@ -37,9 +47,15 @@ export function InventoryOverview({ overview, expiringCount }: Props) {
               <p className="text-sm font-medium text-muted-foreground">
                 Total Products
               </p>
-              <p className="text-2xl font-bold">{overview.totalProducts}</p>
+              <p className="text-2xl font-bold">{totalProducts}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                distinct SKUs
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">{totalActive}</span> active
+                {inactiveCount > 0 && (
+                  <>
+                    {' · '}
+                    <span className="text-gray-500 font-medium">{inactiveCount}</span> inactive
+                  </>
+                )}
               </p>
             </div>
             <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
@@ -111,17 +127,19 @@ export function InventoryOverview({ overview, expiringCount }: Props) {
         </CardContent>
       </Card>
 
-      {/* Expiring Soon */}
+      {/* Expiring Products (merged Expiring Soon + Expired) */}
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Expiring Soon
+                Expiring Products
               </p>
-              <p className="text-2xl font-bold">{expiringCount || 0}</p>
+              <p className="text-2xl font-bold">{(expiringCount || 0) + (expiredCount ?? 0)}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                products need attention
+                {(expiringCount || 0) + (expiredCount ?? 0) > 0
+                  ? 'action required soon'
+                  : 'no items at risk'}
               </p>
             </div>
             <div className="h-8 w-8 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
@@ -131,21 +149,23 @@ export function InventoryOverview({ overview, expiringCount }: Props) {
         </CardContent>
       </Card>
 
-      {/* Expired Items */}
+      {/* Revenue at Risk (beside Expiring Products) */}
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Expired Items
+                Revenue at Risk
               </p>
-              <p className="text-2xl font-bold">{overview.expiredCount ?? 0}</p>
+              <p className={`text-2xl font-bold ${revenueAtRisk > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
+                {formatCurrency(revenueAtRisk)}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
-                past expiry but still in stock
+                value of expiring &amp; expired stock
               </p>
             </div>
-            <div className="h-8 w-8 bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center">
-              <ArchiveX className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            <div className="h-8 w-8 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
+              <CircleDollarSign className="h-4 w-4 text-red-600 dark:text-red-400" />
             </div>
           </div>
         </CardContent>
@@ -174,12 +194,14 @@ export function InventoryOverview({ overview, expiringCount }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Inventory Value (Retail) */}
       <Card>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Estimated Inventory Value (Retail)
+                Inventory Value (Retail)
               </p>
               <p className="text-2xl font-bold">
                 {formatCurrency(overview.inventoryRetailValue ?? 0)}

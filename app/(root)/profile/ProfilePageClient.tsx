@@ -2,12 +2,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User as UserIcon, Lock } from "lucide-react";
+import { User as UserIcon, Lock, ArrowLeft } from "lucide-react";
 import ProfilePasswordForm from "@/components/ProfilePasswordForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import React from "react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 type ProfilePageClientProps = {
   name: string;
@@ -29,6 +30,7 @@ export default function ProfilePageClient({
   changePassword,
 }: ProfilePageClientProps) {
   const [infoPending, setInfoPending] = React.useState(false);
+  const router = useRouter();
 
   async function onSaveProfile(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -57,18 +59,29 @@ export default function ProfilePageClient({
   return (
     <div className="px-6 py-6 space-y-6 max-w-2xl mx-auto">
       {/* Page header */}
-      <div className="flex items-center gap-3">
-        <div className="rounded-lg bg-blue-50 text-blue-600 p-2">
-          <UserIcon className="w-5 h-5" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-blue-50 text-blue-600 p-2">
+            <UserIcon className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold leading-tight">
+              Manage Profile
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Update your account details and change your password.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-semibold leading-tight">
-            Manage Profile
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Update your account details and change your password.
-          </p>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push("/dashboard")}
+          className="flex items-center gap-1.5"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 items-stretch">
@@ -119,7 +132,14 @@ export default function ProfilePageClient({
                   Changing your email will change how you sign in.
                 </p>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push("/dashboard")}
+                >
+                  Cancel
+                </Button>
                 <Button type="submit" disabled={infoPending}>
                   {infoPending ? "Saving…" : "Save"}
                 </Button>
@@ -140,7 +160,7 @@ export default function ProfilePageClient({
             </p>
           </CardHeader>
           <CardContent className="flex-1">
-            <ProfilePasswordForm action={changePassword} />
+            <ProfilePasswordForm action={changePassword} onCancel={() => router.push("/dashboard")} />
           </CardContent>
         </Card>
       </div>

@@ -38,7 +38,7 @@ interface Props {
   };
   initialTab?: TabKey;
   initialLowStockStatus?: 'all' | 'out_of_stock' | 'low';
-  initialExpiringStatus?: 'all' | 'expired' | 'expiring' | 'warning' | 'return';
+  initialExpiringStatus?: 'all' | 'expired' | 'expiring' | 'warning';
 }
 
 export default function InventoryReportClient({
@@ -89,9 +89,6 @@ export default function InventoryReportClient({
     },
     [expiringLoaded, lowStockLoaded, activeLoaded, inactiveLoaded],
   );
-  const [expiryFilter, setExpiryFilter] = useState<
-    'all' | '30days' | '60days' | '90days'
-  >('all');
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'out_of_stock' | 'low'
   >(initialLowStockStatus ?? 'all');
@@ -168,9 +165,25 @@ export default function InventoryReportClient({
     categoryFilter,
   ]);
 
+  // Count all expiring products displayed in the table
   const expiringCount = useMemo(
-    () =>
-      inventoryData.expiringProducts.filter((p) => p.daysRemaining > 0).length,
+    () => inventoryData.expiringProducts.length,
+    [inventoryData.expiringProducts],
+  );
+
+  // Separate expired vs expiring-soon counts for the overview
+  const expiredCount = useMemo(
+    () => inventoryData.expiringProducts.filter((p) => p.daysRemaining <= 0).length,
+    [inventoryData.expiringProducts],
+  );
+  const expiringSoonCount = useMemo(
+    () => inventoryData.expiringProducts.filter((p) => p.daysRemaining > 0).length,
+    [inventoryData.expiringProducts],
+  );
+
+  // Total retail value of near-expiry & expired stock
+  const revenueAtRisk = useMemo(
+    () => inventoryData.expiringProducts.reduce((sum, p) => sum + p.sellingPrice * p.quantity, 0),
     [inventoryData.expiringProducts],
   );
 
@@ -223,13 +236,7 @@ export default function InventoryReportClient({
               >
                 <div className="flex items-center gap-3">
                   <TrendingDown className="w-4 h-4 text-orange-600" />
-                  <span>
-                    {statusFilter === 'out_of_stock'
-                      ? 'Out of Stock'
-                      : statusFilter === 'low'
-                      ? 'Low Stock'
-                      : 'Low Stock'}
-                  </span>
+                  <span>Low/Out of Stock</span>
                   {filteredLowStockProducts.length > 0 && (
                     <span className="bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 text-xs px-2 py-1 rounded-full font-semibold">
                       {filteredLowStockProducts.length}
@@ -253,7 +260,11 @@ export default function InventoryReportClient({
             <TabsContent value="overview" className="m-0">
               <InventoryOverview
                 overview={inventoryData.overview}
-                expiringCount={expiringCount}
+                expiringCount={expiringSoonCount}
+                expiredCount={expiredCount}
+                activeCount={activeProducts.length}
+                inactiveCount={inactiveProducts.length}
+                revenueAtRisk={revenueAtRisk}
               />
             </TabsContent>
 
@@ -263,8 +274,6 @@ export default function InventoryReportClient({
                   products={inventoryData.expiringProducts}
                   searchTerm={searchTerm}
                   onSearchChange={setSearchTerm}
-                  expiryFilter={expiryFilter}
-                  onExpiryFilterChange={setExpiryFilter}
                   statusFilter={initialExpiringStatus ?? 'all'}
                 />
               ) : (

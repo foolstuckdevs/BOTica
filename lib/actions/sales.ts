@@ -241,7 +241,6 @@ export const processSale = async (
             productId: n.productId,
             message: n.message,
             pharmacyId: validatedData.pharmacyId,
-            isRead: false,
           }));
 
         if (newNotifs.length > 0) {

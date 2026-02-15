@@ -1,7 +1,8 @@
 import { getInventoryReportData } from '@/lib/actions/inventory-reports';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import React from 'react';
+import React, { Suspense } from 'react';
+import { SkeletonTable } from '@/components/ui/skeleton';
 
 import InventoryReportClient from '@/components/InventoryReportClient';
 
@@ -33,7 +34,6 @@ const page = async ({
     | 'expired'
     | 'expiring'
     | 'warning'
-    | 'return'
     | undefined;
 
   if (initialTab === 'low-stock') {
@@ -45,27 +45,31 @@ const page = async ({
       status === 'expired' ||
       status === 'expiring' ||
       status === 'warning' ||
-      status === 'return' ||
       status === 'all'
     ) {
       initialExpiringStatus = status as
         | 'all'
         | 'expired'
         | 'expiring'
-        | 'warning'
-        | 'return';
+        | 'warning';
     }
   }
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50">
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <InventoryReportClient
-          inventoryData={inventoryData}
-          initialTab={initialTab}
-          initialLowStockStatus={initialLowStockStatus}
-          initialExpiringStatus={initialExpiringStatus}
-        />
+        <Suspense fallback={
+          <div className="space-y-6">
+            <SkeletonTable rows={8} columns={6} />
+          </div>
+        }>
+          <InventoryReportClient
+            inventoryData={inventoryData}
+            initialTab={initialTab}
+            initialLowStockStatus={initialLowStockStatus}
+            initialExpiringStatus={initialExpiringStatus}
+          />
+        </Suspense>
       </div>
     </div>
   );

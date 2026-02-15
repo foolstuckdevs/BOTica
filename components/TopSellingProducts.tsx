@@ -60,7 +60,7 @@ export const TopSellingProducts = ({ products }: TopSellingProductsProps) => {
             </CardDescription>
           </div>
           <Link
-            href="/reports/sales"
+            href="/reports/sales?tab=products"
             prefetch={true}
             className="text-xs text-blue-600 hover:underline flex items-center gap-1"
           >

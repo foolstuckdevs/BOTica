@@ -161,6 +161,7 @@ export type ProductStockSummary = {
   quantity: number;
   minStockLevel: number;
   expiryDate: string | null;
+  deletedAt: Date | string | null;
 };
 
 export type LowStockProduct = {

@@ -38,12 +38,10 @@ interface Props {
   products: ExpiringProductData[];
   searchTerm: string;
   onSearchChange: (v: string) => void;
-  expiryFilter: 'all' | '30days' | '60days' | '90days';
-  onExpiryFilterChange: (v: 'all' | '30days' | '60days' | '90days') => void;
-  // New status taxonomy: expired (<=0), expiring (1-90), warning (91-180), return (181-210)
-  statusFilter?: 'all' | 'expired' | 'expiring' | 'warning' | 'return';
+  // Industry-standard pharmacy statuses: expired (<=0), expiring (1-30), warning (31-90)
+  statusFilter?: 'all' | 'expired' | 'expiring' | 'warning';
   onStatusFilterChange?: (
-    v: 'all' | 'expired' | 'expiring' | 'warning' | 'return',
+    v: 'all' | 'expired' | 'expiring' | 'warning',
   ) => void;
   categoryFilter?: string;
   onCategoryFilterChange?: (v: string) => void;
@@ -53,8 +51,6 @@ export function ExpiringProductsTable({
   products,
   searchTerm,
   onSearchChange,
-  expiryFilter,
-  onExpiryFilterChange,
   statusFilter = 'all',
   onStatusFilterChange,
   categoryFilter = 'all',
@@ -72,15 +68,13 @@ export function ExpiringProductsTable({
   const getDisplayDaysRemaining = (daysRemaining: number): string =>
     daysRemaining < 0 ? '0 days' : `${daysRemaining} days`;
 
-  // Map daysRemaining to status token
+  // Map daysRemaining to industry-standard pharmacy status
   const getStatusToken = (
     daysRemaining: number,
-  ): 'expired' | 'expiring' | 'warning' | 'return' | 'exclude' => {
-    if (daysRemaining <= 0) return 'expired';
-    if (daysRemaining <= 90) return 'expiring';
-    if (daysRemaining <= 180) return 'warning';
-    if (daysRemaining <= 210) return 'return';
-    return 'exclude'; // beyond 7 months, excluded from report
+  ): 'expired' | 'expiring' | 'warning' => {
+    if (daysRemaining <= 0) return 'expired';       // Expired
+    if (daysRemaining <= 30) return 'expiring';     // Expiring Soon (≤ 1 month)
+    return 'warning';                                // Warning (> 1 month)
   };
 
   const statusMeta = React.useMemo(
@@ -88,13 +82,9 @@ export function ExpiringProductsTable({
       expired: { text: 'Expired', className: 'bg-red-100 text-red-800' },
       expiring: {
         text: 'Expiring Soon',
-        className: 'bg-yellow-100 text-yellow-800',
+        className: 'bg-orange-100 text-orange-800',
       },
-      warning: { text: 'Warning', className: 'bg-amber-100 text-amber-800' },
-      return: {
-        text: 'For Return',
-        className: 'bg-indigo-100 text-indigo-800',
-      },
+      warning: { text: 'Warning', className: 'bg-yellow-100 text-yellow-800' },
     }),
     [],
   );
@@ -102,8 +92,6 @@ export function ExpiringProductsTable({
   const getDisplayStatus = React.useCallback(
     (daysRemaining: number) => {
       const token = getStatusToken(daysRemaining);
-      if (token === 'exclude')
-        return { text: 'N/A', className: 'bg-muted text-muted-foreground' };
       return statusMeta[token];
     },
     [statusMeta],
@@ -111,13 +99,13 @@ export function ExpiringProductsTable({
 
   // Internal unmanaged state fallbacks if parent did not pass handlers
   const [internalStatusFilter, setInternalStatusFilter] = React.useState<
-    'all' | 'expired' | 'expiring' | 'warning' | 'return'
+    'all' | 'expired' | 'expiring' | 'warning'
   >(statusFilter);
   const effectiveStatusFilter = onStatusFilterChange
     ? statusFilter
     : internalStatusFilter;
   const handleStatusChange = (
-    v: 'all' | 'expired' | 'expiring' | 'warning' | 'return',
+    v: 'all' | 'expired' | 'expiring' | 'warning',
   ) => {
     if (onStatusFilterChange) onStatusFilterChange(v);
     else setInternalStatusFilter(v);
@@ -133,14 +121,12 @@ export function ExpiringProductsTable({
   };
 
   const clearAllFilters = () => {
-    onExpiryFilterChange('all');
     handleStatusChange('all');
     handleCategoryChange('all');
     onSearchChange('');
   };
 
   const hasActiveFilters =
-    expiryFilter !== 'all' ||
     effectiveStatusFilter !== 'all' ||
     effectiveCategoryFilter !== 'all' ||
     searchTerm !== '';
@@ -204,23 +190,15 @@ export function ExpiringProductsTable({
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, expiryFilter, statusFilter, categoryFilter]);
+  }, [searchTerm, statusFilter, categoryFilter]);
 
-  // Apply status + exclusion filtering (exclude > 210 days) + search + category + expiry
+  // Apply status + search + category filtering
   const filteredProducts = React.useMemo(() => {
     return products.filter((p) => {
       // Status filtering
       const token = getStatusToken(p.daysRemaining);
-      if (token === 'exclude') return false;
       if (effectiveStatusFilter !== 'all' && token !== effectiveStatusFilter) {
         return false;
-      }
-
-      // Expiry quick-filter (≤30, 31–60, 61–90 day buckets)
-      if (expiryFilter !== 'all') {
-        if (expiryFilter === '30days' && p.daysRemaining > 30) return false;
-        if (expiryFilter === '60days' && (p.daysRemaining <= 30 || p.daysRemaining > 60)) return false;
-        if (expiryFilter === '90days' && (p.daysRemaining <= 60 || p.daysRemaining > 90)) return false;
       }
 
       // Search filtering
@@ -241,7 +219,7 @@ export function ExpiringProductsTable({
 
       return true;
     });
-  }, [products, effectiveStatusFilter, searchTerm, effectiveCategoryFilter, expiryFilter]);
+  }, [products, effectiveStatusFilter, searchTerm, effectiveCategoryFilter]);
 
   // Apply sorting
   const sortedProducts = React.useMemo(() => {
@@ -331,18 +309,16 @@ export function ExpiringProductsTable({
     { header: 'Selling Price', key: 'sellingPrice', currency: true },
   ];
   const statusLabelMap: Record<
-    'all' | 'expired' | 'expiring' | 'warning' | 'return',
+    'all' | 'expired' | 'expiring' | 'warning',
     string
   > = {
     all: 'All',
     expired: 'Expired',
     expiring: 'Expiring Soon',
     warning: 'Warning',
-    return: 'For Return',
   };
   const filterSubtitle = buildFilterSubtitle(
     [
-      ['Expiry', expiryFilter],
       ['Status', statusLabelMap[effectiveStatusFilter]],
       ['Category', categoryFilter],
     ],
@@ -399,52 +375,25 @@ export function ExpiringProductsTable({
                     <div className="space-y-2">
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">
-                          Expiry
-                        </label>
-                        <Select
-                          value={expiryFilter}
-                          onValueChange={onExpiryFilterChange}
-                        >
-                          <SelectTrigger className="h-8 w-full text-xs px-2 py-1 mt-1">
-                            <SelectValue placeholder="Filter by expiry" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Expiry</SelectItem>
-                            <SelectItem value="30days">30 Days</SelectItem>
-                            <SelectItem value="60days">60 Days</SelectItem>
-                            <SelectItem value="90days">90 Days</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">
                           Status
                         </label>
                         <Select
                           value={effectiveStatusFilter}
                           onValueChange={(
-                            v:
-                              | 'all'
-                              | 'expired'
-                              | 'expiring'
-                              | 'warning'
-                              | 'return',
+                            v: 'all' | 'expired' | 'expiring' | 'warning',
                           ) => handleStatusChange(v)}
                         >
                           <SelectTrigger className="h-8 w-full text-xs px-2 py-1 mt-1">
-                            <SelectValue placeholder="Filter by urgency" />
+                            <SelectValue placeholder="Filter by status" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Status</SelectItem>
                             <SelectItem value="expired">Expired</SelectItem>
                             <SelectItem value="expiring">
-                              Expiring Soon (≤ 3 mo)
+                              Expiring Soon (30 days)
                             </SelectItem>
                             <SelectItem value="warning">
-                              Warning (3–6 mo)
-                            </SelectItem>
-                            <SelectItem value="return">
-                              For Return (6–7 mo)
+                              Warning (90 days)
                             </SelectItem>
                           </SelectContent>
                         </Select>
