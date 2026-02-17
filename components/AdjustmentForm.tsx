@@ -18,12 +18,9 @@ const adjustmentFormSchema = z.object({
   quantityChange: z
     .number({ required_error: 'Quantity change is required.', invalid_type_error: 'Quantity change is required.' })
     .int({ message: 'Quantity must be a whole number.' })
-    .refine((val) => val > 0, {
-      message: 'Quantity must be greater than 0.',
-    })
-    .refine((val) => val <= 9999, {
-      message: 'Quantity cannot be greater than 9999.',
-    }),
+    .min(1, { message: 'Quantity must be at least 1.' })
+    .max(9999, { message: 'Quantity cannot be greater than 9999.' }),
+  adjustmentType: z.enum(['add', 'subtract'], { required_error: 'Please select adjustment type.' }),
   reason: z.string().min(1, 'Please select a reason.').refine(
     (val) => ['DAMAGED', 'EXPIRED', 'LOST_OR_STOLEN', 'STOCK_CORRECTION'].includes(val),
     { message: 'Please select a valid reason.' }
@@ -87,9 +84,13 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
     setValue,
   } = useForm<AdjustmentFormValues>({
     resolver: zodResolver(adjustmentFormSchema),
+    defaultValues: {
+      adjustmentType: 'subtract',
+    },
   });
 
   const quantityChange = watch('quantityChange') || 0;
+  const adjustmentType = watch('adjustmentType') || 'subtract';
 
   // (searchLower used in local ranking logic inside effect; not needed separately now)
   React.useEffect(() => {
@@ -160,14 +161,11 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
     setIsSearching(false);
   };
 
-  // Reasons that subtract from stock
-  const reductionReasons = ['DAMAGED', 'EXPIRED', 'LOST_OR_STOLEN'];
-
   const onSubmit = (data: AdjustmentFormValues) => {
     if (!selectedProduct) return;
 
-    // Auto-negate quantity for reduction reasons
-    const effectiveQuantityChange = reductionReasons.includes(data.reason)
+    // Apply sign based on adjustmentType toggle
+    const effectiveQuantityChange = data.adjustmentType === 'subtract'
       ? -Math.abs(data.quantityChange)
       : Math.abs(data.quantityChange);
 
@@ -467,8 +465,7 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
                     Adjustment
                   </div>
                   {(() => {
-                    const reason = watch('reason') || '';
-                    const isReduction = reductionReasons.includes(reason);
+                    const isReduction = adjustmentType === 'subtract';
                     const effectiveChange = isReduction
                       ? -Math.abs(quantityChange)
                       : Math.abs(quantityChange);
@@ -490,8 +487,7 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
                     New Stock
                   </div>
                   {(() => {
-                    const reason = watch('reason') || '';
-                    const isReduction = reductionReasons.includes(reason);
+                    const isReduction = adjustmentType === 'subtract';
                     const effectiveChange = isReduction
                       ? -Math.abs(quantityChange)
                       : Math.abs(quantityChange);
@@ -515,7 +511,42 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quantity Change <span className="text-red-500">*</span>
+                    Adjustment Type <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setValue('adjustmentType', 'add')}
+                      className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
+                        adjustmentType === 'add'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      + Add Stock
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setValue('adjustmentType', 'subtract')}
+                      className={`flex-1 px-4 py-2 text-sm font-medium transition-colors border-l border-gray-300 ${
+                        adjustmentType === 'subtract'
+                          ? 'bg-red-500 text-white'
+                          : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      − Subtract Stock
+                    </button>
+                  </div>
+                  {errors.adjustmentType && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.adjustmentType.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Quantity <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"

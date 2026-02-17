@@ -379,7 +379,7 @@ const Sidebar = () => {
                 <Link
                   href="/inventory/products"
                   className={`${submenuLinkClasses} ${
-                    isActive('/inventory/products')
+                    isChildActive('/inventory/products')
                       ? submenuActiveClasses
                       : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
                   }`}
@@ -417,7 +417,7 @@ const Sidebar = () => {
                     <Link
                       href="/inventory/stock-in"
                       className={`${submenuLinkClasses} ${
-                        isActive('/inventory/stock-in')
+                        isChildActive('/inventory/stock-in')
                           ? submenuActiveClasses
                           : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
                       }`}
@@ -429,7 +429,7 @@ const Sidebar = () => {
                     <Link
                       href="/inventory/adjustments"
                       className={`${submenuLinkClasses} ${
-                        isActive('/inventory/adjustments')
+                        isChildActive('/inventory/adjustments')
                           ? submenuActiveClasses
                           : 'text-gray-500 hover:bg-gray-50 hover:text-blue-600'
                       }`}
