@@ -689,13 +689,31 @@ export function DateFilterComponent({
             </div>
           )}
 
-          <Button
-            onClick={handleApply}
-            disabled={isApplyDisabled}
-            className="w-full h-9 rounded-md bg-slate-900 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
-          >
-            Apply
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                const todayRange = rangeForPeriod('today', today);
+                setTempPeriod('today');
+                setTempRange(todayRange);
+                setAppliedPeriod('today');
+                setAppliedRange(todayRange);
+                onPeriodChange?.('today');
+                onDateRangeChange?.(todayRange);
+                setIsOpen(false);
+              }}
+              className="flex-1 h-9 rounded-md text-sm font-semibold transition-colors"
+            >
+              Clear Filter
+            </Button>
+            <Button
+              onClick={handleApply}
+              disabled={isApplyDisabled}
+              className="flex-1 h-9 rounded-md bg-slate-900 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 transition-colors"
+            >
+              Apply
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

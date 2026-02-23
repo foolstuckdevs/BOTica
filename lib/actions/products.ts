@@ -40,54 +40,54 @@ type ExistingProductSubset = Pick<
 
 // NOTE: Legacy unpaginated getProducts() removed. Use listProductsPage() via /api/products.
 
-export const getProductBatches = async (
-  productName: string,
-  pharmacyId: number,
-) => {
-  try {
-    // Validate with Zod
-    getProductBatchesSchema.parse({ productName, pharmacyId });
+// export const getProductBatches = async (
+//   productName: string,
+//   pharmacyId: number,
+// ) => {
+//   try {
+//     // Validate with Zod
+//     getProductBatchesSchema.parse({ productName, pharmacyId });
 
-    const result = await db
-      .select({
-        id: products.id,
-        name: products.name,
-        brandName: products.brandName,
-        lotNumber: products.lotNumber,
-        expiryDate: products.expiryDate,
-        quantity: products.quantity,
-        sellingPrice: products.sellingPrice,
-      })
-      .from(products)
-      .where(
-        and(
-          eq(products.name, productName),
-          eq(products.pharmacyId, pharmacyId),
-          sql`COALESCE(${products.deletedAt}, NULL) IS NULL`,
-        ),
-      );
+//     const result = await db
+//       .select({
+//         id: products.id,
+//         name: products.name,
+//         brandName: products.brandName,
+//         lotNumber: products.lotNumber,
+//         expiryDate: products.expiryDate,
+//         quantity: products.quantity,
+//         sellingPrice: products.sellingPrice,
+//       })
+//       .from(products)
+//       .where(
+//         and(
+//           eq(products.name, productName),
+//           eq(products.pharmacyId, pharmacyId),
+//           sql`COALESCE(${products.deletedAt}, NULL) IS NULL`,
+//         ),
+//       );
 
-    // Sort by expiry date (FEFO) and filter out expired products
-    const activeProducts = result.filter((product) => {
-      if (!product.expiryDate) return true; // If no expiry date, include product
-      const today = new Date();
-      const expiryDate = new Date(product.expiryDate);
-      return expiryDate >= today; // Only show products that haven't expired
-    });
+//     // Sort by expiry date (FEFO) and filter out expired products
+//     const activeProducts = result.filter((product) => {
+//       if (!product.expiryDate) return true; // If no expiry date, include product
+//       const today = new Date();
+//       const expiryDate = new Date(product.expiryDate);
+//       return expiryDate >= today; // Only show products that haven't expired
+//     });
 
-    return activeProducts.sort((a, b) => {
-      if (!a.expiryDate && !b.expiryDate) return 0;
-      if (!a.expiryDate) return 1; // No expiry date goes to end
-      if (!b.expiryDate) return -1; // No expiry date goes to end
-      const expiryA = new Date(a.expiryDate);
-      const expiryB = new Date(b.expiryDate);
-      return expiryA.getTime() - expiryB.getTime();
-    });
-  } catch (error) {
-    console.error('Error fetching product batches:', error);
-    return [];
-  }
-};
+//     return activeProducts.sort((a, b) => {
+//       if (!a.expiryDate && !b.expiryDate) return 0;
+//       if (!a.expiryDate) return 1; // No expiry date goes to end
+//       if (!b.expiryDate) return -1; // No expiry date goes to end
+//       const expiryA = new Date(a.expiryDate);
+//       const expiryB = new Date(b.expiryDate);
+//       return expiryA.getTime() - expiryB.getTime();
+//     });
+//   } catch (error) {
+//     console.error('Error fetching product batches:', error);
+//     return [];
+//   }
+// };
 
 export const getProductById = async (
   id: number,
@@ -374,7 +374,6 @@ export const updateProduct = async (
 
     const updatedProduct = updatedProductArr[0];
 
-    // Log activity
     await logActivity({
       action: 'PRODUCT_UPDATED',
       pharmacyId: validatedData.pharmacyId,
@@ -454,7 +453,6 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         .update(products)
         .set({ deletedAt: sql`NOW()` })
         .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
-      // Revalidate products and inventory report pages
       revalidatePath('/products');
       revalidatePath('/inventory/products');
       revalidatePath('/reports/inventory');
@@ -486,7 +484,6 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
           console.warn('Failed to delete product image from storage:', e);
         }
       }
-      // Revalidate products and inventory report pages
       revalidatePath('/products');
       revalidatePath('/inventory/products');
       revalidatePath('/reports/inventory');
@@ -505,7 +502,6 @@ export const deleteProduct = async (id: number, pharmacyId: number) => {
         .update(products)
         .set({ deletedAt: sql`NOW()` })
         .where(and(eq(products.id, id), eq(products.pharmacyId, pharmacyId)));
-      // Revalidate products and inventory report pages
       revalidatePath('/products');
       revalidatePath('/inventory/products');
       revalidatePath('/reports/inventory');

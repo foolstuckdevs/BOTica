@@ -735,7 +735,7 @@ const AdjustmentForm = ({ userId, pharmacyId }: AdjustmentFormProps) => {
                     Processing...
                   </span>
                 ) : (
-                  `Submit All Adjustments`
+                  `Submit Adjustments`
                 )}
               </Button>
             )}

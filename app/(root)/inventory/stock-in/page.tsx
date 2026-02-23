@@ -27,7 +27,7 @@ const StockInPage = async () => {
         <Button asChild size="sm" className="gap-1.5">
           <Link href="/inventory/stock-in/new">
             <Plus className="h-4 w-4" />
-            New Stock-In
+            Add Stock
           </Link>
         </Button>
       </div>

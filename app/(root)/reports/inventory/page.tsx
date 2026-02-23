@@ -22,8 +22,8 @@ const page = async ({
 
   const tab = searchParams?.tab;
   const status = searchParams?.status;
-  const initialTab: 'overview' | 'expiring' | 'low-stock' =
-    tab === 'overview' || tab === 'expiring' || tab === 'low-stock'
+  const initialTab: 'overview' | 'expiring' | 'low-stock' | 'active' | 'inactive' =
+    tab === 'overview' || tab === 'expiring' || tab === 'low-stock' || tab === 'active' || tab === 'inactive'
       ? tab
       : 'overview';
 

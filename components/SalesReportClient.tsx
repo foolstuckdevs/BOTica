@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { SalesReportHeader } from '@/components/SalesReportHeader';
 import { SalesReportOverview } from '@/components/SalesReportOverview';
 import { ProductPerformanceTable } from '@/components/ProductPerformanceTable';
@@ -44,6 +45,8 @@ export default function SalesReportClient({
   comprehensiveProductData = [],
   initialTab = 'overview',
 }: Props) {
+  const pathname = usePathname();
+  const [activeTab, setActiveTab] = useState<SalesTab>(initialTab);
   // Lazy tab loading — pre-load the initial tab
   const [salesTabLoaded, setSalesTabLoaded] = useState(initialTab === 'sales');
   const [productsTabLoaded, setProductsTabLoaded] = useState(initialTab === 'products');
@@ -51,6 +54,20 @@ export default function SalesReportClient({
 
   const handleTabChange = useCallback(
     (val: string) => {
+      const tab = val as SalesTab;
+      setActiveTab(tab);
+
+      // Sync tab to URL without triggering Next.js navigation
+      const params = new URLSearchParams(window.location.search);
+      if (tab === 'overview') {
+        params.delete('tab');
+      } else {
+        params.set('tab', tab);
+      }
+      const qs = params.toString();
+      const url = qs ? `${pathname}?${qs}` : pathname;
+      window.history.replaceState(window.history.state, '', url);
+
       if (val === 'sales' && !salesTabLoaded) {
         setSalesTabLoaded(true);
       }
@@ -61,7 +78,7 @@ export default function SalesReportClient({
         setDailyTabLoaded(true);
       }
     },
-    [salesTabLoaded, productsTabLoaded, dailyTabLoaded],
+    [pathname, salesTabLoaded, productsTabLoaded, dailyTabLoaded],
   );
 
   return (
@@ -71,7 +88,7 @@ export default function SalesReportClient({
       </div>
       <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-lg overflow-hidden">
         <Tabs
-          defaultValue={initialTab}
+          value={activeTab}
           onValueChange={handleTabChange}
           className="w-full"
         >

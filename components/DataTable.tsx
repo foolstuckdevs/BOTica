@@ -30,7 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import React from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { DataTableViewOptions } from '@/components/DataTableViewOptions';
@@ -116,7 +116,6 @@ export function DataTable<TData, TValue>({
   disableUrlState = false,
 }: DataTableProps<TData, TValue>) {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
 
   // Determine whether we should use URL persistence
@@ -160,7 +159,8 @@ export function DataTable<TData, TValue>({
 
     if (urlSyncRef.current) clearTimeout(urlSyncRef.current);
     urlSyncRef.current = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
+      // Read current URL params directly to avoid stale searchParams closure
+      const params = new URLSearchParams(window.location.search);
 
       // Page (1-based in URL for readability)
       if (localPagination.pageIndex > 0) {
@@ -202,8 +202,8 @@ export function DataTable<TData, TValue>({
       const qs = params.toString();
       const url = qs ? `${pathname}?${qs}` : pathname;
 
-      // Use replace so we don't pollute browser history with every keystroke
-      router.replace(url, { scroll: false });
+      // Use replaceState to update URL without triggering Next.js navigation
+      window.history.replaceState(window.history.state, '', url);
     }, 300);
 
     return () => {
@@ -336,7 +336,7 @@ export function DataTable<TData, TValue>({
     // We only sync to URL — the actual state is in columnFilters
     if (urlSyncRef.current) clearTimeout(urlSyncRef.current);
     urlSyncRef.current = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(window.location.search);
       if (colVal) {
         params.set(DT_PARAM.SEARCH, colVal);
       } else {
@@ -344,7 +344,7 @@ export function DataTable<TData, TValue>({
       }
       const qs = params.toString();
       const url = qs ? `${pathname}?${qs}` : pathname;
-      router.replace(url, { scroll: false });
+      window.history.replaceState(window.history.state, '', url);
     }, 300);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columnFilters]);

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import InventoryReportHeader from '@/components/InventoryReportHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -48,6 +49,7 @@ export default function InventoryReportClient({
   initialExpiringStatus,
 }: Props) {
   const { data: session } = useSession();
+  const pathname = usePathname();
 
   const [activeProducts, setActiveProducts] = useState(
     inventoryData.activeProducts,
@@ -61,7 +63,7 @@ export default function InventoryReportClient({
   const [activeLoaded, setActiveLoaded] = useState(false);
   const [inactiveLoaded, setInactiveLoaded] = useState(false);
 
-  const [, setActiveTab] = useState<TabKey>(initialTab);
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const handleTabChange = useCallback(
     (value: string) => {
       if (
@@ -72,6 +74,18 @@ export default function InventoryReportClient({
         value === 'inactive'
       ) {
         setActiveTab(value as TabKey);
+
+        // Sync tab to URL without triggering Next.js navigation
+        const params = new URLSearchParams(window.location.search);
+        if (value === 'overview') {
+          params.delete('tab');
+        } else {
+          params.set('tab', value);
+        }
+        const qs = params.toString();
+        const url = qs ? `${pathname}?${qs}` : pathname;
+        window.history.replaceState(window.history.state, '', url);
+
         // Load tab content on first visit
         if (value === 'expiring' && !expiringLoaded) {
           setExpiringLoaded(true);
@@ -87,7 +101,7 @@ export default function InventoryReportClient({
         }
       }
     },
-    [expiringLoaded, lowStockLoaded, activeLoaded, inactiveLoaded],
+    [pathname, expiringLoaded, lowStockLoaded, activeLoaded, inactiveLoaded],
   );
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'out_of_stock' | 'low'
@@ -192,7 +206,7 @@ export default function InventoryReportClient({
       <InventoryReportHeader />
       <div className="bg-white dark:bg-gray-800 rounded-xl border shadow-lg overflow-hidden">
         <Tabs
-          defaultValue={initialTab}
+          value={activeTab}
           onValueChange={handleTabChange}
           className="w-full"
         >
