@@ -68,3 +68,17 @@ export const getTransactionsSchema = z.object({
   pharmacyId: z.number().int().positive(),
   searchTerm: z.string().optional(),
 });
+
+// VOID SALE SCHEMA
+
+export const voidReasonSchema = z.enum([
+  'WRONG_DRUG',
+  'WRONG_STRENGTH',
+  'WRONG_QUANTITY',
+]);
+
+export const voidSaleSchema = z.object({
+  saleId: z.number().int().positive(),
+  reason: voidReasonSchema,
+  pharmacyId: pharmacyIdSchema,
+});

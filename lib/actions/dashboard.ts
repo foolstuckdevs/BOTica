@@ -24,6 +24,7 @@ const getSalesTotalForRange = async (
     .where(
       and(
         eq(sales.pharmacyId, pharmacyId),
+        eq(sales.status, 'COMPLETED'),
         gte(sales.createdAt, start),
         lte(sales.createdAt, end),
       ),
@@ -240,6 +241,7 @@ export const getTopSellingProducts = async (
       .where(
         and(
           eq(sales.pharmacyId, validatedData.pharmacyId),
+          eq(sales.status, 'COMPLETED'),
           gte(sales.createdAt, startOfMonth),
           lte(sales.createdAt, endOfMonth),
         ),
@@ -361,6 +363,7 @@ export const getChartData = async (
       .where(
         and(
           eq(sales.pharmacyId, pharmacyId),
+          eq(sales.status, 'COMPLETED'),
           gte(sales.createdAt, startDate),
           lte(sales.createdAt, endDate),
         ),
@@ -381,6 +384,7 @@ export const getChartData = async (
       .where(
         and(
           eq(sales.pharmacyId, pharmacyId),
+          eq(sales.status, 'COMPLETED'),
           gte(sales.createdAt, startDate),
           lte(sales.createdAt, endDate),
         ),
@@ -455,6 +459,7 @@ export const getChartDataByRange = async (
       .where(
         and(
           eq(sales.pharmacyId, pharmacyId),
+          eq(sales.status, 'COMPLETED'),
           gte(sales.createdAt, startDate),
           lte(sales.createdAt, endDate),
         ),
@@ -475,6 +480,7 @@ export const getChartDataByRange = async (
       .where(
         and(
           eq(sales.pharmacyId, pharmacyId),
+          eq(sales.status, 'COMPLETED'),
           gte(sales.createdAt, startDate),
           lte(sales.createdAt, endDate),
         ),

@@ -2,6 +2,7 @@ import { db } from '@/database/drizzle';
 import { sales, saleItems, products, users } from '@/database/schema';
 import { and, eq, like, desc, inArray, sql } from 'drizzle-orm';
 import { getTransactionsSchema } from '@/lib/validations';
+import { alias } from 'drizzle-orm/pg-core';
 
 export interface TransactionsPageParams {
   pharmacyId: number;
@@ -34,6 +35,8 @@ export async function listTransactionsPage(params: TransactionsPageParams) {
     .from(sales)
     .where(where);
 
+  const voidedByUser = alias(users, 'voided_by_user');
+
   const salesList = await db
     .select({
       id: sales.id,
@@ -46,9 +49,15 @@ export async function listTransactionsPage(params: TransactionsPageParams) {
       createdAt: sales.createdAt,
       userId: users.id,
       fullName: users.fullName,
+      status: sales.status,
+      voidedAt: sales.voidedAt,
+      voidedBy: sales.voidedBy,
+      voidReason: sales.voidReason,
+      voidedByName: voidedByUser.fullName,
     })
     .from(sales)
     .leftJoin(users, eq(sales.userId, users.id))
+    .leftJoin(voidedByUser, eq(sales.voidedBy, voidedByUser.id))
     .where(where)
     .orderBy(desc(sales.createdAt))
     .limit(pageSize)
@@ -102,6 +111,11 @@ export async function listTransactionsPage(params: TransactionsPageParams) {
     createdAt: s.createdAt ?? new Date(),
     user: { id: s.userId, fullName: s.fullName ?? '' },
     items: itemGroups[s.id] ?? [],
+    status: s.status ?? 'COMPLETED',
+    voidedAt: s.voidedAt ?? null,
+    voidedBy: s.voidedBy ?? null,
+    voidedByName: s.voidedByName ?? null,
+    voidReason: s.voidReason ?? null,
   }));
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));

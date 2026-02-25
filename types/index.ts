@@ -239,6 +239,9 @@ export interface StockIn {
 
 export type PaymentMethod = 'CASH' | 'GCASH';
 
+export type VoidReason = 'WRONG_DRUG' | 'WRONG_STRENGTH' | 'WRONG_QUANTITY';
+export type SaleStatus = 'COMPLETED' | 'VOIDED';
+
 export interface TransactionItem {
   id: number;
   productName: string;
@@ -256,6 +259,11 @@ export interface Transaction {
   createdAt: string | Date;
   amountReceived?: string | number;
   changeDue?: string | number;
+  status: SaleStatus;
+  voidedAt?: string | Date | null;
+  voidedBy?: string | null;
+  voidedByName?: string | null;
+  voidReason?: VoidReason | null;
   user: {
     id?: number;
     fullName: string;

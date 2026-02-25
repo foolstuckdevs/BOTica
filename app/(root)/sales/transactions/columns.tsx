@@ -3,7 +3,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTableColumnHeader } from '@/components/DataTableColumnHeader';
 import type { Transaction } from '@/types';
-import { Eye } from 'lucide-react';
+import { Eye, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 type ColumnsOpts = {
@@ -16,9 +16,14 @@ export const columns = ({ onView }: ColumnsOpts): ColumnDef<Transaction>[] => [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Invoice #" />
     ),
-    cell: ({ getValue }) => (
-      <span className="font-medium">{getValue<string>()}</span>
-    ),
+    cell: ({ row }) => {
+      const isVoided = row.original.status === 'VOIDED';
+      return (
+        <span className={`font-medium ${isVoided ? 'line-through text-gray-400' : ''}`}>
+          {row.original.invoiceNumber}
+        </span>
+      );
+    },
     enableSorting: true,
   },
   {
@@ -63,6 +68,30 @@ export const columns = ({ onView }: ColumnsOpts): ColumnDef<Transaction>[] => [
     ),
   },
   {
+    accessorKey: 'status',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+      const status = row.original.status;
+      if (status === 'VOIDED') {
+        return (
+          <span className="inline-flex items-center gap-1 text-xs font-medium rounded-full bg-red-100 text-red-700 px-2 py-0.5">
+            <Ban className="w-3 h-3" />
+            Voided
+          </span>
+        );
+      }
+      return (
+        <span className="text-xs rounded-full bg-green-100 text-green-700 px-2 py-0.5 font-medium">
+          Completed
+        </span>
+      );
+    },
+    enableSorting: true,
+    filterFn: 'equals',
+  },
+  {
     accessorKey: 'discount',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Discount" />
@@ -90,11 +119,14 @@ export const columns = ({ onView }: ColumnsOpts): ColumnDef<Transaction>[] => [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Total" />
     ),
-    cell: ({ getValue }) => (
-      <span className="font-semibold text-green-600">
-        ₱{parseFloat(getValue<string>()).toFixed(2)}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const isVoided = row.original.status === 'VOIDED';
+      return (
+        <span className={`font-semibold ${isVoided ? 'text-gray-400 line-through' : 'text-green-600'}`}>
+          ₱{parseFloat(row.original.totalAmount).toFixed(2)}
+        </span>
+      );
+    },
     enableSorting: true,
   },
   {

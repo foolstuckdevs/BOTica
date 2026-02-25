@@ -17,6 +17,8 @@ export const REALTIME_CHANNEL = 'pharmacy-pos';
 export const REALTIME_EVENTS = {
   /** A sale was completed (POS checkout) */
   SALE_COMPLETED: 'sale-completed',
+  /** A sale was voided (pharmacy error correction) */
+  SALE_VOIDED: 'sale-voided',
   /** Stock quantity changed (stock-in, adjustment, sale) */
   STOCK_UPDATED: 'stock-updated',
   /** A product was created / updated / deleted / restored */

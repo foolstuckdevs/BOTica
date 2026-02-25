@@ -30,7 +30,12 @@ export const getSalesReportData = async (pharmacyId: number) => {
     const earliestSaleRow = await db
       .select({ earliestSale: sql<string>`MIN(${sales.createdAt})` })
       .from(sales)
-      .where(eq(sales.pharmacyId, pharmacyId))
+      .where(
+        and(
+          eq(sales.pharmacyId, pharmacyId),
+          eq(sales.status, 'COMPLETED'),
+        ),
+      )
       .limit(1);
 
     const earliestSale = earliestSaleRow[0]?.earliestSale
@@ -49,6 +54,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
       .where(
         and(
           eq(sales.pharmacyId, pharmacyId),
+          eq(sales.status, 'COMPLETED'),
           gte(sales.createdAt, dataStart),
           lte(sales.createdAt, tomorrow),
         ),
@@ -75,6 +81,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
       .where(
         and(
           eq(sales.pharmacyId, pharmacyId),
+          eq(sales.status, 'COMPLETED'),
           gte(sales.createdAt, dataStart),
           lte(sales.createdAt, tomorrow),
         ),
@@ -106,6 +113,7 @@ export const getSalesReportData = async (pharmacyId: number) => {
       .where(
         and(
           eq(sales.pharmacyId, pharmacyId),
+          eq(sales.status, 'COMPLETED'),
           gte(sales.createdAt, dataStart),
           lte(sales.createdAt, tomorrow),
         ),

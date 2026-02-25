@@ -53,6 +53,17 @@ export const ADJUSTMENT_REASON_ENUM = pgEnum('adjustment_reason', [
   'STOCK_CORRECTION',
 ]);
 
+export const SALE_STATUS_ENUM = pgEnum('sale_status', [
+  'COMPLETED',
+  'VOIDED',
+]);
+
+export const VOID_REASON_ENUM = pgEnum('void_reason', [
+  'WRONG_DRUG',
+  'WRONG_STRENGTH',
+  'WRONG_QUANTITY',
+]);
+
 // Pharmacies
 export const pharmacies = pgTable('pharmacies', {
   id: serial('id').primaryKey(),
@@ -150,6 +161,11 @@ export const sales = pgTable('sales', {
   pharmacyId: integer('pharmacy_id')
     .notNull()
     .references(() => pharmacies.id),
+
+  status: SALE_STATUS_ENUM('status').notNull().default('COMPLETED'),
+  voidedAt: timestamp('voided_at'),
+  voidedBy: uuid('voided_by').references(() => users.id),
+  voidReason: VOID_REASON_ENUM('void_reason'),
 
   createdAt: timestamp('created_at').defaultNow(),
 });

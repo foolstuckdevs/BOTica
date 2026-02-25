@@ -96,6 +96,7 @@ function humanizeVerb(action?: string) {
   if (/AUTH_SIGNOUT$/.test(action)) return 'signed out';
   if (/AUTH_AUTO_SIGNOUT$/.test(action)) return 'auto signed out';
   if (/SALE_COMPLETED$/.test(action)) return 'completed';
+  if (/SALE_VOIDED$/.test(action)) return 'voided';
   if (/^STOCKIN_/.test(action)) return 'received'; // All stock-in actions show as "received"
   return 'done';
 }
@@ -191,13 +192,34 @@ function renderDetails(
         : typeof totalAmountRaw === 'string'
         ? parseFloat(totalAmountRaw)
         : undefined;
+    const reasonLabel =
+      typeof details['reasonLabel'] === 'string'
+        ? (details['reasonLabel'] as string)
+        : null;
+    const itemsRestored =
+      typeof details['itemsRestored'] === 'number'
+        ? (details['itemsRestored'] as number)
+        : null;
     return (
       <div className="text-sm">
-        {typeof total === 'number' ? (
-          <span className="font-medium">Total: ₱{total.toFixed(2)}</span>
+        {invoiceNumber ? (
+          <span className="font-medium tracking-tight mr-2">{invoiceNumber}</span>
         ) : null}
-        {paymentMethod ? (
+        {typeof total === 'number' ? (
+          <span className="font-medium">₱{total.toFixed(2)}</span>
+        ) : null}
+        {paymentMethod && !reasonLabel ? (
           <span className="ml-2 text-muted-foreground">({paymentMethod})</span>
+        ) : null}
+        {reasonLabel ? (
+          <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-red-700 border border-red-200">
+            {reasonLabel}
+          </span>
+        ) : null}
+        {itemsRestored !== null ? (
+          <span className="ml-2 text-muted-foreground">
+            {itemsRestored} item{itemsRestored !== 1 ? 's' : ''} restocked
+          </span>
         ) : null}
       </div>
     );

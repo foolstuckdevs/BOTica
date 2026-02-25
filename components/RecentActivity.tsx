@@ -65,7 +65,8 @@ export default async function RecentActivity({ pharmacyId, limit = 8 }: Props) {
                         : it.action?.includes('UPDATED')
                         ? 'bg-blue-500'
                         : it.action?.includes('DELETED') ||
-                          it.action?.includes('ARCHIVED')
+                          it.action?.includes('ARCHIVED') ||
+                          it.action?.includes('VOIDED')
                         ? 'bg-red-500'
                         : it.action?.startsWith('AUTH_')
                         ? 'bg-amber-500'

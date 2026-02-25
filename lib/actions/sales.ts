@@ -13,8 +13,9 @@ import { eq, and, sql, gt, inArray } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from '@/lib/actions/activity';
-import { processSaleSchema, pharmacyIdSchema } from '@/lib/validations';
+import { processSaleSchema, pharmacyIdSchema, voidSaleSchema } from '@/lib/validations';
 import { broadcastEvent, REALTIME_EVENTS } from '@/lib/realtime';
+import { auth } from '@/auth';
 
 // Temporary in-memory idempotency key store (will reset on redeploy). For production, move to DB table.
 const processedSaleKeys = new Map<
@@ -304,6 +305,136 @@ export const processSale = async (
       success: false,
       message:
         error instanceof Error ? error.message : 'Failed to process sale',
+    };
+  }
+};
+
+// ── Void a sale transaction ─────────────────────────────────────────────────
+
+const VOID_REASON_LABELS: Record<string, string> = {
+  WRONG_DRUG: 'Wrong drug dispensed',
+  WRONG_STRENGTH: 'Wrong strength dispensed',
+  WRONG_QUANTITY: 'Wrong quantity dispensed',
+};
+
+export const voidSale = async (
+  saleId: number,
+  reason: 'WRONG_DRUG' | 'WRONG_STRENGTH' | 'WRONG_QUANTITY',
+  pharmacyId: number,
+) => {
+  try {
+    // 1. Auth — Admin only
+    const session = await auth();
+    if (!session?.user?.id || session.user.role !== 'Admin') {
+      return { success: false, message: 'Only administrators can void sales.' };
+    }
+    const adminId = session.user.id;
+
+    // 2. Validate inputs
+    const validated = voidSaleSchema.parse({ saleId, reason, pharmacyId });
+
+    // 3. Atomic transaction — fetch sale, validate, restore stock, mark voided
+    const result = await db.transaction(async (tx) => {
+      // Fetch the sale + verify ownership and status
+      const [sale] = await tx
+        .select()
+        .from(sales)
+        .where(
+          and(
+            eq(sales.id, validated.saleId),
+            eq(sales.pharmacyId, validated.pharmacyId),
+          ),
+        );
+
+      if (!sale) throw new Error('Sale not found.');
+      if (sale.status === 'VOIDED') throw new Error('This sale has already been voided.');
+
+      // Enforce 24-hour void window
+      const saleDate = sale.createdAt ? new Date(sale.createdAt) : new Date();
+      const hoursSinceSale = (Date.now() - saleDate.getTime()) / (1000 * 60 * 60);
+      if (hoursSinceSale > 24) {
+        throw new Error(
+          'Void window expired. Sales can only be voided within 24 hours.',
+        );
+      }
+
+      // Fetch all items for this sale
+      const items = await tx
+        .select({
+          productId: saleItems.productId,
+          quantity: saleItems.quantity,
+        })
+        .from(saleItems)
+        .where(eq(saleItems.saleId, validated.saleId));
+
+      if (!items.length) throw new Error('No items found for this sale.');
+
+      // Restore stock for each item
+      for (const item of items) {
+        await tx
+          .update(products)
+          .set({
+            quantity: sql`${products.quantity} + ${item.quantity}`,
+          })
+          .where(
+            and(
+              eq(products.id, item.productId),
+              eq(products.pharmacyId, validated.pharmacyId),
+            ),
+          );
+      }
+
+      // Mark sale as voided
+      await tx
+        .update(sales)
+        .set({
+          status: 'VOIDED',
+          voidedAt: new Date(),
+          voidedBy: adminId,
+          voidReason: validated.reason,
+        })
+        .where(eq(sales.id, validated.saleId));
+
+      return { sale, itemCount: items.length };
+    });
+
+    // 4. Post-commit side-effects (non-blocking)
+    revalidatePath('/sales/pos');
+    revalidatePath('/sales/transactions');
+    revalidatePath('/products');
+    revalidatePath('/reports/sales');
+
+    broadcastEvent(REALTIME_EVENTS.SALE_VOIDED, {
+      pharmacyId: validated.pharmacyId,
+      saleId: validated.saleId,
+    });
+    broadcastEvent(REALTIME_EVENTS.STOCK_UPDATED, {
+      pharmacyId: validated.pharmacyId,
+    });
+
+    await logActivity({
+      action: 'SALE_VOIDED',
+      pharmacyId: validated.pharmacyId,
+      userId: adminId,
+      details: {
+        saleId: validated.saleId,
+        invoiceNumber: result.sale.invoiceNumber,
+        totalAmount: result.sale.totalAmount,
+        reason: validated.reason,
+        reasonLabel: VOID_REASON_LABELS[validated.reason],
+        itemsRestored: result.itemCount,
+      },
+    });
+
+    return {
+      success: true,
+      message: `Sale ${result.sale.invoiceNumber} has been voided. Stock has been restored.`,
+    };
+  } catch (error) {
+    console.error('Error voiding sale:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to void sale',
     };
   }
 };

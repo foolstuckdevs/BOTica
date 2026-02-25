@@ -500,6 +500,7 @@ export default function POSPage({
               changeDue:
                 (dataObj as FullSaleData).changeDue ||
                 Math.max(0, change).toFixed(2),
+              status: 'COMPLETED' as const,
               user: { fullName: userName },
               items: [],
             },

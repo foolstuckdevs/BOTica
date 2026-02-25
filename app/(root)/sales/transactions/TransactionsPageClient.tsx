@@ -144,11 +144,18 @@ export default function TransactionsPageClient({
               typeof selectedTransaction.createdAt === 'string'
                 ? new Date(selectedTransaction.createdAt)
                 : selectedTransaction.createdAt,
+            status: selectedTransaction.status ?? 'COMPLETED',
+            voidedAt: selectedTransaction.voidedAt ?? null,
+            voidedByName: selectedTransaction.voidedByName ?? null,
+            voidReason: selectedTransaction.voidReason ?? null,
           }}
           pharmacy={pharmacy}
           onClose={() => {
             setShowDetails(false);
             setSelectedTransaction(null);
+          }}
+          onVoided={() => {
+            load(pageIndex, pageSize, '');
           }}
         />
       )}
