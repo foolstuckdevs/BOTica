@@ -85,9 +85,11 @@ export const TransactionDetailsModal = ({
   const canVoid = isAdmin && !isVoided && hoursSinceSale <= 24;
 
   const VOID_REASONS: { value: VoidReason; label: string }[] = [
-    { value: 'WRONG_DRUG', label: 'Wrong drug dispensed' },
-    { value: 'WRONG_STRENGTH', label: 'Wrong strength dispensed' },
+    { value: 'WRONG_PRODUCT', label: 'Wrong product dispensed' },
+    { value: 'WRONG_SPECIFICATION', label: 'Wrong specification dispensed' },
     { value: 'WRONG_QUANTITY', label: 'Wrong quantity dispensed' },
+    { value: 'CUSTOMER_REQUEST', label: 'Customer requested cancellation' },
+    { value: 'PRICING_ERROR', label: 'Pricing or payment error' },
   ];
 
   const handleVoid = async () => {
@@ -227,9 +229,11 @@ export const TransactionDetailsModal = ({
                 <div className="text-sm">
                   <p className="font-semibold text-red-700">This sale has been voided</p>
                   <p className="text-red-600 mt-0.5">
-                    Reason: {transaction.voidReason === 'WRONG_DRUG' && 'Wrong drug dispensed'}
-                    {transaction.voidReason === 'WRONG_STRENGTH' && 'Wrong strength dispensed'}
+                    Reason: {transaction.voidReason === 'WRONG_PRODUCT' && 'Wrong product dispensed'}
+                    {transaction.voidReason === 'WRONG_SPECIFICATION' && 'Wrong specification dispensed'}
                     {transaction.voidReason === 'WRONG_QUANTITY' && 'Wrong quantity dispensed'}
+                    {transaction.voidReason === 'CUSTOMER_REQUEST' && 'Customer requested cancellation'}
+                    {transaction.voidReason === 'PRICING_ERROR' && 'Pricing or payment error'}
                   </p>
                   <p className="text-red-500 mt-0.5 text-xs">
                     Voided by {transaction.voidedByName ?? 'Admin'}

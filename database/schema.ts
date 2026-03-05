@@ -59,9 +59,11 @@ export const SALE_STATUS_ENUM = pgEnum('sale_status', [
 ]);
 
 export const VOID_REASON_ENUM = pgEnum('void_reason', [
-  'WRONG_DRUG',
-  'WRONG_STRENGTH',
+  'WRONG_PRODUCT',
+  'WRONG_SPECIFICATION',
   'WRONG_QUANTITY',
+  'CUSTOMER_REQUEST',
+  'PRICING_ERROR',
 ]);
 
 // Pharmacies

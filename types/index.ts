@@ -239,7 +239,7 @@ export interface StockIn {
 
 export type PaymentMethod = 'CASH' | 'GCASH';
 
-export type VoidReason = 'WRONG_DRUG' | 'WRONG_STRENGTH' | 'WRONG_QUANTITY';
+export type VoidReason = 'WRONG_PRODUCT' | 'WRONG_SPECIFICATION' | 'WRONG_QUANTITY' | 'CUSTOMER_REQUEST' | 'PRICING_ERROR';
 export type SaleStatus = 'COMPLETED' | 'VOIDED';
 
 export interface TransactionItem {

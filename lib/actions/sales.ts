@@ -312,14 +312,16 @@ export const processSale = async (
 // ── Void a sale transaction ─────────────────────────────────────────────────
 
 const VOID_REASON_LABELS: Record<string, string> = {
-  WRONG_DRUG: 'Wrong drug dispensed',
-  WRONG_STRENGTH: 'Wrong strength dispensed',
+  WRONG_PRODUCT: 'Wrong product dispensed',
+  WRONG_SPECIFICATION: 'Wrong specification dispensed',
   WRONG_QUANTITY: 'Wrong quantity dispensed',
+  CUSTOMER_REQUEST: 'Customer requested cancellation',
+  PRICING_ERROR: 'Pricing or payment error',
 };
 
 export const voidSale = async (
   saleId: number,
-  reason: 'WRONG_DRUG' | 'WRONG_STRENGTH' | 'WRONG_QUANTITY',
+  reason: 'WRONG_PRODUCT' | 'WRONG_SPECIFICATION' | 'WRONG_QUANTITY' | 'CUSTOMER_REQUEST' | 'PRICING_ERROR',
   pharmacyId: number,
 ) => {
   try {

@@ -72,9 +72,11 @@ export const getTransactionsSchema = z.object({
 // VOID SALE SCHEMA
 
 export const voidReasonSchema = z.enum([
-  'WRONG_DRUG',
-  'WRONG_STRENGTH',
+  'WRONG_PRODUCT',
+  'WRONG_SPECIFICATION',
   'WRONG_QUANTITY',
+  'CUSTOMER_REQUEST',
+  'PRICING_ERROR',
 ]);
 
 export const voidSaleSchema = z.object({
