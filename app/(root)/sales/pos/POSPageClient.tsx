@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ProductCard } from '@/components/ProductCard';
 import { Cart, CartItem } from '@/components/Cart';
 import { PaymentModal } from '@/components/PaymentModal';
-import { Search, Package } from 'lucide-react';
+import { Search, Package, ScanBarcode } from 'lucide-react';
 import type { Pharmacy, ProductPOS } from '@/types';
 import { processSale } from '@/lib/actions/sales';
 import { PrintUtility } from '@/lib/PrintUtility';
@@ -68,7 +68,7 @@ export default function POSPage({
     return Array.from(map.values());
   };
   // Helper: add product to cart (single unit or increment) used by cards
-  const addProductToCart = (product: ProductPOS) => {
+  const addProductToCart = useCallback((product: ProductPOS) => {
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
@@ -94,7 +94,7 @@ export default function POSPage({
         ];
       }
     });
-  };
+  }, []);
 
   // Derived filtered list (still client-side pass) after remote fetch
   const filteredProducts = useMemo(() => {
@@ -115,7 +115,8 @@ export default function POSPage({
           includesTerm(product.brandName) ||
           includesTerm(product.genericName) ||
           includesTerm(product.lotNumber) ||
-          includesTerm(product.supplierName);
+          includesTerm(product.supplierName) ||
+          includesTerm(product.barcode);
 
         // If product doesn't match search, exclude it
         if (!matchesSearch) return false;
@@ -321,6 +322,106 @@ export default function POSPage({
       })
       .finally(() => setLoadingLookup(false));
   };
+
+  // ── Barcode Scanner Detection ──
+  // USB/Bluetooth scanners act as keyboard input: they type digits fast and press Enter.
+  const scanBufferRef = useRef('');
+  const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [lastScannedBarcode, setLastScannedBarcode] = useState<string | null>(null);
+  const SCAN_CHAR_INTERVAL_MS = 60; // max ms between keystrokes for a scan
+  const MIN_SCAN_LENGTH = 4; // minimum barcode length to be valid
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input/textarea (except our search box,
+      // but scanners fire on document-level anyway)
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'TEXTAREA') return;
+      // Allow scanner input even when search input is focused
+      if (tag === 'INPUT' && (e.target as HTMLInputElement).type !== 'text' && (e.target as HTMLInputElement).type !== 'search') return;
+
+      if (e.key === 'Enter') {
+        const barcode = scanBufferRef.current.trim();
+        scanBufferRef.current = '';
+        if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+
+        if (barcode.length >= MIN_SCAN_LENGTH) {
+          e.preventDefault();
+          e.stopPropagation();
+          setLastScannedBarcode(barcode);
+
+          // Look up product by barcode via the existing API
+          fetch(`/api/pos/lookup?query=${encodeURIComponent(barcode)}&limit=5`)
+            .then((res) => res.json())
+            .then((json) => {
+              const results = (json.data || []) as ProductPOS[];
+              // Try exact barcode match first
+              const exactMatch = results.find(
+                (p) => p.barcode?.toLowerCase() === barcode.toLowerCase(),
+              );
+              if (exactMatch) {
+                if (exactMatch.quantity <= 0) {
+                  toast.warning(`"${exactMatch.name}" is out of stock`);
+                } else {
+                  addProductToCart(exactMatch);
+                  toast.success(`Added "${exactMatch.name}" to cart`, {
+                    icon: '🔊',
+                    duration: 2000,
+                  });
+                }
+              } else if (results.length === 1) {
+                // Single fuzzy match
+                const product = results[0];
+                if (product.quantity <= 0) {
+                  toast.warning(`"${product.name}" is out of stock`);
+                } else {
+                  addProductToCart(product);
+                  toast.success(`Added "${product.name}" to cart`, {
+                    icon: '🔊',
+                    duration: 2000,
+                  });
+                }
+              } else if (results.length > 1) {
+                // Multiple matches — populate the search bar so the user can pick
+                setSearchTerm(barcode);
+                toast.info(
+                  `Multiple products matched barcode "${barcode}". Please select one.`,
+                );
+              } else {
+                toast.error(`No product found for barcode "${barcode}"`);
+              }
+              // Clear indicator after a moment
+              setTimeout(() => setLastScannedBarcode(null), 3000);
+            })
+            .catch(() => {
+              toast.error('Scanner lookup failed');
+              setTimeout(() => setLastScannedBarcode(null), 3000);
+            });
+        }
+        return;
+      }
+
+      // Only buffer printable single characters (digits, letters)
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // If user is typing in the search input at normal speed, don't hijack
+        // We detect "scanner" by rapid successive characters
+        if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+
+        scanBufferRef.current += e.key;
+
+        // Reset buffer after a pause (human typing speed)
+        scanTimeoutRef.current = setTimeout(() => {
+          scanBufferRef.current = '';
+        }, SCAN_CHAR_INTERVAL_MS);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+    };
+  }, [addProductToCart]);
 
   // Calculate totals
   const totalAmount = cart.reduce(
@@ -587,16 +688,31 @@ export default function POSPage({
           <div className="lg:col-span-3 space-y-4">
             {/* Enhanced Search Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Search className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Search Products
-                </h2>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Search className="w-5 h-5 text-blue-600" />
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Search Products
+                  </h2>
+                </div>
+                {/* Scanner status indicator */}
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  lastScannedBarcode
+                    ? 'bg-green-100 text-green-700 border border-green-200'
+                    : 'bg-gray-100 text-gray-500 border border-gray-200'
+                }`}>
+                  <ScanBarcode className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">
+                    {lastScannedBarcode
+                      ? `Scanned: ${lastScannedBarcode}`
+                      : 'Scanner Ready'}
+                  </span>
+                </div>
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
-                  placeholder="Search by name, brand, or lot number..."
+                  placeholder="Search by name, brand, lot number, or scan barcode..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 h-12 bg-gray-50 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-base"

@@ -94,6 +94,7 @@ export async function listProductsPage(params: ProductListPageParams) {
       updatedAt: products.updatedAt,
       brandName: products.brandName,
       dosageForm: products.dosageForm,
+      barcode: products.barcode,
     })
     .from(products)
     .leftJoin(categories, eq(products.categoryId, categories.id))

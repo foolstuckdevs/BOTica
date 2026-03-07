@@ -111,6 +111,7 @@ export interface Product {
   supplierId: number | null;
   supplierName?: string | null;
   imageUrl: string | null;
+  barcode?: string | null;
   createdAt: Date | string | null;
   updatedAt: Date | string | null;
   pharmacyId?: number;
@@ -134,6 +135,7 @@ export interface ProductPOS {
   brandName: string | null;
   genericName?: string | null;
   supplierName?: string | null;
+  barcode?: string | null;
 }
 
 export interface ProductParams {
@@ -151,6 +153,7 @@ export interface ProductParams {
   unit?: UnitType;
   supplierId?: number;
   imageUrl?: string;
+  barcode?: string;
   pharmacyId?: number;
 }
 

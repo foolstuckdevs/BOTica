@@ -36,58 +36,10 @@ type ExistingProductSubset = Pick<
   | 'lotNumber'
   | 'costPrice'
   | 'imageUrl'
+  | 'barcode'
 >;
 
-// NOTE: Legacy unpaginated getProducts() removed. Use listProductsPage() via /api/products.
 
-// export const getProductBatches = async (
-//   productName: string,
-//   pharmacyId: number,
-// ) => {
-//   try {
-//     // Validate with Zod
-//     getProductBatchesSchema.parse({ productName, pharmacyId });
-
-//     const result = await db
-//       .select({
-//         id: products.id,
-//         name: products.name,
-//         brandName: products.brandName,
-//         lotNumber: products.lotNumber,
-//         expiryDate: products.expiryDate,
-//         quantity: products.quantity,
-//         sellingPrice: products.sellingPrice,
-//       })
-//       .from(products)
-//       .where(
-//         and(
-//           eq(products.name, productName),
-//           eq(products.pharmacyId, pharmacyId),
-//           sql`COALESCE(${products.deletedAt}, NULL) IS NULL`,
-//         ),
-//       );
-
-//     // Sort by expiry date (FEFO) and filter out expired products
-//     const activeProducts = result.filter((product) => {
-//       if (!product.expiryDate) return true; // If no expiry date, include product
-//       const today = new Date();
-//       const expiryDate = new Date(product.expiryDate);
-//       return expiryDate >= today; // Only show products that haven't expired
-//     });
-
-//     return activeProducts.sort((a, b) => {
-//       if (!a.expiryDate && !b.expiryDate) return 0;
-//       if (!a.expiryDate) return 1; // No expiry date goes to end
-//       if (!b.expiryDate) return -1; // No expiry date goes to end
-//       const expiryA = new Date(a.expiryDate);
-//       const expiryB = new Date(b.expiryDate);
-//       return expiryA.getTime() - expiryB.getTime();
-//     });
-//   } catch (error) {
-//     console.error('Error fetching product batches:', error);
-//     return [];
-//   }
-// };
 
 export const getProductById = async (
   id: number,
@@ -119,6 +71,7 @@ export const getProductById = async (
         updatedAt: products.updatedAt,
         brandName: products.brandName,
         dosageForm: products.dosageForm,
+        barcode: products.barcode,
       })
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))

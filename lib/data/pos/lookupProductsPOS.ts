@@ -45,6 +45,7 @@ export async function lookupProductsPOS({
         ilike(products.genericName, q),
         ilike(products.lotNumber, q),
         ilike(suppliers.name, q),
+        ilike(products.barcode, q),
       ),
     );
   }
@@ -62,6 +63,7 @@ export async function lookupProductsPOS({
       imageUrl: products.imageUrl,
       genericName: products.genericName,
       supplierName: suppliers.name,
+      barcode: products.barcode,
     })
     .from(products)
     .leftJoin(suppliers, eq(products.supplierId, suppliers.id))

@@ -133,6 +133,7 @@ export const products = pgTable('products', {
   unit: UNIT_ENUM('unit'),
   supplierId: integer('supplier_id').references(() => suppliers.id),
   imageUrl: text('image_url'),
+  barcode: varchar('barcode', { length: 50 }),
   pharmacyId: integer('pharmacy_id')
     .notNull()
     .references(() => pharmacies.id),

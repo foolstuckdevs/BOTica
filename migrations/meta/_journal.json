@@ -78,6 +78,13 @@
       "when": 1771126023854,
       "tag": "0010_clever_tarot",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1772871332534,
+      "tag": "0011_lazy_lucky_pierre",
+      "breakpoints": true
     }
   ]
 }

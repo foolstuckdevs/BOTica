@@ -34,6 +34,7 @@ import {
   Banknote,
   LayoutGrid,
   AlertCircle,
+  ScanBarcode,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createProduct, updateProduct } from '@/lib/actions/products';
@@ -120,6 +121,7 @@ const ProductForm = ({
       unit: (product.unit as UnitType | undefined) ?? undefined,
       supplierId: product.supplierId || undefined,
       imageUrl: product.imageUrl || '',
+      barcode: product.barcode || '',
     },
   });
 
@@ -471,6 +473,35 @@ const ProductForm = ({
                               }
                             />
                           </div>
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="barcode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-1">
+                          <ScanBarcode className="w-4 h-4 text-gray-500" />
+                          Barcode
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertCircle className="w-4 h-4 text-gray-400 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Scan or enter the product barcode for quick POS lookup</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g., 4800888100016"
+                            {...field}
+                            className="w-full font-mono"
+                          />
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>

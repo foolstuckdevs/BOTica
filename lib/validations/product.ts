@@ -61,6 +61,7 @@ export const productSchema = z.object({
   unit: unitRequiredSchema,
   supplierId: z.number().min(1, 'Supplier is required').optional(),
   imageUrl: z.string().optional().or(z.literal('')),
+  barcode: z.string().max(50, 'Barcode must be 50 characters or fewer').optional().or(z.literal('')),
 });
 
 // Client-side form schema
@@ -90,6 +91,7 @@ export const productFormSchema = z.object({
   unit: unitRequiredSchema,
   supplierId: z.number().min(1, 'Supplier is required').optional(),
   imageUrl: z.string().optional().or(z.literal('')),
+  barcode: z.string().max(50, 'Barcode must be 50 characters or fewer').optional().or(z.literal('')),
 });
 
 export const createProductSchema = productSchema.extend({
