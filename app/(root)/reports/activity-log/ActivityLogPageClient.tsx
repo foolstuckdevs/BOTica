@@ -149,7 +149,7 @@ export function ActivityLogPageClient() {
             type="search"
             value={searchQuery}
             onChange={handleSearchChange}
-            placeholder="Search activity..."
+            placeholder="Search by user, action..."
             aria-label="Search activity logs"
             className="w-64 pl-9"
           />

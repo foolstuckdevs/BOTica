@@ -9,7 +9,7 @@ import {
   notifications,
 } from '@/database/schema';
 import type { Pharmacy } from '@/types';
-import { eq, and, sql, gt, inArray } from 'drizzle-orm';
+import { eq, and, sql, gt, inArray, like, desc } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from '@/lib/actions/activity';
@@ -24,6 +24,38 @@ const processedSaleKeys = new Map<
 >();
 
 type ProductRow = InferSelectModel<typeof products>;
+
+/**
+ * Generates an invoice number in the format INV-YYYYMMDD-NNNN.
+ * Queries the last invoice for the day within the given transaction
+ * to determine the next sequential number.
+ */
+async function generateInvoiceNumber(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+) {
+  const now = new Date();
+  const dateStr =
+    String(now.getFullYear()) +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0');
+  const prefix = `INV-${dateStr}-`;
+
+  const [last] = await tx
+    .select({ invoiceNumber: sales.invoiceNumber })
+    .from(sales)
+    .where(like(sales.invoiceNumber, `${prefix}%`))
+    .orderBy(desc(sales.invoiceNumber))
+    .limit(1);
+
+  let seq = 1;
+  if (last?.invoiceNumber) {
+    const tail = last.invoiceNumber.slice(prefix.length);
+    const parsed = parseInt(tail, 10);
+    if (!isNaN(parsed)) seq = parsed + 1;
+  }
+
+  return `${prefix}${String(seq).padStart(4, '0')}`;
+}
 
 // Get pharmacy info
 export const getPharmacy = async (
@@ -141,10 +173,11 @@ export const processSale = async (
       }
 
       // 2. Insert into sales table
+      const invoiceNumber = await generateInvoiceNumber(tx);
       const [newSale] = await tx
         .insert(sales)
         .values({
-          invoiceNumber: `INV-${Date.now()}`,
+          invoiceNumber,
           totalAmount: totalAmount.toFixed(2),
           discount: validatedData.discount.toFixed(2),
           paymentMethod: validatedData.paymentMethod,
