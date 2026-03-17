@@ -23,8 +23,8 @@ export async function lookupProductsPOS({
     eq(products.pharmacyId, pharmacyId),
     sql`${products.deletedAt} IS NULL`,
   ];
-  // Exclude expired stock
-  filters.push(sql`${products.expiryDate} >= CURRENT_DATE`);
+  // Exclude expired stock (but allow products with no expiry date)
+  filters.push(sql`(${products.expiryDate} IS NULL OR ${products.expiryDate} >= CURRENT_DATE)`);
 
   // When browsing (no search), exclude out-of-stock products so
   // the returned page count matches visible cards (prevents empty gaps
