@@ -250,11 +250,9 @@ export const TransactionDetailsModal = ({
             >
               <div className="flex items-center gap-2">
                 <div
-                  className={`p-1.5 rounded-lg ${
-                    paymentColors[transaction.paymentMethod]
-                  }`}
+                  className="p-1.5 rounded-lg bg-gray-100 text-gray-600"
                 >
-                  {paymentIcons[transaction.paymentMethod]}
+                  <Banknote className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="font-medium text-sm">
@@ -289,17 +287,7 @@ export const TransactionDetailsModal = ({
                       Payment Information
                     </h4>
                     <div className="space-y-1.5">
-                      <div className="flex justify-between">
-                        <span className="text-xs text-gray-600">Method</span>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full ${
-                            paymentColors[transaction.paymentMethod]
-                          } flex items-center gap-1`}
-                        >
-                          {paymentIcons[transaction.paymentMethod]}
-                          {transaction.paymentMethod}
-                        </span>
-                      </div>
+                      {/* Payment method hidden for now */}
                       <div className="flex justify-between">
                         <span className="text-xs text-gray-600">
                           Invoice Number

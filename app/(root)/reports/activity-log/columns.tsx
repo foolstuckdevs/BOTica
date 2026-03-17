@@ -213,7 +213,8 @@ function renderDetails(
         {typeof total === 'number' ? (
           <span className="font-medium">₱{total.toFixed(2)}</span>
         ) : null}
-        {paymentMethod && !reasonLabel ? (
+        {/* Payment method hidden for now */}
+        {false && paymentMethod && !reasonLabel ? (
           <span className="ml-2 text-muted-foreground">({paymentMethod})</span>
         ) : null}
         {reasonLabel ? (

@@ -56,17 +56,18 @@ export const columns = ({ onView }: ColumnsOpts): ColumnDef<Transaction>[] => [
       <span className="text-sm">{row.original.user.fullName}</span>
     ),
   },
-  {
-    accessorKey: 'paymentMethod',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Method" />
-    ),
-    cell: ({ getValue }) => (
-      <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5">
-        {getValue<string>()}
-      </span>
-    ),
-  },
+  // Payment method column hidden for now
+  // {
+  //   accessorKey: 'paymentMethod',
+  //   header: ({ column }) => (
+  //     <DataTableColumnHeader column={column} title="Method" />
+  //   ),
+  //   cell: ({ getValue }) => (
+  //     <span className="text-xs rounded-full bg-gray-100 px-2 py-0.5">
+  //       {getValue<string>()}
+  //     </span>
+  //   ),
+  // },
   {
     accessorKey: 'status',
     header: ({ column }) => (
