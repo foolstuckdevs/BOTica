@@ -12,6 +12,7 @@ import {
   updateStaffStatusSchema,
 } from '@/lib/validations';
 import { canEditMasterData } from '@/lib/helpers/rbac';
+import { logActivity } from '@/lib/actions/activity';
 
 // Get staff members (pharmacy assistants only, exclude current admin)
 export const getStaffMembers = async (
@@ -99,6 +100,12 @@ export const createStaffMember = async (
       pharmacyId: validatedPharmacyId,
     });
 
+    await logActivity({
+      action: 'STAFF_CREATED',
+      pharmacyId: validatedPharmacyId,
+      details: { name: validatedData.fullName, email: validatedData.email },
+    });
+
     return { success: true } as const;
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -124,10 +131,27 @@ export const updateStaffStatus = async (userId: string, isActive: boolean) => {
 
     const validatedInput = updateStaffStatusSchema.parse({ userId, isActive });
 
+    // Fetch staff name for the log
+    const [staff] = await db
+      .select({ fullName: users.fullName, pharmacyId: users.pharmacyId })
+      .from(users)
+      .where(eq(users.id, validatedInput.userId));
+
     await db
       .update(users)
       .set({ isActive: validatedInput.isActive })
       .where(eq(users.id, validatedInput.userId));
+
+    if (staff?.pharmacyId) {
+      await logActivity({
+        action: 'STAFF_STATUS_UPDATED',
+        pharmacyId: staff.pharmacyId,
+        details: {
+          name: staff.fullName,
+          status: validatedInput.isActive ? 'Activated' : 'Deactivated',
+        },
+      });
+    }
 
     return { success: true } as const;
   } catch (error) {

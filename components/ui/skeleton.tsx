@@ -58,32 +58,39 @@ function SkeletonTable({
               gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
             }}
           >
-            {Array.from({ length: columns }).map((_, colIndex) => (
-              <div key={colIndex} className="p-4">
-                <div className="space-y-2">
-                  <div
-                    className="h-4 bg-muted rounded animate-pulse shimmer"
-                    style={{
-                      width: `${60 + Math.random() * 40}%`,
-                      animationDelay: `${
-                        (rowIndex * columns + colIndex) * 100
-                      }ms`,
-                    }}
-                  />
-                  {colIndex === 0 && rowIndex % 3 === 0 && (
+            {Array.from({ length: columns }).map((_, colIndex) => {
+              // Deterministic pseudo-random width based on position
+              const seed = (rowIndex * columns + colIndex + 1) * 7 % 40;
+              const width = 60 + seed;
+              const subSeed = (rowIndex * columns + colIndex + 1) * 13 % 30;
+              const subWidth = 40 + subSeed;
+              return (
+                <div key={colIndex} className="p-4">
+                  <div className="space-y-2">
                     <div
-                      className="h-3 bg-muted/60 rounded animate-pulse shimmer"
+                      className="h-4 bg-muted rounded animate-pulse shimmer"
                       style={{
-                        width: `${40 + Math.random() * 30}%`,
+                        width: `${width}%`,
                         animationDelay: `${
-                          (rowIndex * columns + colIndex) * 100 + 300
+                          (rowIndex * columns + colIndex) * 100
                         }ms`,
                       }}
                     />
-                  )}
+                    {colIndex === 0 && rowIndex % 3 === 0 && (
+                      <div
+                        className="h-3 bg-muted/60 rounded animate-pulse shimmer"
+                        style={{
+                          width: `${subWidth}%`,
+                          animationDelay: `${
+                            (rowIndex * columns + colIndex) * 100 + 300
+                          }ms`,
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ))}
       </div>

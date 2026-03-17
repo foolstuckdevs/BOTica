@@ -8,6 +8,7 @@ export interface ActivityPageParams {
   pageSize: number;
   search?: string; // matches action, user full name, or description JSON text
   prefixes?: string[]; // action prefixes (case-insensitive) e.g. ["PRODUCT_", "SALE_"]
+  username?: string; // exact username filter
   dateFrom?: string; // ISO date string (inclusive)
   dateTo?: string; // ISO date string (inclusive)
 }
@@ -40,6 +41,10 @@ export async function listActivityPage(params: ActivityPageParams) {
     const upper = params.prefixes.map((p) => p.toUpperCase());
     // action starts with any prefix
     filters.push(or(...upper.map((p) => ilike(activityLogs.action, `${p}%`))));
+  }
+
+  if (params.username) {
+    filters.push(eq(users.fullName, params.username));
   }
 
   if (params.dateFrom) {
@@ -100,4 +105,39 @@ function parseDetails(val: unknown) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Returns the distinct usernames and action prefixes used in
+ * activity logs for a given pharmacy – handy for populating
+ * filter drop-downs on the client.
+ */
+export async function getActivityFilterOptions(pharmacyId: number) {
+  const userRows = await db
+    .selectDistinct({ username: users.fullName })
+    .from(activityLogs)
+    .leftJoin(users, eq(users.id, activityLogs.userId))
+    .where(eq(activityLogs.pharmacyId, pharmacyId))
+    .orderBy(users.fullName);
+
+  const actionRows = await db
+    .selectDistinct({ action: activityLogs.action })
+    .from(activityLogs)
+    .where(eq(activityLogs.pharmacyId, pharmacyId))
+    .orderBy(activityLogs.action);
+
+  // Derive unique prefixes (e.g. PRODUCT_, SALE_) from raw action strings
+  const prefixSet = new Set<string>();
+  for (const r of actionRows) {
+    const idx = r.action.indexOf('_');
+    if (idx > 0) prefixSet.add(r.action.substring(0, idx + 1));
+  }
+
+  return {
+    users: userRows
+      .map((r) => r.username)
+      .filter((n): n is string => n !== null),
+    actions: actionRows.map((r) => r.action),
+    prefixes: Array.from(prefixSet).sort(),
+  };
 }

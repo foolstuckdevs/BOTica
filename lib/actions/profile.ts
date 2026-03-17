@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { hash, compare } from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { profileUpdateSchema, passwordChangeSchema } from '@/lib/validations';
+import { logActivity } from '@/lib/actions/activity';
 
 export async function updateProfile(formData: FormData) {
   const session = await auth();
@@ -26,6 +27,17 @@ export async function updateProfile(formData: FormData) {
     .update(users)
     .set({ fullName, email })
     .where(eq(users.id, session.user.id));
+
+  const pharmacyId = session.user.pharmacyId;
+  if (pharmacyId) {
+    await logActivity({
+      action: 'PROFILE_UPDATED',
+      pharmacyId,
+      userId: session.user.id,
+      details: { name: fullName, email },
+    });
+  }
+
   revalidatePath('/profile');
   return { ok: true, message: 'Profile updated.' };
 }
@@ -65,6 +77,16 @@ export async function updatePassword(formData: FormData) {
     .update(users)
     .set({ password: newHash })
     .where(eq(users.id, user.id));
+
+  const pharmacyId = session.user.pharmacyId;
+  if (pharmacyId) {
+    await logActivity({
+      action: 'PASSWORD_CHANGED',
+      pharmacyId,
+      userId: session.user.id,
+    });
+  }
+
   revalidatePath('/profile');
   return { ok: true, message: 'Password updated.' };
 }

@@ -65,6 +65,7 @@ const page = async ({
         }>
           <InventoryReportClient
             inventoryData={inventoryData}
+            pharmacyId={session.user.pharmacyId}
             initialTab={initialTab}
             initialLowStockStatus={initialLowStockStatus}
             initialExpiringStatus={initialExpiringStatus}

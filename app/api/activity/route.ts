@@ -22,6 +22,7 @@ export async function GET(request: Request) {
       : undefined;
     const dateFrom = searchParams.get('dateFrom') || undefined;
     const dateTo = searchParams.get('dateTo') || undefined;
+    const username = searchParams.get('username') || undefined;
 
     const result = await listActivityPage({
       pharmacyId: session.user.pharmacyId,
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
       pageSize,
       search,
       prefixes,
+      username,
       dateFrom,
       dateTo,
     });

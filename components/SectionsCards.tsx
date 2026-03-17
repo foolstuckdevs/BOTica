@@ -118,7 +118,7 @@ export function SectionCards({
         {isAdmin && (
           <CardFooter className="justify-end">
             <Link
-              href="/reports/sales"
+              href="/reports/sales?tab=sales"
               prefetch={true}
               className="text-xs text-blue-600 hover:underline flex items-center gap-1"
             >

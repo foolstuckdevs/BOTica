@@ -83,6 +83,9 @@ function humanizeSubject(action?: string) {
   if (action.startsWith('SALE_')) return 'sale';
   if (action.startsWith('AUTH_')) return 'user';
   if (action.startsWith('STOCKIN_')) return 'stock in';
+  if (action.startsWith('STAFF_')) return 'staff';
+  if (action.startsWith('PROFILE_')) return 'profile';
+  if (action.startsWith('PASSWORD_')) return 'password';
   return 'activity';
 }
 
@@ -98,6 +101,8 @@ function humanizeVerb(action?: string) {
   if (/SALE_COMPLETED$/.test(action)) return 'completed';
   if (/SALE_VOIDED$/.test(action)) return 'voided';
   if (/^STOCKIN_/.test(action)) return 'received'; // All stock-in actions show as "received"
+  if (/STATUS_UPDATED$/.test(action)) return 'updated';
+  if (/PASSWORD_CHANGED$/.test(action)) return 'changed';
   return 'done';
 }
 

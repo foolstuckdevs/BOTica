@@ -10,7 +10,7 @@ export const categorySchema = z.object({
     .min(1, 'Category is required')
     .min(4, 'Name must be at least 4 characters')
     .max(50, 'Name too long')
-    .regex(/^[A-Za-z\s&]+$/, 'Name can include letters, spaces, and &'),
+    .regex(/^[A-Za-z\s&]+$/, 'Name must only contain letters, spaces, and &. Numbers and special characters are not allowed.'),
   description: z
     .string()
     .transform((val) => val.trim() === '' ? undefined : val)
@@ -35,7 +35,7 @@ export const updateCategorySchema = z.object({
     .min(1, 'Category is required')
     .min(4, 'Category name must be at least 4 characters')
     .max(30, 'Category name too long')
-    .regex(/^[A-Za-z\s&]+$/, 'Name can include letters, spaces, and &'),
+    .regex(/^[A-Za-z\s&]+$/, 'Name must only contain letters, spaces, and &. Numbers and special characters are not allowed.'),
   description: z
     .string()
     .transform((val) => val.trim() === '' ? undefined : val)

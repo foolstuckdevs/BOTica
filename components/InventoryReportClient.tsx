@@ -11,7 +11,6 @@ import {
   TrendingDown,
   PackageX,
 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import type {
   ExpiringProductData,
@@ -37,6 +36,7 @@ interface Props {
     activeProducts: InventoryProductRow[];
     inactiveProducts: InventoryProductRow[];
   };
+  pharmacyId: number;
   initialTab?: TabKey;
   initialLowStockStatus?: 'all' | 'out_of_stock' | 'low';
   initialExpiringStatus?: 'all' | 'expired' | 'expiring' | 'warning';
@@ -44,11 +44,11 @@ interface Props {
 
 export default function InventoryReportClient({
   inventoryData,
+  pharmacyId,
   initialTab = 'overview',
   initialLowStockStatus,
   initialExpiringStatus,
 }: Props) {
-  const { data: session } = useSession();
   const pathname = usePathname();
 
   const [activeProducts, setActiveProducts] = useState(
@@ -111,7 +111,6 @@ export default function InventoryReportClient({
 
   const handleRestoreProduct = useCallback(
     async (product: InventoryProductRow) => {
-      const pharmacyId = session?.user?.pharmacyId;
       if (!pharmacyId) {
         toast.error('Missing pharmacy context');
         return;
@@ -132,7 +131,7 @@ export default function InventoryReportClient({
       // Note: No router.refresh() needed - local state update is sufficient
       // The server state is already updated via restoreProduct action
     },
-    [session?.user?.pharmacyId],
+    [pharmacyId],
   );
 
   // If initial tab is not overview, mark it loaded

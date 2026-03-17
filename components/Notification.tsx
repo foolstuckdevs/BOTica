@@ -95,10 +95,13 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
     try {
       setLoadingMore(true);
       const result = await getNotifications(pharmacyId, { cursor: nextCursor });
-      setNotifications((prev) => [
-        ...prev,
-        ...(result.items as AppNotification[]),
-      ]);
+      setNotifications((prev) => {
+        const existingIds = new Set(prev.map((n) => n.id));
+        const newItems = (result.items as AppNotification[]).filter(
+          (n) => !existingIds.has(n.id),
+        );
+        return [...prev, ...newItems];
+      });
       setHasMore(result.hasMore);
       setNextCursor(result.nextCursor);
     } catch (error) {
@@ -118,6 +121,9 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
         setNotifications(result.items as AppNotification[]);
         setHasMore(result.hasMore);
         setNextCursor(result.nextCursor);
+      } else {
+        // Reset pagination so next open fetches fresh data
+        setNextCursor(undefined);
       }
     } catch (error) {
       console.error('Error refreshing notifications:', error);
@@ -311,8 +317,14 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
               ) : (
                 <div className="divide-y divide-gray-100">
                   {(() => {
-                    const unread = notifications.filter((n) => !n.isRead);
-                    const read = notifications.filter((n) => n.isRead);
+                    const seen = new Set<number>();
+                    const unique = notifications.filter((n) => {
+                      if (seen.has(n.id)) return false;
+                      seen.add(n.id);
+                      return true;
+                    });
+                    const unread = unique.filter((n) => !n.isRead);
+                    const read = unique.filter((n) => n.isRead);
                     return (
                       <>
                         {unread.length > 0 && (
@@ -384,7 +396,6 @@ export function Notification({ pharmacyId, isAdmin }: NotificationProps) {
               )}
             </ScrollArea>
           </CardContent>
-          {false && <div />}
         </Card>
       </PopoverContent>
     </Popover>
