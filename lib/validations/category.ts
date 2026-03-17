@@ -10,16 +10,16 @@ export const categorySchema = z.object({
     .min(1, 'Category is required')
     .min(4, 'Name must be at least 4 characters')
     .max(50, 'Name too long')
-    .regex(/^[A-Za-z\s&]+$/, 'Name must only contain letters, spaces, and &. Numbers and special characters are not allowed.'),
+    .regex(/^[A-Za-z\s&]+$/, 'Category name can only contain letters, spaces, and "&".'),
   description: z
     .string()
     .transform((val) => val.trim() === '' ? undefined : val)
     .optional()
     .refine((val) => !val || val.length >= 8, {
-      message: 'Description too short',
+      message: 'Description is too short. Please enter at least 8 characters.',
     })
     .refine((val) => !val || val.length <= 255, {
-      message: 'Description too long',
+      message: 'Description is too long. Maximum 255 characters allowed.',
     }),
 }) satisfies z.ZodType<CategoryParams>;
 
@@ -35,16 +35,16 @@ export const updateCategorySchema = z.object({
     .min(1, 'Category is required')
     .min(4, 'Category name must be at least 4 characters')
     .max(30, 'Category name too long')
-    .regex(/^[A-Za-z\s&]+$/, 'Name must only contain letters, spaces, and &. Numbers and special characters are not allowed.'),
+    .regex(/^[A-Za-z\s&]+$/, 'Category name must contain only letters, spaces, and &.'),
   description: z
     .string()
     .transform((val) => val.trim() === '' ? undefined : val)
     .optional()
     .refine((val) => !val || val.length >= 10, {
-      message: 'Description too short',
+      message: 'Description is too short. Please enter at least 10 characters.',
     })
     .refine((val) => !val || val.length <= 255, {
-      message: 'Description too long',
+      message: 'Description is too long. Maximum 255 characters allowed.',
     }),
 });
 

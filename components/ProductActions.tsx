@@ -58,7 +58,7 @@ const ProductActions = ({ product, onDeleted }: ProductActionsProps) => {
     try {
       const result = await deleteProduct(product.id, pharmacyId);
       if (!result.success) {
-        toast.error('Failed to delete product');
+        toast.error(result.message || 'Failed to delete product');
         return;
       }
 

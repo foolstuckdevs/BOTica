@@ -29,7 +29,7 @@ export function CategoryActions({ category }: { category: Category }) {
   const handleDelete = async () => {
     const result = await deleteCategory(category.id, pharmacyId);
     if (!result.success) {
-      toast.error('Failed to delete category');
+      toast.error(result.message || 'Failed to delete category');
       return;
     }
     toast.success('Category deleted');

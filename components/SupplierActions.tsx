@@ -29,7 +29,7 @@ const SupplierActions = ({ supplier }: { supplier: Supplier }) => {
   const handleDelete = async () => {
     const result = await deleteSupplier(supplier.id, pharmacyId);
     if (!result.success) {
-      toast.error('Failed to delete supplier');
+      toast.error(result.message || 'Failed to delete supplier');
       return;
     }
     toast.success('Supplier deleted successfully');

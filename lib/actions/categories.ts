@@ -262,6 +262,17 @@ export const deleteCategory = async (
     }
 
     console.error('Error deleting category:', error);
+
+    // Detect foreign key constraint violation (category still has products)
+    const dbError = error as { code?: string };
+    if (dbError.code === '23503') {
+      return {
+        success: false,
+        message:
+          'This category cannot be deleted because it still has products assigned to it. Please reassign or remove those products first.',
+      };
+    }
+
     return {
       success: false,
       message: 'An error occurred while deleting category',

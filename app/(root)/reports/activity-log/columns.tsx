@@ -163,26 +163,80 @@ function renderDetails(
       </span>
     );
 
+  // Staff status specifics (show name + status inline)
+  if (action?.startsWith('STAFF_') && name && status) {
+    return (
+      <span className="text-sm">
+        <span className="font-medium">&quot;{name}&quot;</span>
+        <span className="ml-2 text-muted-foreground">→ {status}</span>
+      </span>
+    );
+  }
+
   // Names (entities)
-  if (name) return <span className="text-sm font-medium">“{name}”</span>;
+  if (name) return <span className="text-sm font-medium">&quot;{name}&quot;</span>;
   if (supplierName)
     return <span className="text-sm font-medium">“{supplierName}”</span>;
 
   // Adjustment specifics
   if (action?.startsWith('ADJUSTMENT_')) {
+    const productName =
+      typeof details['productName'] === 'string'
+        ? (details['productName'] as string)
+        : null;
+    const brandName =
+      typeof details['brandName'] === 'string'
+        ? (details['brandName'] as string)
+        : null;
+    const previousQuantity =
+      typeof details['previousQuantity'] === 'number'
+        ? (details['previousQuantity'] as number)
+        : null;
+    const newQuantity =
+      typeof details['newQuantity'] === 'number'
+        ? (details['newQuantity'] as number)
+        : null;
+    const displayName = productName
+      ? brandName
+        ? `${productName} (${brandName})`
+        : productName
+      : null;
+    const isIncrease =
+      typeof quantityChange === 'number' && quantityChange > 0;
+    const isDecrease =
+      typeof quantityChange === 'number' && quantityChange < 0;
+
     return (
-      <div className="text-sm leading-tight">
+      <div className="text-sm flex flex-wrap items-center gap-2">
+        {displayName ? (
+          <span className="font-medium">&quot;{displayName}&quot;</span>
+        ) : productId ? (
+          <span className="text-muted-foreground">
+            product id: {productId}
+          </span>
+        ) : null}
         {reason ? (
-          <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-700 border border-slate-200">
-            {reason.toLowerCase()}
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-700 border border-slate-200">
+            {reason.replace(/_/g, ' ').toLowerCase()}
           </span>
         ) : null}
         {typeof quantityChange === 'number' ? (
-          <span className="text-muted-foreground">Δ {quantityChange}</span>
+          <span
+            className={
+              isIncrease
+                ? 'text-green-700'
+                : isDecrease
+                  ? 'text-red-700'
+                  : 'text-muted-foreground'
+            }
+          >
+            {isIncrease ? '+' : ''}
+            {quantityChange}
+          </span>
         ) : null}
-        {productId ? (
-          <span className="ml-2 text-muted-foreground">
-            product id: {productId}
+        {previousQuantity !== null && newQuantity !== null ? (
+          <span className="text-muted-foreground text-xs">
+            ({previousQuantity} → {newQuantity})
           </span>
         ) : null}
       </div>

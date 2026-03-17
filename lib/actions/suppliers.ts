@@ -244,6 +244,17 @@ export const deleteSupplier = async (id: number, pharmacyId: number) => {
     }
 
     console.error('Error deleting supplier:', error);
+
+    // Detect foreign key constraint violation (supplier still linked to products or stock-ins)
+    const dbError = error as { code?: string };
+    if (dbError.code === '23503') {
+      return {
+        success: false,
+        message:
+          'This supplier cannot be deleted because it is still linked to existing products or stock-in records. Please reassign those records first.',
+      };
+    }
+
     return { success: false, message: 'Failed to delete supplier' };
   }
 };
