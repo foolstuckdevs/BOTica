@@ -360,7 +360,10 @@ export function DateFilterComponent({
     let resolvedRange: DateFilterRange;
 
     if (tempPeriod === 'custom') {
-      resolvedRange = tempRange;
+      resolvedRange = {
+        from: tempRange.from ? startOfDay(tempRange.from) : tempRange.from,
+        to: tempRange.to ? endOfDay(tempRange.to) : tempRange.to,
+      };
     } else if (tempPeriod === 'week') {
       const clamped = clampRangeToMonth(toDateRange(tempRange), weekViewMonth);
       resolvedRange = clamped.from

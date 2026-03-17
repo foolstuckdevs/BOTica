@@ -12,6 +12,44 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Search } from 'lucide-react';
+import DateFilterComponent, {
+  type DateFilterRange,
+  type FilterPeriod,
+} from '@/components/DateFilterComponent';
+import {
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+} from 'date-fns';
+
+const WEEK_START: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1;
+
+function computeRangeForPeriod(
+  period: FilterPeriod,
+  ref: Date = new Date(),
+): DateFilterRange {
+  switch (period) {
+    case 'today':
+      return { from: startOfDay(ref), to: endOfDay(ref) };
+    case 'week':
+      return {
+        from: startOfWeek(ref, { weekStartsOn: WEEK_START }),
+        to: endOfWeek(ref, { weekStartsOn: WEEK_START }),
+      };
+    case 'month':
+      return { from: startOfMonth(ref), to: endOfMonth(ref) };
+    case 'year':
+      return { from: startOfYear(ref), to: endOfYear(ref) };
+    case 'custom':
+    default:
+      return {};
+  }
+}
 
 interface ApiResponse {
   data: ActivityRow[];
@@ -53,6 +91,10 @@ export function ActivityLogPageClient() {
   const [searchQuery, setSearchQuery] = useState('');
   const [userFilter, setUserFilter] = useState<string>('all');
   const [actionFilter, setActionFilter] = useState<string>('all');
+  const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>('year');
+  const [dateRange, setDateRange] = useState<DateFilterRange>(() =>
+    computeRangeForPeriod('year'),
+  );
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     users: [],
     prefixes: [],
@@ -73,6 +115,8 @@ export function ActivityLogPageClient() {
       search?: string,
       user?: string,
       action?: string,
+      dateFrom?: string,
+      dateTo?: string,
     ) => {
       setLoading(true);
       setError(null);
@@ -89,6 +133,12 @@ export function ActivityLogPageClient() {
         if (action && action !== 'all') {
           params.set('prefixes', action);
         }
+        if (dateFrom) {
+          params.set('dateFrom', dateFrom);
+        }
+        if (dateTo) {
+          params.set('dateTo', dateTo);
+        }
         const res = await fetch(`/api/activity?${params.toString()}`);
         if (!res.ok) throw new Error(`Request failed: ${res.status}`);
         const json: ApiResponse = await res.json();
@@ -103,19 +153,28 @@ export function ActivityLogPageClient() {
     [],
   );
 
+  // Compute the active date range for query
+  const activeRange = React.useMemo(() => {
+    if (dateRange?.from && dateRange?.to) return dateRange;
+    return computeRangeForPeriod(filterPeriod);
+  }, [dateRange, filterPeriod]);
+
+  const dateFromISO = activeRange.from?.toISOString();
+  const dateToISO = activeRange.to?.toISOString();
+
   // Track initial load separate from serverPage to prevent effect re-trigger loops
   const didInitialLoadRef = useRef(false);
   useEffect(() => {
     if (!didInitialLoadRef.current) {
       didInitialLoadRef.current = true;
-      load(1, pageSize, searchQuery, userFilter, actionFilter);
+      load(1, pageSize, searchQuery, userFilter, actionFilter, dateFromISO, dateToISO);
       return;
     }
     const handle = setTimeout(() => {
-      load(pageIndex + 1, pageSize, searchQuery, userFilter, actionFilter);
+      load(pageIndex + 1, pageSize, searchQuery, userFilter, actionFilter, dateFromISO, dateToISO);
     }, 300);
     return () => clearTimeout(handle);
-  }, [pageIndex, pageSize, searchQuery, userFilter, actionFilter, load]);
+  }, [pageIndex, pageSize, searchQuery, userFilter, actionFilter, dateFromISO, dateToISO, load]);
 
   // Reset to first page when filters change
   const handleSearchChange = useCallback(
@@ -133,6 +192,17 @@ export function ActivityLogPageClient() {
 
   const handleActionFilter = useCallback((value: string) => {
     setActionFilter(value);
+    setPageIndex(0);
+  }, []);
+
+  const handlePeriodChange = useCallback((period: FilterPeriod) => {
+    setFilterPeriod(period);
+    setDateRange(computeRangeForPeriod(period));
+    setPageIndex(0);
+  }, []);
+
+  const handleDateRangeChange = useCallback((range: DateFilterRange) => {
+    setDateRange(range);
     setPageIndex(0);
   }, []);
 
@@ -184,6 +254,15 @@ export function ActivityLogPageClient() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Date Filter */}
+        <DateFilterComponent
+          period={filterPeriod}
+          dateRange={dateRange}
+          onPeriodChange={handlePeriodChange}
+          onDateRangeChange={handleDateRangeChange}
+          buttonClassName="h-9 rounded-md border-input bg-transparent shadow-xs text-sm font-normal"
+        />
       </div>
 
       {/* Table card */}
