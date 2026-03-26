@@ -62,23 +62,51 @@ async function embed(text: string): Promise<number[]> {
 
   const model = process.env.AI_EMBEDDING_MODEL ?? 'text-embedding-3-small';
 
-  const res = await fetch('https://api.openai.com/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ input: text, model }),
-    signal: AbortSignal.timeout(10_000),
-  });
+  const timeoutMs = Number(process.env.AI_EMBEDDING_TIMEOUT_MS ?? 30_000);
+  const maxRetries = Number(process.env.AI_EMBEDDING_RETRIES ?? 1);
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Embedding API error ${res.status}: ${body}`);
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ input: text, model }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Embedding API error ${res.status}: ${body}`);
+      }
+
+      const json = await res.json();
+      return json.data[0].embedding as number[];
+    } catch (error) {
+      const isTimeout =
+        (error as Error).name === 'TimeoutError' ||
+        (error as Error).name === 'AbortError';
+
+      const shouldRetry = isTimeout && attempt < maxRetries;
+      if (!shouldRetry) {
+        if (isTimeout) {
+          throw new Error(
+            `Embedding request timed out after ${timeoutMs}ms${
+              maxRetries > 0 ? ` (retried ${maxRetries}x)` : ''
+            }`,
+          );
+        }
+        throw error;
+      }
+
+      // Small linear backoff before retry
+      await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+    }
   }
 
-  const json = await res.json();
-  return json.data[0].embedding as number[];
+  throw new Error('Embedding failed after retries');
 }
 
 /* ------------------------------------------------------------------ */

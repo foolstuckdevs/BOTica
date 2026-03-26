@@ -12,8 +12,10 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import OpenAI from 'openai';
+import { auth } from '@/auth';
 import { searchPNF, buildContext } from '@/lib/rag/pnf-search';
 import { buildMessages } from '@/lib/rag/pnf-prompt';
+import { searchInventory, buildInventoryContext } from '@/lib/rag/inventory-search';
 import { db } from '@/database/drizzle';
 import { pnfChatLogs } from '@/database/schema';
 
@@ -40,93 +42,208 @@ const requestSchema = z.object({
 /* ------------------------------------------------------------------ */
 
 /**
- * Words / short phrases that commonly appear after trigger words
- * ("about", "for", etc.) but are NOT drug names.  Used to prevent
- * the regex from treating "how about dosage?" as drug = "dosage".
+ * Comprehensive set of words that are NEVER part of a drug name.
+ * We split the user's question into words, remove every word in this set,
+ * and whatever remains is presumed to be the drug / product name.
+ *
+ * This "negative-space" approach is far more robust than pattern-matching
+ * because any new phrasing is automatically handled — only truly novel
+ * non-drug words need to be added here.
  */
-const NON_DRUG_TERMS = new Set([
-  // PNF section / topic words
-  'dosage', 'dose', 'doses', 'dosing',
-  'side effect', 'side effects', 'adverse reaction', 'adverse reactions',
-  'adverse effect', 'adverse effects',
+const STRIP_WORDS = new Set([
+  // --- Question / grammar words ---
+  'what', 'whats', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how', 'hows',
+  'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'am',
+  'i', 'me', 'my', 'we', 'our', 'you', 'your', 'he', 'she', 'it', 'its',
+  'they', 'them', 'their', 'this', 'that', 'these', 'those',
+  'some', 'any', 'all', 'each', 'every', 'no', 'not', 'nor', 'none',
+  'of', 'for', 'in', 'on', 'at', 'to', 'from', 'with', 'by', 'about',
+  'as', 'if', 'or', 'and', 'but', 'so', 'do', 'does', 'did',
+  'have', 'has', 'had', 'will', 'would', 'shall', 'should',
+  'can', 'could', 'may', 'might', 'must',
+  'still', 'already', 'yet', 'currently', 'now', 'just', 'also', 'too',
+  'very', 'really', 'actually', 'only',
+  'there', 'here', 'up', 'down', 'out', 'same',
+  // --- Command verbs ---
+  'tell', 'show', 'give', 'check', 'look', 'find', 'get', 'list',
+  'search', 'verify', 'confirm', 'see', 'know', 'need', 'want',
+  'please', 'pls', 'kindly',
+  // --- Tagalog filler ---
+  'po', 'ba', 'ng', 'nang', 'ang', 'mga', 'ko', 'mo',
+  'namin', 'natin', 'nila', 'amin', 'atin', 'sa', 'na', 'pa',
+  'ano', 'magkano', 'ilan', 'meron', 'mayroon',
+  // --- Inventory-topic words ---
+  'stock', 'stocks', 'stocked', 'available', 'availability',
+  'price', 'cost', 'pricing', 'selling', 'sold',
+  'expiry', 'expire', 'expires', 'expiration', 'expired', 'expiring',
+  'date', 'shelf', 'life', 'best', 'before',
+  'quantity', 'count', 'pieces', 'pcs', 'units', 'boxes',
+  'per', 'piece', 'unit', 'box', 'tab', 'tablet', 'capsule', 'caps',
+  'much', 'many', 'remaining', 'left', 'hand',
+  'carry', 'sell', 'got', 'low',
+  'info', 'information', 'inventory', 'supply', 'supplies',
+  'qty', 'on',
+  // --- Clinical-topic words ---
+  'dosage', 'dose', 'dosing', 'doses',
+  'side', 'effect', 'effects',
+  'adverse', 'reaction', 'reactions',
   'contraindication', 'contraindications',
-  'interaction', 'interactions', 'drug interaction', 'drug interactions',
+  'interaction', 'interactions', 'drug', 'drugs',
   'precaution', 'precautions', 'warning', 'warnings',
-  'indication', 'indications', 'use', 'uses',
-  'administration', 'formulation', 'formulations',
-  'pregnancy', 'pregnancy category', 'lactation',
-  'dose adjustment', 'renal', 'hepatic',
-  'classification', 'class',
-  'overview', 'information', 'info', 'details',
-  'mechanism', 'mechanism of action',
-  'pharmacokinetics', 'pharmacology',
+  'indication', 'indications', 'use', 'uses', 'used',
+  'administration', 'administer',
+  'formulation', 'formulations', 'form',
+  'pregnancy', 'lactation', 'pregnant', 'safe', 'during',
+  'mechanism', 'pharmacology', 'pharmacokinetics',
+  'classification', 'class', 'category',
+  'take', 'taken', 'taking',
+  'overview', 'details', 'detail',
+  'monitoring', 'monitor',
+  'rx', 'otc', 'medicine', 'medication', 'medications',
   'storage', 'stability',
-  'comparison', 'difference', 'differences',
-  // Generic follow-up words
-  'that', 'this', 'it', 'its', 'the', 'them',
-  'same', 'the same', 'the same drug',
+  // --- Comparison ---
+  'comparison', 'compare', 'compared', 'difference', 'differences',
+  'between', 'versus', 'vs',
 ]);
 
-function extractDrugHint(
+export function extractDrugHint(
   question: string,
   chatHistory: Array<{ role: string; content: string }>,
   activeDrug?: string,
 ): string | undefined {
-  // Check if user explicitly names a drug
-  const directMatch = question.match(
-    /(?:about|regarding|for|info on|information on|tell me about|what is|look up)\s+([a-z][a-z0-9\s\-\+\/]+)/i,
-  );
+  // ---- Step 1: Strip every known non-drug word ----
+  const words = question
+    .replace(/[?.!,;:'"()\[\]{}]/g, '')   // remove punctuation
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && !STRIP_WORDS.has(w));
 
-  if (directMatch?.[1]) {
-    const candidate = directMatch[1]
-      .replace(/[?.!,;:'"]/g, '')
-      .trim()
+  // 1-4 remaining words → almost certainly the drug name
+  if (words.length >= 1 && words.length <= 4) {
+    return words.join(' ');
+  }
+
+  // More than 4 remaining words → look for capitalised words in the
+  // original text (drug names are usually capitalised or unique).
+  if (words.length > 4) {
+    const capitalised = question
+      .replace(/[?.!,;:'"()\[\]{}]/g, '')
       .split(/\s+/)
-      .slice(0, 4)
-      .join(' ')
-      .trim();
+      .filter((w) => /^[A-Z]/.test(w) && !STRIP_WORDS.has(w.toLowerCase()))
+      .map((w) => w.toLowerCase());
 
-    // Strip leading filler words (its, the, their, etc.) before checking
-    const stripped = candidate
-      .replace(/^(its|the|their|his|her|my|your|this|that|some|any)\s+/i, '')
-      .trim();
-
-    // Only accept the candidate if the core term is NOT a known non-drug term
-    const isNonDrug =
-      NON_DRUG_TERMS.has(candidate.toLowerCase()) ||
-      NON_DRUG_TERMS.has(stripped.toLowerCase());
-
-    if (candidate.length > 2 && !isNonDrug) {
-      return candidate;
+    if (capitalised.length >= 1 && capitalised.length <= 4) {
+      return capitalised.join(' ');
     }
   }
 
-  // If the question looks like a follow-up, keep the active drug
+  // ---- Step 2: Follow-up / active-drug fallback ----
   const isFollowUp =
     /^(what|how|is|are|can|does|do|tell|show|list|give|any)\s/i.test(question) ||
     /^(dosage|dose|side effects?|contraindications?|interactions?|precautions?|indications?|adverse|formulations?|administration|pregnancy)/i.test(question);
 
-  if (isFollowUp && activeDrug) {
-    return activeDrug;
-  }
-
-  // Check recent history for drug context
+  if (isFollowUp && activeDrug) return activeDrug;
   if (activeDrug) return activeDrug;
 
-  // Scan backwards through history
+  // ---- Step 3: Scan chat history ----
   for (let i = chatHistory.length - 1; i >= 0; i--) {
     const entry = chatHistory[i];
     if (entry.role === 'user') {
-      const histMatch = entry.content.match(
-        /(?:about|for|regarding)\s+([a-z][a-z0-9\s\-]+)/i,
-      );
-      if (histMatch?.[1]) {
-        return histMatch[1].trim();
-      }
+      // Recursive call with empty history to avoid infinite recursion
+      const histHint = extractDrugHint(entry.content, [], undefined);
+      if (histHint) return histHint;
     }
   }
 
   return undefined;
+}
+
+function toTitleCase(value: string): string {
+  return value
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function formatInventoryOnlyAnswer(
+  items: Awaited<ReturnType<typeof searchInventory>>,
+  drugHint?: string,
+): string {
+  const drug = toTitleCase((drugHint ?? 'This medicine').trim());
+
+  if (!items.length) {
+    return `${drug} is not currently in stock at this pharmacy.\n\n_Source: Pharmacy Inventory_`;
+  }
+
+  const lines: string[] = [];
+  lines.push(`**${drug}** is available in inventory:\n`);
+
+  for (const item of items) {
+    const stockStatus =
+      item.quantity === 0
+        ? 'OUT OF STOCK'
+        : item.quantity <= item.minStockLevel
+          ? `LOW STOCK — only ${item.quantity} ${item.unit ?? 'unit(s)'} remaining`
+          : `IN STOCK — ${item.quantity} ${item.unit ?? 'unit(s)'} available`;
+
+    lines.push(`- **${item.name}**`);
+    if (item.brandName) lines.push(`  - Brand: ${item.brandName}`);
+    if (item.dosageForm) lines.push(`  - Dosage Form: ${item.dosageForm.replace(/_/g, ' ')}`);
+    lines.push(`  - Selling Price: ₱${Number(item.sellingPrice).toFixed(2)} per ${item.unit ?? 'unit'}`);
+    lines.push(`  - Stock Status: ${stockStatus}`);
+    if (item.expiryDate) lines.push(`  - Expiry: ${item.expiryDate}`);
+  }
+
+  lines.push('\n_Source: Pharmacy Inventory_');
+  return lines.join('\n');
+}
+
+/* ------------------------------------------------------------------ */
+/*  Query classification (inventory vs. clinical)                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Classify a question as inventory-focused or clinical-focused.
+ * - INVENTORY: stock, price, availability, expiry, quantity, dosage form
+ * - CLINICAL: side effects, interactions, contraindications, indications, etc.
+ * - BOTH: questions that span both (e.g., "Tell me about Paracetamol")
+ */
+export function classifyQuery(
+  question: string,
+): 'inventory' | 'clinical' | 'both' {
+  const q = question.toLowerCase();
+
+  // Inventory-focused keywords
+  const inventoryKeywords = [
+    /\b(stock|available|in stock|out of stock|low stock)\b/,
+    /\b(price|cost|how much|selling price)\b/,
+    /\b(quantity|units|how many|pieces|boxes|stock count|on hand|qty)\b/,
+    /\b(expir|expire|expiry date|best before)\b/,
+    /\b(form|formulation|tablet|capsule|syrup|injection)\b/,
+    /\b(do we have|do we still have|have we got|got|carry|sell)\b/,
+  ];
+
+  // Clinical-focused keywords
+  const clinicalKeywords = [
+    /\b(dosage|dose|dosing)\b/,
+    /\b(side effects?|adverse reactions?|adverse effects?)\b/,
+    /\b(contraindications?|when not to use)\b/,
+    /\b(interactions?|drug interactions?|can .*take with)\b/,
+    /\b(precautions?|warnings?|monitoring)\b/,
+    /\b(indications?|approved uses?|used for)\b/,
+    /\b(administration|how to give|how to take)\b/,
+    /\b(pregnancy|lactation|safe during|pregnant)\b/,
+    /\b(mechanism|pharmacology|pharmacokinetics?)\b/,
+    /\b(classification|rx|otc|afc class)\b/,
+  ];
+
+  const isInventory = inventoryKeywords.some((pattern) => pattern.test(q));
+  const isClinical = clinicalKeywords.some((pattern) => pattern.test(q));
+
+  if (isInventory && !isClinical) return 'inventory';
+  if (isClinical && !isInventory) return 'clinical';
+  return 'both'; // Or mention a drug generically without asking about specific aspect
 }
 
 /* ------------------------------------------------------------------ */
@@ -183,7 +300,7 @@ function extractComparisonDrugs(question: string): [string, string] | null {
  * Detect non-drug conversational queries (greetings, capability questions,
  * terminology, thanks) so we can skip the vector search entirely.
  */
-function isConversationalQuery(question: string): boolean {
+export function isConversationalQuery(question: string): boolean {
   const q = question.toLowerCase().trim().replace(/[?.!,]+$/g, '');
 
   // Very short messages are almost always greetings / noise
@@ -211,6 +328,13 @@ function isConversationalQuery(question: string): boolean {
     /^(i\s+need\s+(your\s+)?help|can\s+you\s+help\s+me)$/,
   ];
 
+  // Symptom-only messages (English/Tagalog) without a medicine name or drug-topic keyword
+  const symptomOnly =
+    /\b(headache|fever|ubo|sipon|masakit\s+ang\s+ulo|sore\s+throat|cough|cold)\b/.test(q) &&
+    !/\b(dosage|dose|side effects?|contraindications?|interactions?|indications?|precautions?|drug|medicine|medication|stock|price|available|in stock)\b/.test(q);
+
+  if (symptomOnly) return true;
+
   return patterns.some((p) => p.test(q));
 }
 
@@ -218,11 +342,18 @@ export async function POST(req: NextRequest) {
   const startedAt = Date.now();
 
   try {
+    // Resolve session so we can query the pharmacy's inventory
+    const session = await auth();
+    const pharmacyId = session?.user?.pharmacyId ?? null;
+
     const body = await req.json();
     const parsed = requestSchema.parse(body);
 
     // 0. Check if this is a conversational (non-drug) query
     const conversational = isConversationalQuery(parsed.question);
+
+    // 0b. Classify query type (inventory vs clinical)
+    const queryType = conversational ? 'conversational' : classifyQuery(parsed.question);
 
     // 1. Resolve drug context (heuristic, no LLM)
     const drugHint = conversational
@@ -242,35 +373,94 @@ export async function POST(req: NextRequest) {
       ? null
       : extractComparisonDrugs(parsed.question);
 
+    // 2a. Run PNF vector search + inventory search based on query type
+    let inventoryContext: string | undefined;
+    let directAnswer: string | undefined;
+    let inventoryMatches = 0;
+
+    const debugEnabled =
+      process.env.CHATBOT_DEBUG_META === 'true' ||
+      process.env.NODE_ENV !== 'production';
+
     if (!conversational) {
       if (comparisonDrugs) {
-        // --- Comparison: run two parallel searches, one per drug ---
+        // --- Comparison: always use both inventory and PNF for both drugs ---
         const [drugA, drugB] = comparisonDrugs;
-        const [chunksA, chunksB] = await Promise.all([
+        const [chunksA, chunksB, invA, invB] = await Promise.all([
           searchPNF({ query: drugA, k: 6, threshold: 0.2, drugFilter: drugA }),
           searchPNF({ query: drugB, k: 6, threshold: 0.2, drugFilter: drugB }),
+          pharmacyId ? searchInventory(pharmacyId, drugA) : Promise.resolve([]),
+          pharmacyId ? searchInventory(pharmacyId, drugB) : Promise.resolve([]),
         ]);
         // Merge: take top 5 per drug so both are well-represented
         chunks = [...chunksA.slice(0, 5), ...chunksB.slice(0, 5)];
         detectedDrug = `${drugA} vs ${drugB}`;
+
+        const allInventory = [...invA, ...invB];
+        inventoryMatches = allInventory.length;
+        inventoryContext = allInventory.length
+          ? buildInventoryContext(allInventory)
+          : undefined;
       } else {
-        // --- Normal single-drug search ---
+        // --- Normal single-drug search: decide based on query type ---
         const searchQuery = drugHint
           ? `${drugHint} ${parsed.question}`
           : parsed.question;
 
-        chunks = await searchPNF({
-          query: searchQuery,
-          k: 8,
-          threshold: 0.25,
-          drugFilter: drugHint,
-        });
+        if (queryType === 'inventory') {
+          // INVENTORY-ONLY: Skip PNF search, only get inventory
+          const invItems = pharmacyId && drugHint
+            ? await searchInventory(pharmacyId, drugHint)
+            : [];
+          inventoryMatches = invItems.length;
+          inventoryContext = invItems.length
+            ? buildInventoryContext(invItems)
+            : pharmacyId && drugHint
+              ? buildInventoryContext([]) // explicitly not found
+              : undefined;
+          chunks = []; // No PNF context for inventory queries
+          detectedDrug = drugHint ?? '';
+          directAnswer = formatInventoryOnlyAnswer(invItems, drugHint);
+        } else if (queryType === 'clinical') {
+          // CLINICAL-ONLY: Skip inventory search, only get PNF
+          chunks = await searchPNF({
+            query: searchQuery,
+            k: 8,
+            threshold: 0.25,
+            drugFilter: drugHint,
+          });
+          inventoryContext = undefined; // No inventory context for clinical queries
+          detectedDrug =
+            chunks.length > 0
+              ? (chunks[0].metadata.drugName ?? drugHint ?? '')
+              : (drugHint ?? '');
+        } else {
+          // BOTH: Run both searches in parallel
+          const [pnfChunks, invItems] = await Promise.all([
+            searchPNF({
+              query: searchQuery,
+              k: 8,
+              threshold: 0.25,
+              drugFilter: drugHint,
+            }),
+            pharmacyId && drugHint
+              ? searchInventory(pharmacyId, drugHint)
+              : Promise.resolve([]),
+          ]);
 
-        // Detect the primary drug from results
-        detectedDrug =
-          chunks.length > 0
-            ? (chunks[0].metadata.drugName ?? drugHint ?? '')
-            : (drugHint ?? '');
+          chunks = pnfChunks;
+          detectedDrug =
+            chunks.length > 0
+              ? (chunks[0].metadata.drugName ?? drugHint ?? '')
+              : (drugHint ?? '');
+
+          inventoryContext = invItems.length
+            ? buildInventoryContext(invItems)
+            : pharmacyId && drugHint
+              ? buildInventoryContext([]) // explicitly not found
+              : undefined;
+          inventoryMatches = invItems.length;
+        }
       }
     }
 
@@ -279,11 +469,67 @@ export async function POST(req: NextRequest) {
       ? 'No drug query — this is a conversational message.'
       : buildContext(chunks);
 
-    // 4. Build messages array
+    // 3a. For inventory-only queries, bypass LLM and return deterministic response
+    if (directAnswer) {
+      const encoder = new TextEncoder();
+      const latencyMs = Date.now() - startedAt;
+
+      const readable = new ReadableStream({
+        start(controller) {
+          const meta = JSON.stringify({
+            type: 'meta',
+            drugContext: detectedDrug,
+            sources: 0,
+            ...(debugEnabled
+              ? {
+                  debug: {
+                    queryType,
+                    drugHint: drugHint ?? null,
+                    inventoryMatches,
+                    pnfMatches: chunks.length,
+                    hasInventoryContext: Boolean(inventoryContext),
+                    directAnswer: true,
+                  },
+                }
+              : {}),
+          });
+          controller.enqueue(encoder.encode(`data: ${meta}\n\n`));
+
+          const tokenEvent = JSON.stringify({
+            type: 'token',
+            content: directAnswer,
+          });
+          controller.enqueue(encoder.encode(`data: ${tokenEvent}\n\n`));
+
+          const doneEvent = JSON.stringify({ type: 'done', latencyMs });
+          controller.enqueue(encoder.encode(`data: ${doneEvent}\n\n`));
+          controller.close();
+
+          db.insert(pnfChatLogs)
+            .values({
+              question: parsed.question,
+              answer: directAnswer,
+              latencyMs,
+            })
+            .catch((err) => console.error('[pnf-chat] failed to log:', err));
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+
+    // 4. Build messages array (with inventory context injected)
     const messages = buildMessages(
       parsed.question,
       context,
       parsed.chatHistory,
+      inventoryContext,
     );
 
     // 5. Stream from OpenAI
@@ -310,6 +556,18 @@ export async function POST(req: NextRequest) {
             type: 'meta',
             drugContext: detectedDrug,
             sources: chunks.length,
+            ...(debugEnabled
+              ? {
+                  debug: {
+                    queryType,
+                    drugHint: drugHint ?? null,
+                    inventoryMatches,
+                    pnfMatches: chunks.length,
+                    hasInventoryContext: Boolean(inventoryContext),
+                    directAnswer: false,
+                  },
+                }
+              : {}),
           });
           controller.enqueue(encoder.encode(`data: ${meta}\n\n`));
 

@@ -42,7 +42,7 @@ export interface PnfChatbotProps {
 /* ------------------------------------------------------------------ */
 
 const GREETING =
-  "Good day! I'm **BOTica**, your Drug Reference Assistant.\n\nI can look up any medicine in the **Philippine National Formulary** — just ask about:\n\n- **Dosage** — adult, pediatric, and route-specific doses\n- **Side Effects** — adverse reactions by frequency\n- **Contraindications** — when NOT to use a drug\n- **Drug Interactions** — clinically significant interactions\n- **Pregnancy Category** — safety classification (A/B/C/D/X)\n- **Precautions** — warnings and monitoring\n- **Dose Adjustment** — renal/hepatic modifications\n- **Administration** — how to give/take the medication\n- **Formulations** — available forms and strengths\n- **Indications** — approved uses\n- **Classification** — Rx/OTC and ATC class\n- **Drug Comparison** — side-by-side comparison of two drugs\n\nType a drug name and your question, or try a suggestion below!";
+  "Good day! I'm **BOTica**, your Pharmacy Assistant.\n\nI can check what's available in your pharmacy's inventory **and** look up detailed drug information from the **Philippine National Formulary**.\n\nAsk me about:\n\n- **Stock Availability** — is a medicine in stock right now?\n- **Pricing** — selling price per unit\n- **Dosage** — adult, pediatric, and route-specific doses\n- **Side Effects** — adverse reactions by frequency\n- **Contraindications** — when NOT to use a drug\n- **Drug Interactions** — clinically significant interactions\n- **Pregnancy Category** — safety classification (A/B/C/D/X)\n- **Precautions** — warnings and monitoring\n- **Formulations** — available forms and strengths\n- **Indications** — approved uses\n- **Drug Comparison** — side-by-side comparison of two drugs\n\nType a medicine name and your question, or try a suggestion below!";
 
 /**
  * All question categories the chatbot can answer, grouped by topic.
@@ -50,6 +50,30 @@ const GREETING =
  * full range of the assistant's capabilities.
  */
 const ALL_SUGGESTIONS: { label: string; questions: string[] }[] = [
+  {
+    label: 'Availability',
+    questions: [
+      'Is Amoxicillin available in stock?',
+      'Do we have Paracetamol in stock?',
+      'Is Metformin available?',
+    ],
+  },
+  {
+    label: 'Price',
+    questions: [
+      'How much is Paracetamol?',
+      'What is the price of Amoxicillin?',
+      'How much does Ibuprofen cost?',
+    ],
+  },
+  {
+    label: 'Stock & Inventory',
+    questions: [
+      'How many units of Paracetamol do we have?',
+      'What is the expiry date of Amoxicillin?',
+      'Show me stock info for Metformin',
+    ],
+  },
   {
     label: 'Dosage',
     questions: [
@@ -159,6 +183,96 @@ function pickSuggestions(): string[] {
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   return pool.slice(0, 5);
+}
+
+type QueryIntent =
+  | 'comparison'
+  | 'conversation'
+  | 'inventory'
+  | 'clinical'
+  | 'both';
+
+function pickRandomLabel(labels: string[]): string {
+  return labels[Math.floor(Math.random() * labels.length)] ?? 'Working…';
+}
+
+function classifyQueryIntent(question: string): QueryIntent {
+  const q = question.toLowerCase().trim();
+
+  if (/\b(vs\.?|versus|compare|difference)\b/.test(q)) {
+    return 'comparison';
+  }
+
+  if (
+    q.length <= 3 ||
+    /^(hi|hello|hey|good\s*(morning|afternoon|evening|day)|thanks|thank|bye|who\s+are)/i.test(
+      q,
+    ) ||
+    /what\s+(can|do)\s+you/i.test(q)
+  ) {
+    return 'conversation';
+  }
+
+  const inventoryPatterns = [
+    /\b(stock|available|in stock|out of stock|low stock)\b/,
+    /\b(price|cost|how much|selling price)\b/,
+    /\b(quantity|qty|units|how many|pieces|boxes)\b/,
+    /\b(expiry|expiration|expire|expiring)\b/,
+    /\b(do we have|have we got|carry|sell)\b/,
+  ];
+
+  const clinicalPatterns = [
+    /\b(dosage|dose|dosing)\b/,
+    /\b(side effects?|adverse reactions?)\b/,
+    /\b(contraindications?)\b/,
+    /\b(interactions?|drug interactions?)\b/,
+    /\b(precautions?|warnings?)\b/,
+    /\b(indications?|used for)\b/,
+    /\b(administration|how to take|how to give)\b/,
+    /\b(pregnancy|lactation)\b/,
+    /\b(formulations?)\b/,
+  ];
+
+  const hasInventory = inventoryPatterns.some((p) => p.test(q));
+  const hasClinical = clinicalPatterns.some((p) => p.test(q));
+
+  if (hasInventory && !hasClinical) return 'inventory';
+  if (hasClinical && !hasInventory) return 'clinical';
+  return 'both';
+}
+
+function getDynamicLoadingText(question: string): string {
+  const intent = classifyQueryIntent(question);
+
+  switch (intent) {
+    case 'comparison':
+      return pickRandomLabel([
+        'Comparing medicines…',
+        'Checking stock and references…',
+        'Preparing side-by-side comparison…',
+      ]);
+    case 'conversation':
+      return pickRandomLabel(['Thinking…', 'Got it…', 'Preparing response…']);
+    case 'inventory':
+      return pickRandomLabel([
+        'Checking inventory…',
+        'Looking up stock levels…',
+        'Fetching availability…',
+      ]);
+    case 'clinical':
+      return pickRandomLabel([
+        'Reviewing formulary…',
+        'Checking drug reference…',
+        'Looking up clinical details…',
+      ]);
+    case 'both':
+    default:
+      return pickRandomLabel([
+        'Checking stock and formulary…',
+        'Gathering inventory and clinical info…',
+        'Preparing complete drug summary…',
+      ]);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -414,19 +528,8 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
         streaming: true,
       };
 
-      // Pick a loading label that matches the query type
-      const q = question.toLowerCase().trim();
-      if (/\b(vs\.?|versus|compare|difference)\b/.test(q)) {
-        setLoadingText('Comparing drugs…');
-      } else if (
-        q.length <= 3 ||
-        /^(hi|hello|hey|good\s*(morning|afternoon|evening|day)|thanks|thank|bye|who\s+are)/i.test(q) ||
-        /what\s+(can|do)\s+you/i.test(q)
-      ) {
-        setLoadingText('Thinking…');
-      } else {
-        setLoadingText('Searching formulary…');
-      }
+      // Pick an intent-aware dynamic loading label
+      setLoadingText(getDynamicLoadingText(question));
 
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
       setInput('');
@@ -466,6 +569,9 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
             case 'meta':
               if (typeof event.drugContext === 'string' && event.drugContext) {
                 setActiveDrug(event.drugContext);
+              }
+              if (event.debug && process.env.NODE_ENV !== 'production') {
+                console.debug('[pnf-chat debug]', event.debug);
               }
               break;
 
@@ -565,7 +671,7 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
               Drug Reference Assistant
             </span>
             <span className="text-xs text-slate-500">
-              Philippine National Formulary
+              Inventory &amp; Drug Reference
             </span>
           </div>
         </div>
@@ -654,7 +760,7 @@ function PnfChatbotPanel({ onClose, className }: PnfChatbotPanelProps) {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about dosage, side effects, contraindications…"
+            placeholder="Ask about stock, price, dosage, interactions…"
             className="text-sm flex-1 h-11 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             disabled={isLoading}
           />

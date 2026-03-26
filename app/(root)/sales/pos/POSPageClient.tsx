@@ -358,6 +358,16 @@ export default function POSPage({
   };
 
   const handleDiscountChange = (discount: number) => {
+    if (discount < 0) {
+      toast.error('Discount cannot be negative');
+      setDiscountPercentage(0);
+      return;
+    }
+    if (discount > 100) {
+      toast.error('Discount cannot exceed 100%');
+      setDiscountPercentage(100);
+      return;
+    }
     setDiscountPercentage(discount);
   };
 

@@ -204,12 +204,30 @@ export const Cart: React.FC<CartProps> = ({
                   max="100"
                   step="1"
                   value={discountPercentage || ''}
-                  onChange={(e) =>
-                    onDiscountChange(parseFloat(e.target.value) || 0)
+                  onChange={(e) => {
+                    const raw = parseFloat(e.target.value);
+                    onDiscountChange(isNaN(raw) ? 0 : raw);
+                  }}
+                  onKeyDown={(e) => {
+                    // Block minus key at the input level
+                    if (e.key === '-' || e.key === 'e') {
+                      e.preventDefault();
+                    }
+                  }}
+                  className={
+                    'bg-white focus:ring-amber-500 focus:border-amber-500 ' +
+                    (discountPercentage < 0 || discountPercentage > 100
+                      ? 'border-red-400 ring-1 ring-red-300'
+                      : 'border-amber-300')
                   }
-                  className="bg-white border-amber-300 focus:ring-amber-500 focus:border-amber-500"
                   placeholder="0"
                 />
+                {discountPercentage < 0 && (
+                  <p className="text-xs text-red-600 mt-1">Discount cannot be negative</p>
+                )}
+                {discountPercentage > 100 && (
+                  <p className="text-xs text-red-600 mt-1">Discount cannot exceed 100%</p>
+                )}
               </div>
             </div>
 
@@ -238,7 +256,7 @@ export const Cart: React.FC<CartProps> = ({
               <Button
                 onClick={onCheckout}
                 className="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 rounded-lg shadow-lg transition-all duration-200 transform hover:scale-[1.02] disabled:transform-none disabled:opacity-50"
-                disabled={isProcessing || cart.length === 0}
+                disabled={isProcessing || cart.length === 0 || discountPercentage < 0 || discountPercentage > 100}
                 size="lg"
               >
                 {isProcessing ? (
